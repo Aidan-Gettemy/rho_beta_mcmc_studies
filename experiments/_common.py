@@ -44,6 +44,13 @@ def configs_from_manifest(exp, *cfg_classes):
         C.from_dict(cls, man[cls.__name__]) for cls in cfg_classes)
 
 
+def kle_summary(prob):
+    k = prob.kle
+    return dict(method=k.method, r=k.r, energy=k.energy, total=k.total,
+                **{key: k.meta[key] for key in ("nq", "quadrature", "nq_check")
+                   if key in k.meta})
+
+
 def task_index(value):
     """--chain-id / --pair-index: an int, or 'env' for $SLURM_ARRAY_TASK_ID
     (also accepts $PBS_ARRAYID / $PBS_ARRAY_INDEX)."""

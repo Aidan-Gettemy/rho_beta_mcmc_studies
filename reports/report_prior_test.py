@@ -25,6 +25,8 @@ def main():
     if not have(EXP):
         print("prior test: no results"); return
     prob, man, ch, curve, scfg = load(EXP)
+    if ch is None:
+        print("prior test: set up, no chains yet"); return
     kle, r = prob.kle, prob.r
     nb = scfg.n_burn
     th = ch["kept_theta"].reshape(-1, r)

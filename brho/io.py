@@ -34,6 +34,13 @@ def _dir(kind, exp):
     return d
 
 
+def store_dir():
+    """Build-once store of the study (KLE bases, reference fields)."""
+    d = os.path.join(root(), "store")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
 def results_dir(exp):
     return _dir("results", exp)
 

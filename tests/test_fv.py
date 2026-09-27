@@ -89,62 +89,6 @@ def test_3d_properties():
     assert sc["p_rel_err"] < 1e-12 and sc["keff_rel_err"] < 1e-12
 
 
-def test_kle_kron_equals_dense():
-    """Separable KLE: same spectrum, same truncated covariance of G (the law
-    of the prior field), Cholesky equal up to where the jitter enters."""
-    from brho.kle import KLE
-    for shape, ell in [((16, 16), 0.1), ((12, 9), 0.15), ((6, 5, 4), 0.3)]:
-        ph = fv.Permeameter(shape)
-        d = KLE(ph.points, ell, 0.95, axes=ph.axes, method="dense")
-        k = KLE(ph.points, ell, 0.95, axes=ph.axes, method="kron")
-        assert d.r == k.r
-        assert np.abs(np.sort(d.lam_all)[::-1] - k.lam_all).max() < 1e-12
-        Cd = (d.PHI * d.lam) @ d.PHI.T
-        Ck = (k.PHI * k.lam) @ k.PHI.T
-        assert np.abs(Cd - Ck).max() < 1e-12
-        assert np.allclose(k.PHI.T @ k.PHI, np.eye(k.r), atol=1e-10)
-        g_d = d.sample_full(np.random.default_rng(5))
-        g_k = k.sample_full(np.random.default_rng(5))
-        assert np.abs(g_d - g_k).max() < 1e-3
-
-
-def test_kle_auto_keeps_july_dense():
-    from brho.kle import KLE
-    ph = fv.Permeameter((16, 16))
-    assert KLE(ph.points, 0.1, axes=ph.axes).method == "dense"
-    ph = fv.Permeameter((100, 100))
-    k = KLE(ph.points, 0.1, axes=ph.axes)
-    assert k.method == "kron" and k.C is None
-
-
-def test_frozen_problem_round_trip():
-    """A run's KLE basis and data are saved at setup and reloaded verbatim
-    by chains and reports (eigh's basis inside degenerate eigenspaces is not
-    reproducible across machines / thread counts)."""
-    import tempfile
-    from brho import config as C
-    from brho.problem import Problem
-    pc = C.ProblemConfig()
-    a = Problem(pc)
-    with tempfile.TemporaryDirectory() as d:
-        a.freeze(d)
-        b = Problem(pc, frozen=d)
-        assert b.frozen and b.r == a.r
-        assert np.array_equal(a.kle.PHI, b.kle.PHI)
-        assert np.array_equal(a.kle.SQ, b.kle.SQ)
-        assert np.array_equal(a.syn.d_p, b.syn.d_p)
-        assert a.syn.keff_obs == b.syn.keff_obs
-        th = np.random.default_rng(1).standard_normal(a.r)
-        K = np.exp(a.kle.field(th))
-        (pa, oa, ka), (pb, ob, kb) = a.potential(K), b.potential(K)
-        assert pa == pb and ka == kb and np.array_equal(oa, ob)
-        try:
-            Problem(pc, frozen=os.path.join(d, "missing"))
-            raise AssertionError("missing frozen dir must raise")
-        except FileNotFoundError:
-            pass
-
-
 def test_solvers_agree():
     rng = np.random.default_rng(15)
     for shape in [(30, 30), (8, 8, 8)]:

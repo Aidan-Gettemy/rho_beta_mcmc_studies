@@ -1,17 +1,17 @@
 """
 One object bundling physics + KLE + synthetic data + likelihood, built from a
-ProblemConfig.  Every runner starts with `prob = Problem(pc)`.
+ProblemConfig.
 
-Frozen runs
------------
-`Problem(pc, frozen=<results dir>)` loads the KLE basis (kle.npz) and the
-synthetic data (truth.npz) saved by that run's setup step instead of
-recomputing them.  The eigenvectors of C1 inside degenerate eigenspaces
-depend on floating-point rounding (BLAS build, CPU, thread count), so a basis
-recomputed on another node or in another process can differ by a rotation:
-the same theta would then describe a different field.  Freezing makes every
-chain and every report of a run use the one basis the run was set up with.
-`Problem.freeze(dir)` writes both files.
+Where the KLE basis and the reference field come from
+-----------------------------------------------------
+    Problem(pc, frozen=dir)   load kle.npz + truth.npz saved with a run (all
+                              chain tasks and reports of that run)
+    Problem(pc, store=root)   load them from the study's build-once store, or
+                              build and save them there (setup steps)
+    Problem(pc)               build in memory (tests, interactive use)
+`Problem.freeze(dir)` writes the pair into a run folder.  The eigenvectors of
+C1 inside degenerate eigenspaces depend on floating-point rounding (BLAS
+build, CPU, thread count), so a basis is computed once and then only loaded.
 
 Likelihood (pressure data; optional log-Keff term):
     Phi(K) = ||d_p - O p(K)||^2 / (2 sigma_p^2)
@@ -20,29 +20,67 @@ Likelihood (pressure data; optional log-Keff term):
 import os
 import numpy as np
 from .physics2d import Darcy2D
-from .kle import KLE
+from .kle import KLE, FullRankGaussian, build_kle, resolve_method
 from .truth import make_synthetic, Synthetic
+from . import store as ST
+
+KEY_VERSION = 1
+
+
+def kernel_params(pc):
+    return dict(ell=pc.ell, sigma2=1.0)
+
+
+def kle_key(pc, N):
+    method = resolve_method(pc.kle_method, N, pc.kernel)
+    key = dict(v=KEY_VERSION, grid=[pc.n, pc.n], kernel=pc.kernel, ell=pc.ell,
+               energy=pc.energy, method=method)
+    if method.startswith("nystrom"):
+        key.update(nq=pc.kle_nq, quadrature=pc.kle_quadrature)
+    return key
+
+
+def truth_key(pc):
+    return dict(v=KEY_VERSION, grid=[pc.n, pc.n], kernel=pc.kernel, ell=pc.ell,
+                q_in=pc.q_in, beta_true=pc.beta_true, rho_true=pc.rho_true,
+                truth_mode=pc.truth_mode, truth_seed=pc.truth_seed,
+                noise_rel=pc.noise_rel, sigma_e=pc.sigma_e)
 
 
 class Problem:
-    def __init__(self, pc, frozen=None):
+    def __init__(self, pc, frozen=None, store=None, log=print):
         self.pc = pc
         self.phys = Darcy2D(pc.n, pc.q_in, solver=pc.solver, backend=pc.backend)
-        kle_path = os.path.join(frozen, "kle.npz") if frozen else None
-        if kle_path and os.path.exists(kle_path):
-            self.kle = KLE.load(kle_path, self.phys.points, self.phys.axes)
+        self.full = FullRankGaussian(self.phys.points, self.phys.axes,
+                                     pc.kernel, kernel_params(pc))
+        if frozen:
+            kp = os.path.join(frozen, "kle.npz")
+            if not os.path.exists(kp):
+                raise FileNotFoundError(f"{kp} missing: run the setup step")
+            self.kle = KLE.load(kp)
             self.syn = Synthetic.load(os.path.join(frozen, "truth.npz"))
-            if self.kle.N != self.phys.N or abs(self.kle.ell - pc.ell) > 0:
-                raise ValueError(f"frozen KLE in {frozen} does not match the config")
+            if self.kle.N != self.phys.N:
+                raise ValueError(f"frozen KLE in {frozen} does not match the grid")
             self.frozen = True
         else:
-            if frozen:
-                raise FileNotFoundError(f"{kle_path} missing: run the setup step")
-            self.kle = KLE(self.phys.points, pc.ell, pc.energy,
-                           axes=self.phys.axes, method=pc.kle_method)
-            self.syn = make_synthetic(self.phys, self.kle, pc)
+            build_k = lambda: build_kle(self.phys.points, self.phys.axes,
+                                        pc.kernel, kernel_params(pc), pc.energy,
+                                        pc.kle_method, pc.kle_nq, pc.kle_quadrature)
+            build_t = lambda: make_synthetic(self.phys, self.full, pc)
+            if store:
+                self.kle, _ = ST.get_or_build(store, "kle", kle_key(pc, self.phys.N),
+                                              build_k, lambda o, p: o.save(p),
+                                              KLE.load, log=log)
+                self.syn, _ = ST.get_or_build(store, "truth", truth_key(pc), build_t,
+                                              lambda o, p: o.save(p), Synthetic.load,
+                                              log=log)
+            else:
+                self.kle, self.syn = build_k(), build_t()
             self.frozen = False
         self.r = self.kle.r
+
+    def kle_key(self):
+        return kle_key(self.pc, self.phys.N)
 
     def freeze(self, directory):
         self.kle.save(os.path.join(directory, "kle.npz"))

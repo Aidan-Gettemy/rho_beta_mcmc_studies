@@ -24,7 +24,7 @@ def realizations(prob, cfg, rng):
     if cfg.field == "kle":
         return prob.kle.field(prob.kle.sample_theta(rng, cfg.n_real))
     if cfg.field == "cholesky":
-        return prob.kle.sample_full(rng, cfg.n_real)
+        return prob.full.sample(rng, cfg.n_real)
     raise ValueError(cfg.field)
 
 

@@ -17,7 +17,7 @@ import time
 import _common  # noqa: F401  (first: pins threads before NumPy loads)
 from dataclasses import replace
 
-from _common import parser, configs, C
+from _common import parser, configs, C, kle_summary
 from brho import io
 from brho.problem import Problem
 from brho.curve import sweep, BetaCurve
@@ -28,7 +28,7 @@ def main():
     ap.add_argument("--no-cholesky", action="store_true")
     args = ap.parse_args()
     pc, ccfg = configs(args, C.CurveConfig)
-    prob = Problem(pc)
+    prob = Problem(pc, store=io.store_dir())     # build once per study, else load
     out_dir = io.results_dir(io.EXP_CURVE)
     prob.freeze(out_dir)
     t0 = time.time()
@@ -47,6 +47,7 @@ def main():
 
     io.write_manifest(io.EXP_CURVE, C.to_dict(pc, ccfg),
                       dict(minutes=(time.time() - t0) / 60, r=prob.r,
+                           kle_key=prob.kle_key(), kle=kle_summary(prob),
                            Kstar=prob.syn.keff_obs, truth=prob.syn.summary()))
     c = BetaCurve.load(os.path.join(out_dir, "curve_kle.npz"))
     print(f"K* = {prob.syn.keff_obs:.3f};  beta_bar(rho_true={pc.rho_true}) = "

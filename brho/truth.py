@@ -55,9 +55,10 @@ class Synthetic:
                     G_std=self.G_std, noise_floor=self.n_obs / 2)
 
 
-def make_synthetic(phys, kle, pc):
+def make_synthetic(phys, full, pc):
+    """full: kle.FullRankGaussian on the cells (exact Cholesky draw)."""
     rng = np.random.default_rng(pc.truth_seed)
-    G_raw = kle.sample_full(rng)
+    G_raw = full.sample(rng)
     if pc.truth_mode == "standardized":
         G = (G_raw - G_raw.mean()) / G_raw.std()
     elif pc.truth_mode == "raw":

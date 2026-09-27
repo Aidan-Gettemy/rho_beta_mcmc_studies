@@ -21,6 +21,33 @@ Quick (`--quick`) smoke runs are not logged; they go to `runs/quick/`, which git
 - Implication: one 4,000-iteration chain per grid pair gives noisy per-pair numbers. Read the pattern, not individual disks, or run several chains per pair on the cluster.
 - Seeds: `SeedSequence([seed0, k])` is now the default, and `--seed-scheme legacy` gives the July seeds.
 
+## 2026-09-27 - Gauss-Legendre Nyström KLE (port of KLE_matlab) and build-once store
+
+- `brho/kle.py` now has four builders: the discrete `dense` and `kron`, and the new
+  Nyström `nystrom` (full, any kernel) and `nystrom_sep` (tensor of 1D weighted
+  problems, for separable kernels). `auto` keeps the dense discrete KLE up to 4,096
+  cells and uses `nystrom_sep` above.
+- Checks: the midpoint-rule Nyström at the cell centers equals the discrete KLE
+  (1e-12); the separable and full Nyström solvers agree (spectra 1e-13, covariance
+  1e-11, 2D and 3D); the July path is bitwise unchanged; the legacy frozen basis
+  still loads.
+- Convergence (sq-exp, 16×16 output): at ℓ = 0.1, nq = 20 gives 5e-7 and nq = 30
+  machine precision; your ℓ = 0.022 example needs nq = 80 (7e-5; nq = 60 is 6% off).
+  Rule: nq ≈ 3/ℓ. Each build records `nq_check`.
+- Your MATLAB example (ℓ = 0.022, nq = 80, 95%) gives r = 1,025 modes in 0.24 s on the
+  separable path and 93 s on the full one. That means a sampler dimension of about
+  1,000 at that ℓ.
+- A Nyström study at 16×16 (ℓ = 0.1, nq = 30) keeps r = 58 modes against 56 for the
+  discrete KLE (95% of the continuous trace, plus tied modes). The field variance is
+  lower in the corners (about 0.89), the usual effect of truncating near a boundary.
+- Workflow: setup steps load the basis and truth from `$BRHO_ROOT/store/`, or build
+  them once under a lock. E4 checks that the curve's basis is the sampler's basis.
+- Bug fixed: a refused E4 setup used to delete the existing chains before refusing.
+  Validation now happens first.
+- Not verified here: a direct comparison with the MATLAB output. Octave is not
+  available in this workspace; `benchmarks/kle_compare_matlab.py` prints and saves
+  the eigenvalues to compare.
+
 ## Pending decisions before E3 and E4 at full budget
 
 1. Truth: `standardized` (default) or `raw`
