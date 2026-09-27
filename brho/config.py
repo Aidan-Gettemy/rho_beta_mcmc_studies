@@ -117,13 +117,18 @@ def chain_seed(seed0, k, scheme="spawn", legacy_stride=13):
 class NaiveConfig:
     """Joint model log K = log beta + rho G(theta), pressure data only.
     Whitened: u = (theta, xi_b, xi_r) ~ N(0, I_{r+2}),
-        log beta = mu_logbeta + s_logbeta xi_b,  log rho = mu_logrho + s_logrho xi_r,
-    sampled by ONE global pCN move on u (a single step size)."""
+        log beta = mu_logbeta + s_logbeta xi_b,  log rho = mu_logrho + s_logrho xi_r.
+    move = "blocked" (default): per iteration A) pCN on theta, B) pCN on
+           (xi_b, xi_r), each with its own adapted step (2 solves / iteration)
+    move = "global": ONE pCN move on all of u with a single step (1 solve)."""
+    move: str = "blocked"
     n_iter: int = 100000
     n_burn: int = 10000            # step-size adaptation window (frozen after)
     thin: int = 100                # theta / p_obs saved every `thin` iterations
-    s0: float = 0.10               # initial pCN step size
+    s0: float = 0.10               # initial pCN step (theta block, or global)
+    s0_h: float = 0.10             # initial pCN step of the (xi_b, xi_r) block
     target: float = 0.25           # acceptance target during adaptation
+    target_h: float = 0.25         # acceptance target of the hyper block
     adapt_every: int = 100
     adapt_factor: float = 1.12
     mu_logbeta: float = 0.0        # beta prior: lognormal, median 1

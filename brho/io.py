@@ -17,7 +17,14 @@ import numpy as np
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-EXP_NAIVE = "e1_naive"
+EXP_NAIVE = "e1_naive"          # legacy name (first E1 runs, global move)
+
+
+def exp_e1(move):
+    """E1 run folder per move: e1_blocked, e1_global."""
+    if move not in ("blocked", "global"):
+        raise ValueError(move)
+    return f"e1_{move}"
 EXP_GRID = "e2_grid"
 EXP_CURVE = "e3_curve"
 EXP_SAMPLER = "e4_sampler"

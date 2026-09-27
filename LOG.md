@@ -69,6 +69,37 @@ Quick (`--quick`) smoke runs are not logged; they go to `runs/quick/`, which git
 - Not verified here: a real mpi4py run (not installable in this workspace). The MPI
   code path ran against a one-rank stand-in for COMM_WORLD.
 
+## 2026-09-27 - E1 blocked pCN (the standard) vs global pCN
+
+- Why: the global move adapted to a step of about 0.005. The curvature of Φ in the
+  whitened coordinates is dominated by ξ_β: β scales the whole field, and the inflow
+  data measure the field level very precisely. The top eigenvalue is 3.1e5, against
+  1.4e4 next; the typical θ direction has about 80. A single step must respect the
+  stiffest direction (σp = 5.4e-3, 1% of the pressure range; precision 3.4e4).
+- New default `--move blocked`: A) pCN on θ, B) pCN on (ξ_β, ξ_ρ), with separate
+  adapted steps and 2 solves per iteration. `--move global` is kept. Each move writes
+  its own folder (`e1_blocked`, `e1_global`), and the report compares them at equal
+  PDE solves.
+- Local comparison (4 chains, 60k solves each, not a production run):
+
+  | | blocked | global |
+  |---|---|---|
+  | steps | θ 0.016, hyper 0.0066 | 0.0066 |
+  | median relative error (noise 0.0214) | 0.0248 | 0.0270 |
+  | log β: spread / prior sd (PSRF) | 0.26 (5.8) | 0.32 (5.3) |
+  | ρ | 0.04 (1.18) | 0.16 (5.3) |
+  | level | 0.03 (1.49) | 0.03 (1.90) |
+  | amplitude ρ·std(G) | 0.00 (1.00) | 0.10 (2.2) |
+
+- Finding: with the blocked sampler, β (the split between log β and the mean of the
+  Gaussian field) is the non-identified direction: β ranges from 1.4 to 2.9 across
+  chains. ρ and the amplitude are identified, weakly, through the prior
+  normalization of θ (non-uniqueness report, Remark 2). ρ was still rising toward
+  the truth of 1.5 at this length (about 1.3). The apparent ρ drift under the global
+  move was mostly slow mixing.
+- Cluster: `MOVE=both sbatch cluster/slurm/mpi_e1_naive.sbatch` runs both at 400k
+  solves per chain, followed by the comparison.
+
 ## Pending decisions before E3 and E4 at full budget
 
 1. Truth: `standardized` (default) or `raw`
