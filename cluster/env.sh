@@ -21,7 +21,8 @@ export SLURM_ACCOUNT_ARGS=""              # e.g. "--account=myproj --partition=s
 # --- study settings (passed to the setup steps) ---------------------------
 export PROBLEM_ARGS="--truth-mode standardized"
 # likelihood (brho/problem.py): relative by default, sigma_rel = rel_eps/sqrt(rel_n_eff)
-#   = 0.02/sqrt(128) = 1.77e-3.  Set it directly with "--sigma-rel 1.77e-3", or
+#   = 0.02/sqrt(128) = 1.77e-3; the same form as MCMCpar.py (sigma = s, Phi =
+#   relerr^2/(2 s^2)), so "--sigma-rel s" matches it.  Set it directly, or
 #   via the pair "--rel-eps 0.02 --rel-n-eff 128"; "--likelihood absolute" for
 #   the July form.
 # KLE (brho/kle.py): default "auto" = dense discrete KLE up to 4096 cells,

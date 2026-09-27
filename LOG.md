@@ -142,8 +142,9 @@ Quick (`--quick`) smoke runs are not logged; they go to `runs/quick/`, which git
   and 0.0066).
 - Old manifests without the key load as `absolute` (config.LEGACY_DEFAULTS), so
   the committed July run is unchanged.
-- To confirm: the precision convention in `mcmctools.likelihood`. If Φ = p·relerr²,
-  then p = 1/(2σ_rel²) = 1.6e5; if Φ = p·relerr²/2, then p = 1/σ_rel² = 3.2e5.
+- Confirmed: `MCMCpar.py` / `mcmctools` take a σ = s and use relerr²/(2s²), the
+  same form. So `--sigma-rel s` reproduces their likelihood exactly, and our
+  default equals s = 1.77e-3.
 
 ## Pending decisions before E3 and E4 at full budget
 

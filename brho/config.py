@@ -47,7 +47,8 @@ class ProblemConfig:
     # (rel_eps, rel_n_eff): sigma_rel = rel_eps / sqrt(rel_n_eff), i.e.
     #   Phi = (rel_n_eff / 2) (relerr / rel_eps)^2,
     # rel_eps = relative error expected at the truth, rel_n_eff = number of
-    # independent observations credited.  Only the ratio matters.
+    # independent observations credited.  Only the ratio matters.  Same form
+    # as MCMCpar.py / mcmctools (sigma = s, Phi = relerr^2 / (2 s^2)).
     sigma_rel: float = 0.0
     rel_eps: float = 0.02
     rel_n_eff: float = 128.0
