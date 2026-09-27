@@ -67,14 +67,15 @@ it gives no `git pull` for updates and no way to push results.
 
 ## E1 with mpi4py
 
-`cluster/slurm/mpi_e1_naive.sbatch` runs the naive global-pCN study as one
-mpi4py job, in the style of `MCMCpar.py`: `mpirun -np 64 python3
+`cluster/slurm/mpi_e1_naive.sbatch` runs the naive-model study as one
+mpi4py job (`MOVE=blocked` default, `global`, or `both` with a comparison), in the style of `MCMCpar.py`: `mpirun -np 64 python3
 experiments/run_e1_naive.py`, one chain per rank. Rank 0 sets up the run (basis
 and truth from the store, frozen copies, numba compiled) and broadcasts success;
 summaries are gathered on rank 0. The report runs afterwards in the same job.
 To continue after a time limit, use `RESUME=1 sbatch ...`; to start over, `FRESH=1`.
-The budget is `E1_ARGS` in the script (default 200k iterations, 20k adaptation,
-θ saved every 200).
+The budgets are `E1_ARGS_BLOCKED` and `E1_ARGS_GLOBAL` in the script; by default each
+move gets 400k PDE solves per chain (200k blocked iterations at 2 solves each, 400k
+global ones at 1).
 
 ## Running the experiments (single-node jobs)
 

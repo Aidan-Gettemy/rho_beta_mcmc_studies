@@ -34,17 +34,43 @@ def cfg(**kw):
 
 
 def test_resume_is_exact():
+    """Both moves: interrupted at a checkpoint and resumed == uninterrupted."""
     p = prob()
-    c_full = cfg(n_iter=1000, n_burn=400, checkpoint_every=200)
-    c_half = replace(c_full, n_iter=600)
+    for move in ("blocked", "global"):
+        c_full = cfg(move=move, n_iter=1000, n_burn=400, checkpoint_every=200)
+        c_half = replace(c_full, n_iter=600)
+        with tempfile.TemporaryDirectory() as d:
+            a, b = os.path.join(d, "a.npz"), os.path.join(d, "b.npz")
+            run_chain(p, c_full, 3, a, log=lambda m: None)
+            run_chain(p, c_half, 3, b, log=lambda m: None)    # "interrupted" at 600
+            run_chain(p, c_full, 3, b, log=lambda m: None)    # resumed to 1000
+            za, zb = np.load(a), np.load(b)
+            for k in ("acc", "acc_h", "phi", "relerr", "logbeta", "rho", "kept_theta",
+                      "u", "s_final"):
+                assert np.array_equal(za[k], zb[k]), (move, k)
+
+
+def test_blocked_has_two_adapted_blocks():
+    p = prob()
+    # opposite targets: theta's step must grow, the hyper step must shrink,
+    # which only happens if each block adapts to its own acceptance
+    c = cfg(move="blocked", n_iter=1500, n_burn=1000, checkpoint_every=500,
+            target=0.0, target_h=1.0)
     with tempfile.TemporaryDirectory() as d:
-        a, b = os.path.join(d, "a.npz"), os.path.join(d, "b.npz")
-        run_chain(p, c_full, 3, a, log=lambda m: None)
-        run_chain(p, c_half, 3, b, log=lambda m: None)        # "interrupted" at 600
-        run_chain(p, c_full, 3, b, log=lambda m: None)        # resumed to 1000
-        za, zb = np.load(a), np.load(b)
-        for k in ("acc", "phi", "relerr", "logbeta", "rho", "kept_theta", "u"):
-            assert np.array_equal(za[k], zb[k]), k
+        f = os.path.join(d, "c.npz")
+        out = run_chain(p, c, 0, f, log=lambda m: None)
+        z = np.load(f)
+        assert z["s_final"].shape == (2,) and z["s_hist"].shape[1] == 2
+        assert int(z["solves"]) == 2 * 1500
+        assert 0 < z["acc_h"].mean() < 1 and 0 < z["acc"].mean() < 1
+        assert "acc_h_post" in out
+        assert z["s_final"][0] > c.s0 and z["s_final"][1] < c.s0_h
+    g = cfg(move="global", n_iter=300, n_burn=100, checkpoint_every=300)
+    with tempfile.TemporaryDirectory() as d:
+        f = os.path.join(d, "g.npz")
+        run_chain(p, g, 0, f, log=lambda m: None)
+        z = np.load(f)
+        assert z["s_final"].shape == (1,) and not z["acc_h"].any()
 
 
 def test_global_pcn_samples_prior_without_data():

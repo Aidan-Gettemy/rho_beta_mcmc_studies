@@ -1,11 +1,17 @@
 """
-E1 - naive joint (theta, beta, rho) model, standard global pCN, one chain per
-MPI rank.  Demonstrates the failure: every chain fits the pressure data, but
-beta and rho drift and different chains end in different places.
+E1 - naive joint (theta, beta, rho) model sampled by pCN, one chain per MPI
+rank.  Demonstrates the failure: every chain fits the pressure data, but beta
+and rho drift and different chains end in different places.
+
+    --move blocked   (default, the standard) A) pCN on theta, B) pCN on
+                     (xi_beta, xi_rho), separate adapted step sizes
+    --move global    one pCN move on everything, one step size
+Each move writes its own run folder (results/e1_blocked, results/e1_global),
+so both can live in one study and report_e1.py compares them.
 
 Cluster (see cluster/slurm/mpi_e1_naive.sbatch):
-    mpirun -np 64 python experiments/run_e1_naive.py [config flags]
-    mpirun -np 64 python experiments/run_e1_naive.py --resume   # after a time limit
+    mpirun -np 64 python experiments/run_e1_naive.py [--move global] [config flags]
+    mpirun -np 64 python experiments/run_e1_naive.py --resume [--move global]
 Laptop / no mpi4py:
     python experiments/run_e1_naive.py --quick --local-chains 4
 Post-processing (one process):
@@ -32,7 +38,7 @@ from brho import io
 from brho.problem import Problem
 from brho.naive import run_chain
 
-EXP = io.EXP_NAIVE
+EXP = io.exp_e1("blocked")        # set from --move in main()
 
 try:
     from mpi4py import MPI
@@ -59,6 +65,8 @@ def setup(args, n_chains):
         if not os.path.exists(os.path.join(d, "manifest.json")):
             return False, "--resume: no E1 run in this BRHO_ROOT"
         man = io.read_manifest(EXP)
+        if man["configs"]["NaiveConfig"].get("move", "global") != args.move_resolved:
+            return False, "--resume: --move does not match the run in this folder"
         if man["n_chains"] != n_chains:
             return False, (f"--resume: the run has {man['n_chains']} chains, this "
                            f"launch has {n_chains}; use the same number of ranks")
@@ -78,7 +86,7 @@ def setup(args, n_chains):
                       dict(n_chains=n_chains, mpi_size=SIZE, r=prob.r,
                            kle_key=prob.kle_key(), kle=kle_summary(prob),
                            truth=prob.syn.summary(), status="running"))
-    return True, (f"E1: {n_chains} chains x {cfg.n_iter} it (adapt {cfg.n_burn}, "
+    return True, (f"E1 [{cfg.move}]: {n_chains} chains x {cfg.n_iter} it (adapt {cfg.n_burn}, "
                   f"thin {cfg.thin}); r={prob.r}; truth={pc.truth_mode}; "
                   f"beta~logN({cfg.mu_logbeta},{cfg.s_logbeta}), "
                   f"rho~logN({cfg.mu_logrho},{cfg.s_logrho})")
@@ -106,8 +114,11 @@ def finish(summaries, t0):
     if ok:
         print("=" * 53)
         for s in sorted(ok, key=lambda s: s["chain_id"]):
+            acc_h = (f", hyper {100 * s['acc_h_post']:5.1f}%" if "acc_h" in s else "")
             print(f"chain {s['chain_id']:3d}: acc {100 * s['acc']:5.1f}% "
-                  f"(post-adapt {100 * s['acc_post']:5.1f}%)  beta={s['beta_final']:.3g}  "
+                  f"(post-adapt {100 * s['acc_post']:5.1f}%{acc_h})  "
+                  f"steps {'/'.join(f'{x:.3g}' for x in s['s_final'])}  "
+                  f"beta={s['beta_final']:.3g}  "
                   f"rho={s['rho_final']:.3g}  relerr={s['relerr_final']:.2e}")
         print(f"MEAN ACCEPTANCE RATE ........................: "
               f"{100 * np.mean([s['acc'] for s in ok]):5.2f}%")
@@ -123,6 +134,9 @@ def main():
     ap.add_argument("--local-chains", type=int, default=1,
                     help="without MPI: run this many chains in a process pool")
     args = ap.parse_args()
+    global EXP
+    args.move_resolved = args.move or C.NaiveConfig().move
+    EXP = io.exp_e1(args.move_resolved)
     t0 = time.time()
     n_chains = SIZE if COMM else args.local_chains
 
