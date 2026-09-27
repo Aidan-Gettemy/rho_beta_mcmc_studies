@@ -135,3 +135,36 @@ def test_task_indices_from_launchers():
             if k.startswith(("SLURM_", "OMPI_", "PMI", "PBS_")):
                 del os.environ[k]
         os.environ.update(keep)
+
+
+def test_relative_likelihood():
+    """sigma_rel = eps / sqrt(n_eff); Phi = relerr^2 / (2 sigma_rel^2);
+    the floor at the truth is nearly grid-independent; absolute is exact July."""
+    assert abs(C.sigma_rel_from(0.02, 128) - 0.02 / np.sqrt(128)) < 1e-15
+    assert abs(C.eps_from(C.sigma_rel_from(0.02, 128), 128) - 0.02) < 1e-15
+    assert abs(C.sigma_rel_from(0.02, 128) - C.sigma_rel_from(0.04, 512)) < 1e-15
+    floors = {}
+    for n in (16, 32):
+        rel = Problem(C.ProblemConfig(n=n), log=lambda m: None)
+        ab = Problem(C.ProblemConfig(n=n, likelihood="absolute"), log=lambda m: None)
+        d = rel.syn.d_p
+        K = np.exp(rel.syn.logK_true + 0.05)            # some other field
+        phi_r, pobs, _ = rel.potential(K)
+        relerr = np.linalg.norm(d - pobs) / np.linalg.norm(d)
+        assert abs(phi_r - relerr ** 2 / (2 * rel.sigma_rel ** 2)) < 1e-9 * phi_r
+        phi_a, _, _ = ab.potential(K)
+        assert abs(phi_a - 0.5 * np.sum(((d - pobs) / ab.syn.sigma_p) ** 2)) < 1e-9 * phi_a
+        assert ab.noise_floor() == ab.syn.n_obs / 2
+        floors[n] = rel.noise_floor()
+    assert abs(floors[32] / floors[16] - 1) < 0.25       # absolute: x4 (128 -> 512)
+    # sigma_rel given directly wins over the pair
+    p = Problem(C.ProblemConfig(n=16, sigma_rel=1e-3, rel_eps=0.5), log=lambda m: None)
+    assert p.sigma_rel == 1e-3
+
+
+def test_old_manifests_keep_absolute_likelihood():
+    old = {k: v for k, v in C.to_dict(C.ProblemConfig(n=16))["ProblemConfig"].items()
+           if k not in ("likelihood", "sigma_rel", "rel_eps", "rel_n_eff")}
+    assert C.from_dict(C.ProblemConfig, old).likelihood == "absolute"
+    new = C.to_dict(C.ProblemConfig())["ProblemConfig"]
+    assert C.from_dict(C.ProblemConfig, new).likelihood == "relative"

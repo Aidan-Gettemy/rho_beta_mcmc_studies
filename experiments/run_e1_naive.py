@@ -85,9 +85,13 @@ def setup(args, n_chains):
     io.write_manifest(EXP, C.to_dict(pc, cfg),
                       dict(n_chains=n_chains, mpi_size=SIZE, r=prob.r,
                            kle_key=prob.kle_key(), kle=kle_summary(prob),
+                           likelihood=prob.likelihood_summary(),
                            truth=prob.syn.summary(), status="running"))
+    lk = prob.likelihood_summary()
+    lk_txt = (f"relative, sigma_rel={lk['sigma_rel']:.3g}" if "sigma_rel" in lk
+              else "absolute")
     return True, (f"E1 [{cfg.move}]: {n_chains} chains x {cfg.n_iter} it (adapt {cfg.n_burn}, "
-                  f"thin {cfg.thin}); r={prob.r}; truth={pc.truth_mode}; "
+                  f"thin {cfg.thin}); r={prob.r}; truth={pc.truth_mode}; likelihood {lk_txt}; "
                   f"beta~logN({cfg.mu_logbeta},{cfg.s_logbeta}), "
                   f"rho~logN({cfg.mu_logrho},{cfg.s_logrho})")
 

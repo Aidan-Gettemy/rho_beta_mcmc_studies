@@ -38,6 +38,19 @@ class ProblemConfig:
     truth_seed: int = 2026
     noise_rel: float = 0.01        # sigma_p = noise_rel * (max p - min p)
     sigma_e: float = 0.05          # log-scale error of the Keff measurement
+    # Pressure likelihood (brho/problem.py):
+    #   "relative" (default): Phi = ||d - G||^2 / (2 sigma_rel^2 ||d||^2)
+    #                             = relerr^2 / (2 sigma_rel^2)
+    #   "absolute":           Phi = ||d - G||^2 / (2 sigma_p^2)   (July runs)
+    likelihood: str = "relative"
+    # sigma_rel > 0 is used as given; sigma_rel = 0 derives it from the pair
+    # (rel_eps, rel_n_eff): sigma_rel = rel_eps / sqrt(rel_n_eff), i.e.
+    #   Phi = (rel_n_eff / 2) (relerr / rel_eps)^2,
+    # rel_eps = relative error expected at the truth, rel_n_eff = number of
+    # independent observations credited.  Only the ratio matters.
+    sigma_rel: float = 0.0
+    rel_eps: float = 0.02
+    rel_n_eff: float = 128.0
 
 
 # -------------------------------------------------------- E2: 5x5 grid study
@@ -186,8 +199,29 @@ def to_dict(*cfgs):
     return {type(c).__name__: asdict(c) for c in cfgs}
 
 
+# Settings added after runs already existed: a manifest without the key was
+# made under the old behaviour, which these values reproduce.
+LEGACY_DEFAULTS = {"ProblemConfig": dict(likelihood="absolute")}
+
+
+def sigma_rel_from(eps, n_eff):
+    """(epsilon, n_eff) -> sigma_rel = epsilon / sqrt(n_eff)."""
+    return float(eps) / float(n_eff) ** 0.5
+
+
+def eps_from(sigma_rel, n_eff):
+    """sigma_rel -> epsilon for a chosen n_eff (the pair is not unique)."""
+    return float(sigma_rel) * float(n_eff) ** 0.5
+
+
+def resolve_sigma_rel(pc):
+    return pc.sigma_rel if pc.sigma_rel > 0 else sigma_rel_from(pc.rel_eps, pc.rel_n_eff)
+
+
 def from_dict(cls, d):
     d = dict(d)
+    for k, v in LEGACY_DEFAULTS.get(cls.__name__, {}).items():
+        d.setdefault(k, v)
     for f in fields(cls):
         if isinstance(d.get(f.name), list):
             d[f.name] = tuple(d[f.name])

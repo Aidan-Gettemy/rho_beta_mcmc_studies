@@ -20,6 +20,10 @@ export SLURM_ACCOUNT_ARGS=""              # e.g. "--account=myproj --partition=s
 
 # --- study settings (passed to the setup steps) ---------------------------
 export PROBLEM_ARGS="--truth-mode standardized"
+# likelihood (brho/problem.py): relative by default, sigma_rel = rel_eps/sqrt(rel_n_eff)
+#   = 0.02/sqrt(128) = 1.77e-3.  Set it directly with "--sigma-rel 1.77e-3", or
+#   via the pair "--rel-eps 0.02 --rel-n-eff 128"; "--likelihood absolute" for
+#   the July form.
 # KLE (brho/kle.py): default "auto" = dense discrete KLE up to 4096 cells,
 # Gauss-Legendre Nystrom (separable path) above.  For a Nystrom study at any
 # size, e.g. 100x100 with ell = 0.05:

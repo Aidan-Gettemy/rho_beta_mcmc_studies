@@ -52,7 +52,8 @@ class Synthetic:
                     sigma_p=self.sigma_p, sigma_e=self.sigma_e,
                     keff_true=self.keff_true, keff_obs=self.keff_obs,
                     level_true=self.level_true, Gbar=self.Gbar,
-                    G_std=self.G_std, noise_floor=self.n_obs / 2)
+                    G_std=self.G_std,
+                    noise_rel=float(self.sigma_p * np.sqrt(self.n_obs) / np.linalg.norm(self.d_p)))
 
 
 def make_synthetic(phys, full, pc):

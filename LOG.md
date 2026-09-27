@@ -125,6 +125,26 @@ Quick (`--quick`) smoke runs are not logged; they go to `runs/quick/`, which git
   floor). This is the offset the July report attributed to truncation, and the
   likely cause of its 65% band coverage. 99% brings it to 1.2×.
 
+## 2026-09-27 - Relative-error likelihood as the default (advisor's convention)
+
+- Φ = ‖d − G‖²/(2σ_rel²‖d‖²) = relerr²/(2σ_rel²), using the global normalized L2
+  norm, as in `normaL2squared` in `MCMCpar.py`. σ_rel = ε/√n_eff; only the ratio
+  matters: (0.02, 128) ≡ (0.04, 512). The default is σ_rel = 1.77e-3. Set σ_rel
+  directly with `--sigma-rel`, or through the pair.
+- It equals the absolute form with a per-sensor sd of σ_rel‖d‖, which grows like
+  √n_obs, so the information does not rescale with grid or sensor count. That is
+  appropriate here because the misfit is dominated by model error (the 95% KLE
+  floor is 2.7–3.2× the noise), which is correlated between sensors.
+- Floor at the truth: 16×16: 73 (absolute 64); 32×32: 61 (absolute 256). The
+  32×32 likelihood carries 0.24 of the absolute weight.
+- 32×32 blocked E1 (4 chains × 20k, local): steps θ 0.0117 and hyper 0.0066,
+  against 0.0059 and 0.0033 with the absolute likelihood (16×16 absolute: 0.016
+  and 0.0066).
+- Old manifests without the key load as `absolute` (config.LEGACY_DEFAULTS), so
+  the committed July run is unchanged.
+- To confirm: the precision convention in `mcmctools.likelihood`. If Φ = p·relerr²,
+  then p = 1/(2σ_rel²) = 1.6e5; if Φ = p·relerr²/2, then p = 1/σ_rel² = 3.2e5.
+
 ## Pending decisions before E3 and E4 at full budget
 
 1. Truth: `standardized` (default) or `raw`

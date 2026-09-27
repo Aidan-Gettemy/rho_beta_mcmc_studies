@@ -55,6 +55,7 @@ def setup(pc, gcfg):
     io.write_manifest(EXP, C.to_dict(pc, gcfg),
                       dict(r=prob.r, n_pairs=len(pairs_of(gcfg)),
                            kle_key=prob.kle_key(), kle=kle_summary(prob),
+                           likelihood=prob.likelihood_summary(),
                            truth=prob.syn.summary(), status="set up"))
     return prob
 

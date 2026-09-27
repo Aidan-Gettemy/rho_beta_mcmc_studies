@@ -181,8 +181,15 @@ truncated lognormal, and a QQ plot of w.
 - **Step C costs a solve here.** The ridge move preserves ρθ, but β̄(ρ′) ≠ β̄(ρ),
   so Φ is re-evaluated (method report eq. 11). In the hierarchical (m, σ) model
   this step is free. Each E4 iteration therefore costs three solves.
-- **Likelihood:** pressure only, as in the method report. `--use-keff-term 1`
-  adds the log-Keff datum.
+- **Likelihood:** pressure only, as in the method report (`--use-keff-term 1`
+  adds the log-Keff datum to E4). The default is the **relative** form,
+  Φ = ‖d − G‖²/(2σ_rel²‖d‖²) = relerr²/(2σ_rel²), using the global normalized L2
+  norm. σ_rel is either given directly (`--sigma-rel`) or derived from a pair
+  (`--rel-eps` ε, `--rel-n-eff` n_eff) as σ_rel = ε/√n_eff; the default is
+  ε = 0.02, n_eff = 128, so σ_rel = 1.77e-3. At the truth Φ ≈ (n_eff/2)(noise/ε)²
+  on any grid (73 on 16×16, 61 on 32×32), where the absolute form jumps from 64
+  to 256. `--likelihood absolute` gives Φ = ‖d − G‖²/(2σp²). Runs whose manifests
+  predate this option (the July runs) load as `absolute`.
 
 ### Runs in this repo
 
