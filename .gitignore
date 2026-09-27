@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+runs/quick/
+*.tmp.npz
+.DS_Store
