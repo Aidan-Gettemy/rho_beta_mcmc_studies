@@ -2,8 +2,8 @@
 Synthetic reference experiment (shared by E2, E3, E4).
 
 Random-number order is identical to mcmc_study.py / hier_sampler.py
-(seed 2026: Cholesky draw of G_in, then 128 pressure-noise draws, then one
-Keff-noise draw), so truth_mode="raw" reproduces the July data exactly.
+(seed 2026: Cholesky draw of G_in, then n_obs pressure-noise draws, then one
+Keff-noise draw), so truth_mode="raw" with n=16 reproduces the July data exactly.
 """
 from dataclasses import dataclass, asdict
 import numpy as np

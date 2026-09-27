@@ -14,7 +14,8 @@ import json
 @dataclass(frozen=True)
 class ProblemConfig:
     """Physics, prior covariance and synthetic truth (shared by E2-E4)."""
-    n: int = 16                    # cells per side (16x16 = 256 cells)
+    n: int = 32                    # cells per side (32x32 = 1024 cells; >= 3 per
+                                   # correlation length: n * ell >= 3; July runs: 16)
     ell: float = 0.1               # squared-exponential correlation length
     energy: float = 0.95           # KLE energy fraction  (-> r = 56 in 2D)
     kernel: str = "sqexp"          # covariance kernel (brho/kernels.py)

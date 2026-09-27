@@ -48,8 +48,15 @@ def truth_key(pc):
 
 
 class Problem:
+    MIN_CELLS_PER_ELL = 3
+
     def __init__(self, pc, frozen=None, store=None, log=print):
         self.pc = pc
+        if pc.n * pc.ell < self.MIN_CELLS_PER_ELL:
+            log(f"WARNING: {pc.n}x{pc.n} grid resolves ell={pc.ell} with only "
+                f"{pc.n * pc.ell:.1f} cells per correlation length (< "
+                f"{self.MIN_CELLS_PER_ELL}); use --n >= "
+                f"{int(np.ceil(self.MIN_CELLS_PER_ELL / pc.ell))}")
         self.phys = Darcy2D(pc.n, pc.q_in, solver=pc.solver, backend=pc.backend)
         self.full = FullRankGaussian(self.phys.points, self.phys.axes,
                                      pc.kernel, kernel_params(pc))

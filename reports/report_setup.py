@@ -1,7 +1,7 @@
 """
 Setup figures and numbers (report Fig. 1 + checks).
 
-    fig_setup.png         G_true | log K_true | p_true with the 128 obs cells
+    fig_setup.png         G_true | log K_true | p_true with the observation cells
     fig_kle_spectrum.png  eigenvalue decay and cumulative energy, r marked
     fig_truth_hist.png    histogram of G_true and log K_true
     tables/setup/setup.{md,csv,json}

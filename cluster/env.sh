@@ -6,7 +6,7 @@
 # source activate $HOME/.conda/envs/gd24_numba
 
 # --- where results go (one folder per study keeps runs apart) -------------
-export BRHO_ROOT="${BRHO_ROOT:-$PWD/runs/cluster}"   # e.g. /scratch/$USER/brho/grid16
+export BRHO_ROOT="${BRHO_ROOT:-$PWD/runs/cluster}"   # e.g. /scratch/$USER/brho/grid32
 
 # --- one thread per process: parallelism comes from array tasks ----------
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1

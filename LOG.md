@@ -100,6 +100,31 @@ Quick (`--quick`) smoke runs are not logged; they go to `runs/quick/`, which git
 - Cluster: `MOVE=both sbatch cluster/slurm/mpi_e1_naive.sbatch` runs both at 400k
   solves per chain, followed by the comparison.
 
+## 2026-09-27 - 32×32 default grid, 512 chessboard observations
+
+- Default `n = 32` (h = 1/32): ℓ = 0.1 is resolved by 3.2 cells, against 1.6 on
+  16×16. Observations are the fine chessboard: 512 cells. `Problem` warns when
+  n·ℓ < 3. The July runs and tests use `--n 16` explicitly and stay exact.
+- Cost: 1.45 ms per solve (0.46 ms at 16×16). The KLE is still dense and r = 57
+  at 95%; σp = 5.8e-3 (1% of the pressure range).
+- Four times the data tightens the posterior. Local blocked E1 (4 chains × 20k
+  iterations) adapted to steps θ 0.0059 and hyper 0.0033 (at 16×16: 0.016 and
+  0.0066). It is not converged at this length (PSRF 3–17), with relative error
+  0.025 against noise 0.020. The E2 grid at 4,000 iterations reaches RMS/σp
+  1.4–3.2 and best Φ 477–2,115 against a floor of 256: longer chains are needed
+  at 32×32.
+- Finding, truncation floor: the best Φ reachable in the truncated KLE span (true
+  β and ρ, log K projected onto the basis):
+
+  | grid, obs | 95% (r) | 99% (r) | 99.9% (r) | floor |
+  |---|---|---|---|---|
+  | 16×16, 128 | 203 (56) | 78 (86) | 67 (129) | 64 |
+  | 32×32, 512 | 682 (57) | 310 (89) | 240 (136) | 256 |
+
+  At 95% energy the model cannot fit the data to the noise level (2.7–3.2× the
+  floor). This is the offset the July report attributed to truncation, and the
+  likely cause of its 65% band coverage. 99% brings it to 1.2×.
+
 ## Pending decisions before E3 and E4 at full budget
 
 1. Truth: `standardized` (default) or `raw`

@@ -4,6 +4,7 @@ Core correctness checks (no pytest needed: python tests/run_tests.py).
   physics   scaling lemma p(cK) = p(K)/c and Keff(cK) = c Keff(K);
             homogeneous plug has Keff = K exactly
   kle       r = 56 at 95% for n=16, ell=0.1; orthonormal modes
+  default   32x32 grid: 512 chessboard observations, >= 3 cells per ell
   truth     raw mode reproduces the July numbers (sigma_p, K*, level, Gbar)
   curve     beta_bar(0) = K*; ratio_of_mean <= mean_of_ratio (Jensen)
   sampler   likelihood-off chain reproduces the prior (ridge Jacobian check)
@@ -25,7 +26,7 @@ _P = {}
 
 def prob(mode="standardized"):
     if mode not in _P:
-        _P[mode] = Problem(C.ProblemConfig(truth_mode=mode))
+        _P[mode] = Problem(C.ProblemConfig(truth_mode=mode, n=16))   # July grid
     return _P[mode]
 
 
@@ -48,6 +49,19 @@ def test_kle():
     assert np.allclose(k.T.T @ k.T, np.diag(k.lam), atol=1e-8)   # orthogonal modes
     th = np.random.default_rng(0).standard_normal(k.r)
     assert np.allclose(k.spatial_mean(th), k.field(th).mean())
+
+
+def test_default_grid_32():
+    pc = C.ProblemConfig()
+    assert pc.n == 32 and pc.n * pc.ell >= 3
+    logs = []
+    p = Problem(pc, log=logs.append)
+    assert p.syn.n_obs == 512 and p.phys.N == 1024
+    assert not any("WARNING" in m for m in logs)
+    assert p.kle.method == "dense" and 50 <= p.r <= 65
+    logs = []
+    Problem(replace(pc, n=16), log=logs.append)          # 1.6 cells per ell
+    assert any("WARNING" in m for m in logs)
 
 
 def test_truth_raw_reproduces_july():

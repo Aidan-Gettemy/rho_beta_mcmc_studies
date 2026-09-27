@@ -3,8 +3,10 @@ Advanced multi-parameter permeability modeling and sampling in python.
 
 ## 2D (β, ρ) experiments
 
-This code reproduces three experiments on the 2D permeameter problem
-(16×16 cells, ℓ = 0.1, 128 chessboard observations, r = 56 KLE modes):
+This code runs the experiments on the 2D permeameter problem: by default a
+32×32 grid (ℓ = 0.1, so 3.2 cells per correlation length), 512 chessboard
+observations and r = 57 KLE modes. The July studies used 16×16 with 128
+observations (`--n 16`); their runs and tests stay reproducible.
 
 | Short report | Experiment | Runner | Report |
 |---|---|---|---|
