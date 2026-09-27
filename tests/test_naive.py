@@ -24,7 +24,7 @@ _P = {}
 
 def prob():
     if "p" not in _P:
-        _P["p"] = Problem(C.ProblemConfig())
+        _P["p"] = Problem(C.ProblemConfig(n=16))    # small grid: fast tests
     return _P["p"]
 
 

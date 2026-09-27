@@ -99,6 +99,7 @@ def setup(pc, scfg, curve_field, curve_statistic, exp):
     io.write_manifest(exp, C.to_dict(pc, scfg),
                       dict(r=prob.r, Kstar=prob.syn.keff_obs,
                            kle_key=prob.kle_key(), kle=kle_summary(prob),
+                           likelihood=prob.likelihood_summary(),
                            curve=dict(source=src, statistic=curve.statistic,
                                       rho_max=curve.rho_max),
                            truth=prob.syn.summary(), status="set up"))

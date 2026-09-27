@@ -21,7 +21,7 @@
 # Start over in the same study:   FRESH=1 [MOVE=...] sbatch cluster/slurm/mpi_e1_naive.sbatch
 # Budgets (E1_ARGS_BLOCKED / E1_ARGS_GLOBAL below): the blocked move costs 2
 # PDE solves per iteration, the global move 1, so the defaults give both the
-# same 400k solves per chain (~1 ms per solve at 16x16).
+# same 400k solves per chain (~1.5 ms per solve at 32x32: ~10-15 min per chain).
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
 source cluster/env.sh                 # conda env, BRHO_ROOT, PROBLEM_ARGS

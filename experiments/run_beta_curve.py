@@ -48,6 +48,7 @@ def main():
     io.write_manifest(io.EXP_CURVE, C.to_dict(pc, ccfg),
                       dict(minutes=(time.time() - t0) / 60, r=prob.r,
                            kle_key=prob.kle_key(), kle=kle_summary(prob),
+                           likelihood=prob.likelihood_summary(),
                            Kstar=prob.syn.keff_obs, truth=prob.syn.summary()))
     c = BetaCurve.load(os.path.join(out_dir, "curve_kle.npz"))
     print(f"K* = {prob.syn.keff_obs:.3f};  beta_bar(rho_true={pc.rho_true}) = "

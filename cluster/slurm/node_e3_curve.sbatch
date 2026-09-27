@@ -9,7 +9,7 @@
 #SBATCH -o logs/brho-e3-%j.out
 #
 # E3, the offline beta_bar(rho) curve: one process (n_rho x n_real solves at
-# beta = 1; a few seconds at 16x16, minutes at 100x100).  Uses the study's
+# beta = 1; tens of seconds at 32x32, minutes at 100x100).  Uses the study's
 # KLE basis from the store (the same one E2 and E4 use).
 # Submit from the repo root:   sbatch cluster/slurm/node_e3_curve.sbatch
 set -euo pipefail

@@ -16,6 +16,6 @@ from .fv import Permeameter
 
 
 class Darcy2D(Permeameter):
-    def __init__(self, n=16, q_in=1.0, solver="auto", backend="auto"):
+    def __init__(self, n=32, q_in=1.0, solver="auto", backend="auto"):
         super().__init__((n, n), q_in=q_in, solver=solver, backend=backend)
         self.n = n

@@ -39,7 +39,8 @@ def truth_star(ax, x, y, label="truth"):
 
 
 def slice_row(n, y=0.53):
-    """Row index jr of the horizontal slice closest to y (0.53 -> 8 for n=16)."""
+    """Row index jr of the horizontal slice closest to y (0.53 -> 8 for n=16,
+    16 for n=32; figure labels print the actual cell-center y)."""
     return int(np.clip(round(y * n - 0.5), 0, n - 1))
 
 

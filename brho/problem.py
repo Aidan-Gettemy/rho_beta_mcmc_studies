@@ -13,9 +13,18 @@ Where the KLE basis and the reference field come from
 C1 inside degenerate eigenspaces depend on floating-point rounding (BLAS
 build, CPU, thread count), so a basis is computed once and then only loaded.
 
-Likelihood (pressure data; optional log-Keff term):
-    Phi(K) = ||d_p - O p(K)||^2 / (2 sigma_p^2)
-           [+ (log K* - log Keff(K))^2 / (2 sigma_e^2)]
+Likelihood (pressure data; optional log-Keff term), ProblemConfig.likelihood:
+    "relative" (default)  Phi(K) = ||d_p - O p(K)||^2 / (2 sigma_rel^2 ||d_p||^2)
+                                 = relerr^2 / (2 sigma_rel^2)
+    "absolute"            Phi(K) = ||d_p - O p(K)||^2 / (2 sigma_p^2)
+                          [+ (log K* - log Keff(K))^2 / (2 sigma_e^2) in both]
+The relative form uses the global normalized L2 norm (never per-sensor ratios:
+the pressure vanishes at the outflow boundary).  It is the absolute form with
+per-sensor standard deviation sigma_rel ||d_p||, which grows like sqrt(n_obs):
+adding sensors or refining the grid does not rescale the information, so the
+model error (e.g. KLE truncation, correlated between neighbouring sensors) is
+not counted as independent evidence n_obs times.  sigma_rel = eps / sqrt(n_eff)
+(config.sigma_rel_from): Phi at the truth ~ (n_eff / 2) (noise_rel / eps)^2.
 """
 import os
 import numpy as np
@@ -48,8 +57,15 @@ def truth_key(pc):
 
 
 class Problem:
+    MIN_CELLS_PER_ELL = 3
+
     def __init__(self, pc, frozen=None, store=None, log=print):
         self.pc = pc
+        if pc.n * pc.ell < self.MIN_CELLS_PER_ELL:
+            log(f"WARNING: {pc.n}x{pc.n} grid resolves ell={pc.ell} with only "
+                f"{pc.n * pc.ell:.1f} cells per correlation length (< "
+                f"{self.MIN_CELLS_PER_ELL}); use --n >= "
+                f"{int(np.ceil(self.MIN_CELLS_PER_ELL / pc.ell))}")
         self.phys = Darcy2D(pc.n, pc.q_in, solver=pc.solver, backend=pc.backend)
         self.full = FullRankGaussian(self.phys.points, self.phys.axes,
                                      pc.kernel, kernel_params(pc))
@@ -78,6 +94,16 @@ class Problem:
                 self.kle, self.syn = build_k(), build_t()
             self.frozen = False
         self.r = self.kle.r
+        # weight w of the squared pressure residual: Phi = w ||d - G||^2 / 2
+        if pc.likelihood == "relative":
+            from .config import resolve_sigma_rel
+            self.sigma_rel = resolve_sigma_rel(pc)
+            self._w = 1.0 / (self.sigma_rel ** 2 * float(self.syn.d_p @ self.syn.d_p))
+        elif pc.likelihood == "absolute":
+            self.sigma_rel = None
+            self._w = 1.0 / self.syn.sigma_p ** 2
+        else:
+            raise ValueError(f"likelihood must be relative or absolute, not {pc.likelihood}")
 
     def kle_key(self):
         return kle_key(self.pc, self.phys.N)
@@ -89,12 +115,26 @@ class Problem:
     def potential(self, K, use_keff=False):
         """Returns (Phi, p_obs, Keff) for a permeability field K (N,)."""
         p, pobs, keff = self.phys.forward(K)
-        res = (self.syn.d_p - pobs) / self.syn.sigma_p
-        phi = 0.5 * res @ res
+        res = self.syn.d_p - pobs
+        phi = 0.5 * self._w * (res @ res)
         if use_keff:
             phi += 0.5 * ((np.log(self.syn.keff_obs) - np.log(keff))
                           / self.syn.sigma_e) ** 2
         return float(phi), pobs, float(keff)
 
     def noise_floor(self, use_keff=False):
-        return (self.syn.n_obs + int(use_keff)) / 2.0
+        """Expected Phi at the truth: E||eta||^2 = n_obs sigma_p^2, weighted.
+        Absolute: n_obs / 2.  Relative: (n_obs sigma_p^2 / ||d||^2) / (2 sigma_rel^2)
+        ~ (n_eff / 2) (noise_rel / eps)^2, nearly grid-independent."""
+        if self.pc.likelihood == "absolute":
+            return (self.syn.n_obs + int(use_keff)) / 2.0
+        return 0.5 * self._w * self.syn.n_obs * self.syn.sigma_p ** 2 + 0.5 * int(use_keff)
+
+    def likelihood_summary(self):
+        s = dict(likelihood=self.pc.likelihood, noise_floor=self.noise_floor(),
+                 data_norm=float(np.linalg.norm(self.syn.d_p)))
+        if self.sigma_rel is not None:
+            s.update(sigma_rel=self.sigma_rel, eps_at_n_eff=dict(
+                n_eff=self.pc.rel_n_eff, eps=self.sigma_rel * self.pc.rel_n_eff ** 0.5),
+                weight_vs_absolute=self._w * self.syn.sigma_p ** 2)
+        return s
