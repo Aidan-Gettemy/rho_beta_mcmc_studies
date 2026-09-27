@@ -1,0 +1,7 @@
+# Tested with Python 3.11, numpy 2.4.4, scipy 1.17.1, matplotlib 3.10.9.
+# numba is optional: without it the CSR fill falls back to vectorized NumPy
+# (same results, tests/test_fv.py checks both paths).
+numpy>=1.24
+scipy>=1.11
+matplotlib>=3.7
+numba>=0.58

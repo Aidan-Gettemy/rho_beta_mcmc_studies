@@ -29,7 +29,7 @@ from _common import have, load_problem, io, C
 from brho import plotting as P
 from brho import diagnostics as D
 from brho.curve import BetaCurve
-from brho.samplers import load_chains
+from brho.samplers import load_chains, trace_burn_index
 
 EXP = io.EXP_SAMPLER
 
@@ -49,9 +49,11 @@ def main(exp=EXP):
     prob, man, ch, curve, scfg = load(exp)
     syn, kle, n, r = prob.syn, prob.kle, prob.pc.n, prob.r
     nb = scfg.n_burn
-    post = {k: ch["tr_" + k][:, nb:] for k in ("rho", "beta", "level", "phi",
+    te = scfg.trace_every                      # traces recorded every te its
+    ib = trace_burn_index(nb, te)
+    post = {k: ch["tr_" + k][:, ib:] for k in ("rho", "beta", "level", "phi",
                                                "theta_norm2", "w")}
-    lead = ch["tr_theta_lead"][:, nb:, :]
+    lead = ch["tr_theta_lead"][:, ib:, :]
     rho_s, beta_s = ch["kept_rho"].ravel(), ch["kept_beta"].ravel()
     th_s = ch["kept_theta"].reshape(-1, r)
     logK_s = np.log(beta_s)[:, None] + rho_s[:, None] * kle.field(th_s)
@@ -128,7 +130,7 @@ def main(exp=EXP):
     for j, (k, lab, tv) in enumerate(keys):
         for c in range(n_ch):
             t = ch["tr_" + k][c]
-            ax[j].plot(np.arange(0, len(t), th), t[::th], lw=0.5, alpha=0.7)
+            ax[j].plot(np.arange(0, len(t), th) * te, t[::th], lw=0.5, alpha=0.7)
         ax[j].axhline(tv, color="r", lw=1.2, ls=":")
         ax[j].axvline(nb, color="gray", ls="--", lw=1)
         ax[j].set_title(f"{lab}   PSRF={D.psrf(post[k]):.3f}")
@@ -144,11 +146,11 @@ def main(exp=EXP):
     _, th_max = D.window_curve(lambda a: max(D.psrf(a[:, :, i]) for i in range(a.shape[2])),
                                lead)
     fig, ax = plt.subplots(1, 2, figsize=(11.5, 4.2))
-    ax[0].plot(ts + nb, mp, "k-", lw=2, label=r"MPSRF $(\rho,$ level$)$")
-    ax[1].plot(ts + nb, th_max, color="0.5", lw=1.2,
+    ax[0].plot(ts * te + nb, mp, "k-", lw=2, label=r"MPSRF $(\rho,$ level$)$")
+    ax[1].plot(ts * te + nb, th_max, color="0.5", lw=1.2,
                label=rf"max PSRF $\theta_{{1..{lead.shape[2]}}}$")
     for k, v in curves.items():
-        ax[1].plot(ts + nb, v, lw=1.5, label=f"PSRF {k}")
+        ax[1].plot(ts * te + nb, v, lw=1.5, label=f"PSRF {k}")
     for a in ax:
         a.axhline(1.1, color="r", ls=":", lw=1.2)
         a.set_xlabel("iteration $t$ (window $[t/2,t]$ of post-burn-in)")

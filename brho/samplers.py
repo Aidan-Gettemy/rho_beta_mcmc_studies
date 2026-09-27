@@ -17,11 +17,21 @@ E4  ThreeStepSampler    unknowns (theta, w), log rho = mu_rho + s_rho w,
          the hierarchical model, where C is free.  Acceptance (method eq. 11):
          log a = Phi - Phi' - (|theta'|^2 - |theta|^2)/2 - (w'^2 - w^2)/2 - r eta
     Step sizes adapt every `adapt_every` iterations during burn-in only, then
-    freeze.  Chains are checkpointed in chunks and resumable.
+    freeze.  Chains are checkpointed in chunks and resumable.  Chain k is
+    seeded by config.chain_seed(seed0, k, seed_scheme), so array job k can
+    start (or restart) its chain knowing only its index.
 """
 import json
 import os
 import numpy as np
+
+from .config import chain_seed
+
+
+def trace_burn_index(n_burn, trace_every):
+    """Index of the first recorded trace entry at or after iteration n_burn
+    (traces are recorded at iterations 0, k, 2k, ...)."""
+    return -(-n_burn // trace_every)
 
 
 # ---------------------------------------------------------------- adaptation
@@ -214,7 +224,8 @@ def run_chunk(sampler, chain_id, ckpt_path):
         s_hist = list(ck["s_hist"])
     else:
         it0 = 0
-        rng = np.random.default_rng(cfg.seed0 + 13 * chain_id)
+        rng = np.random.default_rng(chain_seed(cfg.seed0, chain_id,
+                                               cfg.seed_scheme, 13))
         st = sampler.init_state(rng)
         s = np.array(cfg.s_init, float)
         acc_tot = np.zeros(3)
@@ -235,13 +246,14 @@ def run_chunk(sampler, chain_id, ckpt_path):
         if it < cfg.n_burn and (it + 1) % cfg.adapt_every == 0:
             s_hist.append(ad.s.copy())
         rho = sampler.rho(st["w"])
-        traces["rho"].append(rho)
-        traces["beta"].append(sampler.beta(rho))
-        traces["phi"].append(st["phi"])
-        traces["level"].append(sampler.level(st["theta"], st["w"]))
-        traces["w"].append(st["w"])
-        traces["theta_norm2"].append(float(st["theta"] @ st["theta"]))
-        traces["theta_lead"].append(st["theta"][:k].copy())
+        if it % cfg.trace_every == 0:
+            traces["rho"].append(rho)
+            traces["beta"].append(sampler.beta(rho))
+            traces["phi"].append(st["phi"])
+            traces["level"].append(sampler.level(st["theta"], st["w"]))
+            traces["w"].append(st["w"])
+            traces["theta_norm2"].append(float(st["theta"] @ st["theta"]))
+            traces["theta_lead"].append(st["theta"][:k].copy())
         if it >= cfg.n_burn and (it - cfg.n_burn) % cfg.thin == 0:
             kept["theta"].append(st["theta"].copy())
             kept["rho"].append(rho)

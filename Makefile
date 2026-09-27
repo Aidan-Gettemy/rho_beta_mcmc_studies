@@ -1,20 +1,23 @@
 # 2D (beta, rho) experiments.  Set ROOT to keep runs apart, e.g.
-#   make e2 ROOT=runs/july_raw ARGS="--truth-mode raw"
+#   make e2 ROOT=runs/july_raw ARGS="--truth-mode raw --seed-scheme legacy"
 ROOT ?= .
 PY = BRHO_ROOT=$(ROOT) python3
 ARGS ?=
 
-.PHONY: test e2 e3 prior e4 reports all quick clean-quick
+.PHONY: test bench e2 e3 prior e4 reports all quick clean-quick
 
 test:
 	python3 tests/run_tests.py
+
+bench:         ## forward-solve timings (numba vs NumPy, splu vs CG)
+	python3 benchmarks/bench_solver.py
 
 e2:            ## 5x5 fixed-(beta,rho) pCN grid        (~1 min, 2 cores)
 	$(PY) experiments/run_grid_study.py $(ARGS)
 e3:            ## offline beta_bar(rho) curve           (~10 s)
 	$(PY) experiments/run_beta_curve.py $(ARGS)
 prior:         ## E4 sampler with likelihood off         (~10 s, no solves)
-	$(PY) experiments/run_curve_sampler.py --prior-test 1 --n-total 40000 --n-burn 2000 --thin 10 --chunk 20000 $(ARGS)
+	$(PY) experiments/run_curve_sampler.py --fresh --prior-test 1 --n-total 40000 --n-burn 2000 --thin 10 --chunk 20000 $(ARGS)
 e4:            ## 3-step sampler, 4 chains x 51k it     (~10-20 min)
 	$(PY) experiments/run_curve_sampler.py $(ARGS)
 reports:

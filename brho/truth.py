@@ -57,7 +57,7 @@ class Synthetic:
 
 def make_synthetic(phys, kle, pc):
     rng = np.random.default_rng(pc.truth_seed)
-    G_raw = kle.cholesky() @ rng.standard_normal(phys.N)
+    G_raw = kle.sample_full(rng)
     if pc.truth_mode == "standardized":
         G = (G_raw - G_raw.mean()) / G_raw.std()
     elif pc.truth_mode == "raw":
