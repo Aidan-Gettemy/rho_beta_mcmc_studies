@@ -5,10 +5,16 @@
 # conda's activate scripts read variables that may be unset (e.g. Lmod's
 # "LD_PRELOAD: unbound variable"), so relax -u around them only:
 set +u
-# e.g. the numba environment from your MCMC jobs:
+# e.g. the numba environment from your MCMC jobs.  On Ganymede the conda
+# module depends on python38, which needs the gnu9 toolchain loaded first
+# (`module spider python38` shows the prerequisite on other clusters):
+# module purge
+# module load gnu9/9.4.0
 # module load conda/22.11.1
 # source activate $HOME/.conda/envs/gd24_numba
 set -u
+# record which Python the job got (should be inside the conda env):
+# echo "python: $(which python)"; python -c "import numba; print('numba', numba.__version__)"
 
 # --- where results go (one folder per study keeps runs apart) -------------
 export BRHO_ROOT="${BRHO_ROOT:-$PWD/runs/cluster}"   # e.g. /scratch/$USER/brho/grid32
