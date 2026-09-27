@@ -1,0 +1,68 @@
+{
+ "experiment": "e2_grid",
+ "time": "2026-09-26 20:46:02",
+ "argv": [
+  "experiments/run_grid_study.py",
+  "--truth-mode",
+  "raw",
+  "--n-workers",
+  "2"
+ ],
+ "python": "3.11.15",
+ "numpy": "2.4.4",
+ "configs": {
+  "ProblemConfig": {
+   "n": 16,
+   "ell": 0.1,
+   "energy": 0.95,
+   "q_in": 1.0,
+   "beta_true": 2.3,
+   "rho_true": 1.5,
+   "truth_mode": "raw",
+   "truth_seed": 2026,
+   "noise_rel": 0.01,
+   "sigma_e": 0.05
+  },
+  "GridStudyConfig": {
+   "betas": [
+    0.5,
+    1.0,
+    2.3,
+    5.0,
+    10.0
+   ],
+   "rhos": [
+    0.5,
+    1.0,
+    1.5,
+    2.25,
+    3.0
+   ],
+   "n_iter": 4000,
+   "n_burn": 2000,
+   "s0": 0.15,
+   "acc_lo": 0.18,
+   "acc_hi": 0.3,
+   "adapt_every": 100,
+   "adapt_factor": 1.15,
+   "seed0": 1000,
+   "n_workers": 2
+  }
+ },
+ "minutes": 0.6091115752855937,
+ "r": 56,
+ "truth": {
+  "mode": "raw",
+  "beta_true": 2.3,
+  "rho_true": 1.5,
+  "n_obs": 128,
+  "sigma_p": 0.0036142725451434117,
+  "sigma_e": 0.05,
+  "keff_true": 3.175879911479384,
+  "keff_obs": 3.188522999185421,
+  "level_true": 1.2623436777246024,
+  "Gbar": 0.28628970319299896,
+  "G_std": 1.0436182096448825,
+  "noise_floor": 64.0
+ }
+}
