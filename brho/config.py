@@ -185,8 +185,11 @@ def add_cli(parser, cls, prefix=""):
                    "bool": _bool}.get(f.type, f.type)
             if typ is bool:
                 typ = _bool
-            parser.add_argument(f"--{prefix}{f.name.replace('_', '-')}",
-                                dest=f"{prefix}{f.name}", type=typ,
+            dashed = f"--{prefix}{f.name.replace('_', '-')}"
+            under = f"--{prefix}{f.name}"
+            names = [dashed] + ([under] if under != dashed else [])
+            # both spellings work: --sigma-rel and --sigma_rel
+            parser.add_argument(*names, dest=f"{prefix}{f.name}", type=typ,
                                 default=None)
 
 
