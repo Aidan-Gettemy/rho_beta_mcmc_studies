@@ -7,3 +7,10 @@ runs/quick/
 # build-once KLE / truth store of each study (runs keep frozen copies)
 store/
 **/store/
+
+# SLURM logs (the folder itself is kept: SLURM will not create it)
+logs/*
+!logs/.gitkeep
+# raw sampler output stays on the cluster; commit figures/ tables/ manifests
+**/results/**/chain*.npz
+**/results/**/pairs/

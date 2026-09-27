@@ -237,6 +237,11 @@ class Permeameter:
             raise RuntimeError(f"CG did not converge (info={info})")
         return d * y
 
+    def warmup(self):
+        """One solve on a homogeneous field: triggers numba compilation (and
+        writes its cache) in a single process before many ranks start."""
+        self.solve(np.ones(self.N))
+
     def keff(self, K, p):
         """Keff = Q L / (A dp); inflow-face pressure reconstructed from the
         influx, p_face = p_cell + q (h_x/2) / K_cell; Q = q A, A = L = 1."""

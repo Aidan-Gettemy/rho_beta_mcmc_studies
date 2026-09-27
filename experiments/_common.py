@@ -51,14 +51,35 @@ def kle_summary(prob):
                    if key in k.meta})
 
 
-def task_index(value):
-    """--chain-id / --pair-index: an int, or 'env' for $SLURM_ARRAY_TASK_ID
-    (also accepts $PBS_ARRAYID / $PBS_ARRAY_INDEX)."""
+_RANK_VARS = (("OMPI_COMM_WORLD_RANK", "OMPI_COMM_WORLD_SIZE"),   # OpenMPI mpirun
+              ("PMI_RANK", "PMI_SIZE"),                           # MPICH / Intel MPI
+              ("PMIX_RANK", "PMIX_SIZE"),
+              ("SLURM_PROCID", "SLURM_NTASKS"))                   # srun
+
+
+def task_indices(value, n_total):
+    """Which chains / grid pairs this process runs.
+
+    --chain-id 7          -> [7]
+    --chain-id env        -> array job: [$SLURM_ARRAY_TASK_ID] (or PBS array index)
+                             srun / mpirun: rank r of size s runs r, r+s, r+2s, ...
+                             (< n_total), so 64 ranks cover 25 pairs (ranks >= 25
+                             idle) or 256 chains (4 each, one after the other).
+    No MPI library is needed: each rank only reads its rank from the
+    environment the launcher sets.  Always start ranks with srun or mpirun;
+    run directly in a batch script, a process would see rank 0 only."""
     if value is None:
         return None
     if value != "env":
-        return int(value)
+        return [int(value)]
     for var in ("SLURM_ARRAY_TASK_ID", "PBS_ARRAY_INDEX", "PBS_ARRAYID"):
         if var in os.environ:
-            return int(os.environ[var])
-    raise SystemExit("--chain-id env: no array-task variable in the environment")
+            return [int(os.environ[var])]
+    for rv, sv in _RANK_VARS:
+        if rv in os.environ:
+            rank, size = int(os.environ[rv]), int(os.environ.get(sv, "1"))
+            idx = list(range(rank, n_total, size))
+            print(f"rank {rank}/{size} ({rv}): tasks {idx}", flush=True)
+            return idx
+    raise SystemExit("--chain-id/--pair-index env: no array index or launcher "
+                     "rank in the environment (use sbatch --array, srun or mpirun)")

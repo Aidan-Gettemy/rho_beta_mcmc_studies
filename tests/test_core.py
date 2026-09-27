@@ -95,3 +95,29 @@ def test_sampler_prior_invariance():
     assert frob < 0.15, frob
     assert abs(np.mean((th ** 2).sum(1)) / p.r - 1) < 0.05
     assert abs(np.mean(w) + 0.041) < 0.08 and abs(np.std(w) - 0.955) < 0.08
+
+
+def test_task_indices_from_launchers():
+    """Array index, srun rank and mpirun rank all map to the right tasks."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "experiments"))
+    from _common import task_indices
+    keep = {k: os.environ.pop(k) for k in list(os.environ)
+            if k.startswith(("SLURM_", "OMPI_", "PMI", "PBS_"))}
+    try:
+        assert task_indices("7", 25) == [7]
+        os.environ.update(SLURM_ARRAY_TASK_ID="3", SLURM_PROCID="0", SLURM_NTASKS="1")
+        assert task_indices("env", 25) == [3]              # array wins
+        del os.environ["SLURM_ARRAY_TASK_ID"]
+        os.environ.update(SLURM_PROCID="2", SLURM_NTASKS="4")
+        assert task_indices("env", 25) == [2, 6, 10, 14, 18, 22]
+        os.environ.update(OMPI_COMM_WORLD_RANK="30", OMPI_COMM_WORLD_SIZE="64")
+        assert task_indices("env", 25) == []               # idle rank
+        assert task_indices("env", 128) == [30, 94]
+        all_tasks = sorted(k for r in range(64) for k in range(r, 200, 64))
+        assert all_tasks == list(range(200))               # full cover, no overlap
+    finally:
+        for k in list(os.environ):
+            if k.startswith(("SLURM_", "OMPI_", "PMI", "PBS_")):
+                del os.environ[k]
+        os.environ.update(keep)

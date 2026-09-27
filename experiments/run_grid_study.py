@@ -25,7 +25,7 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from _common import parser, configs, configs_from_manifest, task_index, C, kle_summary
+from _common import parser, configs, configs_from_manifest, task_indices, C, kle_summary
 from brho import io
 from brho.problem import Problem
 from brho.samplers import pcn_fixed_pair
@@ -51,6 +51,7 @@ def setup(pc, gcfg):
     for f in glob.glob(os.path.join(io.results_dir(EXP), "pairs", "*.npz")):
         os.remove(f)                             # a new setup = a new run
     prob.freeze(io.results_dir(EXP))             # one KLE basis + data per run
+    prob.phys.warmup()                           # compile numba once, before ranks start
     io.write_manifest(EXP, C.to_dict(pc, gcfg),
                       dict(r=prob.r, n_pairs=len(pairs_of(gcfg)),
                            kle_key=prob.kle_key(), kle=kle_summary(prob),
@@ -123,8 +124,9 @@ def main():
 
     if args.pair_index is not None:
         pc, gcfg = configs_from_manifest(EXP, C.GridStudyConfig)
-        run_pair(Problem(pc, frozen=io.results_dir(EXP)), gcfg,
-                 task_index(args.pair_index), args.force)
+        prob = Problem(pc, frozen=io.results_dir(EXP))
+        for k in task_indices(args.pair_index, len(pairs_of(gcfg))):
+            run_pair(prob, gcfg, k, args.force)
         return
     if args.collect:
         _, gcfg = configs_from_manifest(EXP, C.GridStudyConfig)
@@ -137,7 +139,8 @@ def main():
     print(f"E2: {n} chains x {gcfg.n_iter} it, r={prob.r}, grid={pc.n}x{pc.n}, "
           f"truth={pc.truth_mode}, seeds={gcfg.seed_scheme}")
     if args.setup_only:
-        print(f"set up; submit array tasks 0-{n - 1} with --pair-index env")
+        print(f"set up; now run --pair-index env over {n} tasks "
+              f"(array 0-{n - 1}, or srun/mpirun ranks)")
         return
     t0 = time.time()
     with Pool(min(gcfg.n_workers, os.cpu_count() or 1),
