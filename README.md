@@ -8,6 +8,7 @@ This code reproduces three experiments on the 2D permeameter problem
 
 | Short report | Experiment | Runner | Report |
 |---|---|---|---|
+| E1 | naive joint (θ, β, ρ) model, standard global pCN, one chain per MPI rank: β and ρ drift | `experiments/run_e1_naive.py` | `reports/report_e1.py` |
 | E2 | 5×5 grid of fixed (β, ρ), pCN on θ: every pair fits | `experiments/run_grid_study.py` | `reports/report_grid.py` |
 | E3 | offline β̄(ρ) curve from global-KLE Monte Carlo | `experiments/run_beta_curve.py` | `reports/report_curve.py` |
 | E4 | 3-step sampler (A pCN θ, B pCN w, C ridge) with β = β̄(ρ) | `experiments/run_curve_sampler.py` | `reports/report_sampler.py` |
@@ -126,6 +127,16 @@ see it.
 
 **Setup:** `fig_setup` (G, log K, p with the observation cells), `fig_kle_spectrum`,
 `fig_truth_hist`. The table holds r, energy, σp, K\*, level, Ḡ and the scaling-lemma errors.
+
+**E1:** `fig_e1_acceptance` (running and per-chain acceptance, step size),
+`fig_e1_relerr` (‖d − p_obs‖/‖d‖ per iteration against the noise level), `fig_e1_traces`
+(β and ρ drift), `fig_e1_plane` (each chain's (β, ρ) samples, over the E2 grid),
+`fig_e1_identified` (log β and ρ against the level and amplitude of log K, which the
+data do identify; the key number is the spread of chain means relative to the prior
+sd), `fig_e1_pressure` and `fig_e1_logK` (fields rebuilt from saved samples with very
+different (β, ρ)), `fig_e1_fit`. The tables give per-chain summaries; `e1_summary.json`
+holds the PSRF, ESS and prior-relative spreads. The rebuilt samples are saved in
+`results/e1_naive/pfield_samples.npz`.
 
 **E2:** `fig_grid_beta_rho` (the main 5×5 picture), `fig_grid_fit`, `fig_grid_slice`,
 `fig_grid_traces`, `fig_grid_theta_norm` (‖θ‖²/r per pair, showing the weak prior

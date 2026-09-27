@@ -4,7 +4,7 @@ ROOT ?= .
 PY = BRHO_ROOT=$(ROOT) python3
 ARGS ?=
 
-.PHONY: test bench e2 e3 prior e4 reports all quick clean-quick
+.PHONY: test bench e1 e2 e3 prior e4 reports all quick clean-quick
 
 test:
 	python3 tests/run_tests.py
@@ -12,6 +12,9 @@ test:
 bench:         ## forward-solve timings (numba vs NumPy, splu vs CG)
 	python3 benchmarks/bench_solver.py
 
+e1:            ## naive global pCN on (theta,beta,rho), 4 local chains (mpi: cluster/slurm/mpi_e1_naive.sbatch)
+	$(PY) experiments/run_e1_naive.py --local-chains 4 $(ARGS)
+	$(PY) reports/report_e1.py
 e2:            ## 5x5 fixed-(beta,rho) pCN grid        (~1 min, 2 cores)
 	$(PY) experiments/run_grid_study.py $(ARGS)
 e3:            ## offline beta_bar(rho) curve           (~10 s)
@@ -26,6 +29,7 @@ reports:
 all: test e2 e3 prior e4 reports
 
 quick:         ## smoke test of the whole pipeline into runs/quick
+	BRHO_ROOT=runs/quick python3 experiments/run_e1_naive.py --quick --fresh --local-chains 2
 	BRHO_ROOT=runs/quick python3 experiments/run_grid_study.py --quick
 	BRHO_ROOT=runs/quick python3 experiments/run_beta_curve.py --quick
 	BRHO_ROOT=runs/quick python3 experiments/run_curve_sampler.py --quick --fresh
