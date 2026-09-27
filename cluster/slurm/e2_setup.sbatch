@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=brho-e2-setup
+#SBATCH --partition=g1mig             # your partition
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G

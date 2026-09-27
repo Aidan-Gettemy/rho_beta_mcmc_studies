@@ -1,9 +1,14 @@
 # Sourced by every job script.  Edit once for your cluster.
 
 # --- software environment (pick what your cluster uses) -------------------
+# The job scripts run with `set -u` (unset variables are errors).  Lmod and
+# conda's activate scripts read variables that may be unset (e.g. Lmod's
+# "LD_PRELOAD: unbound variable"), so relax -u around them only:
+set +u
 # e.g. the numba environment from your MCMC jobs:
 # module load conda/22.11.1
 # source activate $HOME/.conda/envs/gd24_numba
+set -u
 
 # --- where results go (one folder per study keeps runs apart) -------------
 export BRHO_ROOT="${BRHO_ROOT:-$PWD/runs/cluster}"   # e.g. /scratch/$USER/brho/grid32
@@ -15,8 +20,16 @@ export NUMEXPR_NUM_THREADS=1 NUMBA_NUM_THREADS=1
 # writable and shared if the repo is read-only on compute nodes:
 # export NUMBA_CACHE_DIR="$HOME/.cache/numba"
 
-# --- scheduler defaults used by the templates -----------------------------
-export SLURM_ACCOUNT_ARGS=""              # e.g. "--account=myproj --partition=standard"
+# --- scheduling ------------------------------------------------------------
+# This file runs INSIDE a job, after SLURM has scheduled it, so it cannot set
+# a job's partition, time or memory.  Those come from (highest first):
+#   1. the sbatch command line:   sbatch --partition=g1mig script.sbatch
+#   2. SBATCH_* variables in the shell you submit from, e.g. in ~/.bashrc:
+#        export SBATCH_PARTITION=g1mig
+#   3. the #SBATCH lines of each script (all set --partition=g1mig).
+# SLURM_ACCOUNT_ARGS is only read by cluster/submit_pipeline.sh, which calls
+# sbatch itself: extra options for every job it submits.
+export SLURM_ACCOUNT_ARGS=""              # e.g. "--account=myproj"
 
 # --- study settings (passed to the setup steps) ---------------------------
 export PROBLEM_ARGS="--truth-mode standardized"

@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=brho-e2-collect
+#SBATCH --partition=g1mig             # your partition
 #SBATCH --ntasks=1
 #SBATCH --mem=4G
 #SBATCH --time=00:10:00

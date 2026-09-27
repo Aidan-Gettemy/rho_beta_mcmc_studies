@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=brho-e4-chain
+#SBATCH --partition=g1mig             # your partition
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G

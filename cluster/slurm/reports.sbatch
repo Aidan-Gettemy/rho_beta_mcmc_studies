@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=brho-reports
+#SBATCH --partition=g1mig             # your partition
 #SBATCH --ntasks=1
 #SBATCH --mem=16G
 #SBATCH --time=01:00:00
