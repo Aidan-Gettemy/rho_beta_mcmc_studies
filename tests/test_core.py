@@ -44,7 +44,8 @@ def test_homogeneous_keff():
 def test_kle():
     k = prob().kle
     assert k.r == 56, k.r
-    assert np.allclose(k.PHI.T @ k.PHI, np.eye(k.r), atol=1e-10)
+    assert k.method == "dense"
+    assert np.allclose(k.T.T @ k.T, np.diag(k.lam), atol=1e-8)   # orthogonal modes
     th = np.random.default_rng(0).standard_normal(k.r)
     assert np.allclose(k.spatial_mean(th), k.field(th).mean())
 

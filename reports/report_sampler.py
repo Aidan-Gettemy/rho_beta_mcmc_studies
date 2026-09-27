@@ -37,7 +37,10 @@ EXP = io.EXP_SAMPLER
 def load(exp):
     prob, man = load_problem(exp)
     d = io.results_dir(exp)
-    ch = load_chains(sorted(glob.glob(os.path.join(d, "chain*.npz"))))
+    paths = sorted(glob.glob(os.path.join(d, "chain*.npz")))
+    if not paths:
+        return prob, man, None, None, None
+    ch = load_chains(paths)
     curve = BetaCurve.load(os.path.join(d, "curve.npz"))
     scfg = C.from_dict(C.SamplerConfig, man["configs"]["SamplerConfig"])
     return prob, man, ch, curve, scfg
@@ -47,6 +50,8 @@ def main(exp=EXP):
     if not have(exp):
         print("E4: no results"); return
     prob, man, ch, curve, scfg = load(exp)
+    if ch is None:
+        print(f"{exp}: set up, no chains yet"); return
     syn, kle, n, r = prob.syn, prob.kle, prob.pc.n, prob.r
     nb = scfg.n_burn
     te = scfg.trace_every                      # traces recorded every te its

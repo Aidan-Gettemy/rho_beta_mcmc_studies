@@ -15,7 +15,7 @@ This code reproduces three experiments on the 2D permeameter problem
 | all | E2 + E3 + E4 on one (β, ρ) plane, plus SUMMARY.md | – | `reports/report_combined.py` |
 
 ```
-make test                 # 15 checks (see tests/)
+make test                 # 22 checks (see tests/)
 make quick                # whole pipeline with tiny budgets -> runs/quick/
 make all                  # production: test, e2, e3, prior, e4, reports
 make e2 ROOT=runs/july_raw ARGS="--truth-mode raw --seed-scheme legacy"   # July data and seeds
@@ -37,7 +37,11 @@ brho/                     library (no experiment logic)
   config.py               ProblemConfig, GridStudyConfig, CurveConfig, SamplerConfig, QUICK
   fv.py                   Permeameter (2D/3D): numba CSR fill (NumPy fallback), splu / CG solvers, keff, obs mask
   physics2d.py            Darcy2D = Permeameter((n, n)), kept for compatibility
-  kle.py                  KLE: dense or separable (Kronecker) build, field(theta), Cholesky draws, save/load
+  kle.py                  KLE (synthesis matrix T, G = T theta): discrete dense/kron, Gauss-Legendre Nystrom
+                          (full or separable), quadrature check, save/load; FullRankGaussian (Cholesky draws)
+  kernels.py              covariance kernel registry (sq-exp; separable factors)
+  quadrature.py           Gauss-Legendre and midpoint rules (port of KLE_matlab)
+  store.py                build-once store of KLE bases and reference fields per study
   truth.py                make_synthetic -> Synthetic (G, K, p, d_p, sigma_p, K*_true, K*_obs, level)
   problem.py              Problem = physics + KLE + data; potential(K); frozen runs (kle.npz, truth.npz)
   curve.py                sweep() and BetaCurve: beta_bar(rho, K*) = K*/f(rho), band(), save/load
@@ -62,6 +66,41 @@ eigenvalues depend on rounding, so they differ across machines and thread counts
 when you rerun the same command. A rerun that requests different settings stops and
 asks for `--fresh`.
 
+### The KLE: discrete or Nyström
+
+The field is G = Tθ with T = φ(x_cells)·√λ (`brho/kle.py`). There are two families of builders:
+
+- **Discrete** (`dense`, `kron`): the eigenvectors of the covariance matrix on the cell
+  centers. This is the July method and stays the default up to 4,096 cells, so those
+  runs reproduce exactly.
+- **Nyström** (`nystrom`, `nystrom_sep`): a port of `KLE_matlab`. It solves the
+  Fredholm eigenproblem ∫C(x,y)φ(y)dy = λφ(x) on a Gauss–Legendre grid with `--kle-nq`
+  nodes per direction, then extends the eigenfunctions to the simulation cells with
+  the Nyström formula. For a separable kernel, `nystrom_sep` solves the same weighted
+  problem as a tensor product of 1D problems. It is identical to the full solver
+  (tested to 1e-13) and far faster: your ℓ = 0.022, nq = 80 example takes 0.24 s
+  instead of 93 s, with 1,025 modes; 30³ at ℓ = 0.2 takes 0.02 s instead of 8.5 s.
+  It is the default above 4,096 cells.
+
+How the two relate, as checked in `tests/test_kle.py`:
+
+- The discrete KLE is exactly the Nyström method with the midpoint rule at the cell
+  centers (they agree to 1e-12).
+- Gauss–Legendre converges fast: at ℓ = 0.1, nq = 20 gives eigenvalues to 5e-7 and
+  nq = 30 to machine precision. At ℓ = 0.022, nq = 80 is within 7e-5. A good rule
+  is nq ≈ 3/ℓ.
+- Every separable build refines the rule to 1.5·nq, records how far the kept
+  eigenvalues move (`nq_check` in the manifest), and warns above 1e-4.
+- Modes tied with the last kept one (the (i, j) / (j, i) pairs on a square) are kept
+  together, so the truncated field keeps the kernel's symmetry.
+
+**Build once, then load.** Setup steps take the KLE basis and the reference field
+from the study's store (`$BRHO_ROOT/store/`), keyed by exactly the settings that
+determine them, and build them only if they are missing. E2, E3 and E4 of one study
+therefore share one basis and one truth. E4 refuses a curve built with a different
+basis, and each run freezes its own copy (`kle.npz`, `truth.npz`). To compare against
+MATLAB, run `benchmarks/kle_compare_matlab.py`.
+
 ### Speed and scale
 
 The forward solver (`brho/fv.py`) fills a fixed CSR pattern with a numba kernel,
@@ -79,9 +118,7 @@ here without numba (`benchmarks/bench_solver.py`), total per forward solve:
 
 The CSR fill is 1–2% of a solve at these sizes, so numba's gain shows up mainly
 in the smaller grids and in Python overhead. Run the benchmark on the cluster to
-see it. The KLE is built separably (C = C_x ⊗ C_y ⊗ C_z, which is exact for the
-squared-exponential kernel) above 4,096 cells: 100×100 in 0.01 s, 30³ in 0.03 s,
-with no N×N matrices.
+see it.
 
 ### Figures and statistics
 

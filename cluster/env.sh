@@ -18,7 +18,13 @@ export NUMEXPR_NUM_THREADS=1 NUMBA_NUM_THREADS=1
 export SLURM_ACCOUNT_ARGS=""              # e.g. "--account=myproj --partition=standard"
 
 # --- study settings (passed to the setup steps) ---------------------------
-export PROBLEM_ARGS="--truth-mode standardized"   # e.g. add "--n 100"
+export PROBLEM_ARGS="--truth-mode standardized"
+# KLE (brho/kle.py): default "auto" = dense discrete KLE up to 4096 cells,
+# Gauss-Legendre Nystrom (separable path) above.  For a Nystrom study at any
+# size, e.g. 100x100 with ell = 0.05:
+#   PROBLEM_ARGS="--n 100 --ell 0.05 --kle-method nystrom_sep --kle-nq 60"
+# kle-nq ~ 3/ell converges the eigenvalues to ~1e-10 for sq-exp; the setup
+# log and manifest report the check (nq_check).
 export E2_ARGS=""                                  # grid study overrides
 export E3_ARGS=""                                  # e.g. "--n-real 512 --n-rho 40"
 export E4_CHAINS=16

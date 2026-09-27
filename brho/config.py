@@ -17,7 +17,12 @@ class ProblemConfig:
     n: int = 16                    # cells per side (16x16 = 256 cells)
     ell: float = 0.1               # squared-exponential correlation length
     energy: float = 0.95           # KLE energy fraction  (-> r = 56 in 2D)
-    kle_method: str = "auto"       # "auto" (dense N<=4096, else kron) | "dense" | "kron"
+    kernel: str = "sqexp"          # covariance kernel (brho/kernels.py)
+    # KLE builder (brho/kle.py): "auto" (dense for N<=4096, else nystrom_sep /
+    # nystrom) | "dense" | "kron" | "nystrom" | "nystrom_sep"
+    kle_method: str = "auto"
+    kle_nq: int = 40               # Nystrom quadrature nodes per direction
+    kle_quadrature: str = "gauss_legendre"   # | "midpoint"
     q_in: float = 1.0              # unit influx on the left face
     solver: str = "auto"           # "auto" (splu 2D, cg 3D) | "splu" | "cg" | "spsolve"
     backend: str = "auto"          # CSR fill: "auto" (numba if installed) | "numba" | "numpy"

@@ -39,14 +39,26 @@ def main():
     ax[0].semilogy(np.arange(1, len(lam) + 1), np.maximum(lam, 1e-16), "k.", ms=3)
     ax[0].axvline(kle.r, color="r", ls=":", label=f"r = {kle.r}")
     ax[0].set_xlabel("mode"); ax[0].set_ylabel(r"$\lambda_i$"); ax[0].legend()
-    ax[0].set_title("KLE eigenvalues of $C_1$")
-    ax[1].plot(np.arange(1, len(lam) + 1), np.cumsum(lam) / lam.sum(), "k-")
+    ax[0].set_title(f"KLE eigenvalues ({kle.method})")
+    ax[1].plot(np.arange(1, len(lam) + 1), np.cumsum(lam) / kle.total, "k-")
     ax[1].axhline(prob.pc.energy, color="r", ls=":")
     ax[1].axvline(kle.r, color="r", ls=":")
     ax[1].set_xlim(0, 3 * kle.r); ax[1].set_xlabel("modes")
     ax[1].set_ylabel("cumulative energy")
     ax[1].set_title(f"energy captured {kle.energy:.3f}")
     P.save(fig, EXP, "fig_kle_spectrum")
+
+    # the basis itself: leading modes and pointwise variance of the truncated
+    # field (the Nystrom basis is smooth up to the boundary; the discrete one
+    # lives on the cell centers only)
+    fig, ax = plt.subplots(1, 5, figsize=(19, 3.6))
+    for j in range(4):
+        P.field(ax[j], kle.T[:, j] / np.sqrt(kle.lam[j]), n,
+                rf"mode {j + 1}: $\lambda$={kle.lam[j]:.3g}", cmap="RdBu_r")
+    var = kle.pointwise_variance()
+    P.field(ax[4], var, n, f"pointwise var of $G$: mean {var.mean():.3f}",
+            cmap="magma")
+    P.save(fig, EXP, "fig_kle_basis")
 
     fig, ax = plt.subplots(1, 2, figsize=(9, 3.4))
     ax[0].hist(syn.G_true, 30, color=P.C_BAND, edgecolor="w", density=True)
@@ -59,8 +71,11 @@ def main():
     P.save(fig, EXP, "fig_truth_hist")
 
     sc = phys.scaling_check(syn.K_true)
-    row = dict(truth_mode=syn.mode, n=n, ell=prob.pc.ell, r=kle.r,
-               energy=kle.energy, n_obs=syn.n_obs, sigma_p=syn.sigma_p,
+    nqc = kle.meta.get("nq_check", {})
+    row = dict(truth_mode=syn.mode, n=n, ell=prob.pc.ell, kle_method=kle.method,
+               kle_nq=kle.meta.get("nq", ""), kle_quadrature=kle.meta.get("quadrature", ""),
+               kle_nq_rel_change=nqc.get("max_rel_eig_change", ""), r=kle.r,
+               energy=kle.energy, mean_pointwise_var=float(var.mean()), n_obs=syn.n_obs, sigma_p=syn.sigma_p,
                sigma_e=syn.sigma_e, keff_true=syn.keff_true,
                keff_obs=syn.keff_obs, level_true=syn.level_true,
                Gbar=syn.Gbar, G_std=syn.G_std,

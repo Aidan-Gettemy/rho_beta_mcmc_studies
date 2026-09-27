@@ -3,3 +3,7 @@ __pycache__/
 runs/quick/
 *.tmp.npz
 .DS_Store
+
+# build-once KLE / truth store of each study (runs keep frozen copies)
+store/
+**/store/

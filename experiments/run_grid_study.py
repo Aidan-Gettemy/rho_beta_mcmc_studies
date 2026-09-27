@@ -25,7 +25,7 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from _common import parser, configs, configs_from_manifest, task_index, C
+from _common import parser, configs, configs_from_manifest, task_index, C, kle_summary
 from brho import io
 from brho.problem import Problem
 from brho.samplers import pcn_fixed_pair
@@ -47,10 +47,13 @@ def pair_path(k):
 
 
 def setup(pc, gcfg):
-    prob = Problem(pc)
+    prob = Problem(pc, store=io.store_dir())     # build once per study, else load
+    for f in glob.glob(os.path.join(io.results_dir(EXP), "pairs", "*.npz")):
+        os.remove(f)                             # a new setup = a new run
     prob.freeze(io.results_dir(EXP))             # one KLE basis + data per run
     io.write_manifest(EXP, C.to_dict(pc, gcfg),
                       dict(r=prob.r, n_pairs=len(pairs_of(gcfg)),
+                           kle_key=prob.kle_key(), kle=kle_summary(prob),
                            truth=prob.syn.summary(), status="set up"))
     return prob
 
@@ -129,8 +132,6 @@ def main():
         return
 
     pc, gcfg = configs(args, C.GridStudyConfig)
-    for f in glob.glob(os.path.join(io.results_dir(EXP), "pairs", "*.npz")):
-        os.remove(f)                                  # a new setup = a new run
     prob = setup(pc, gcfg)
     n = len(pairs_of(gcfg))
     print(f"E2: {n} chains x {gcfg.n_iter} it, r={prob.r}, grid={pc.n}x{pc.n}, "

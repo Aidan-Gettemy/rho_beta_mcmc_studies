@@ -32,6 +32,8 @@ from _common import parser, configs, configs_from_manifest, task_index, C
 from brho import io
 from brho.problem import Problem
 from brho.curve import BetaCurve
+from brho.kle import KLE
+from _common import kle_summary
 from brho.samplers import ThreeStepSampler, run_chunk
 
 
@@ -60,29 +62,42 @@ def _pool_job(args):
     return run_chain(*args)
 
 
-def check_curve_matches(pc):
-    man = io.read_manifest(io.EXP_CURVE)["configs"]["ProblemConfig"]
-    for k in ("n", "ell", "energy", "q_in"):
-        if man[k] != getattr(pc, k):
-            raise SystemExit(f"curve was built with {k}={man[k]}, "
-                             f"sampler uses {getattr(pc, k)}: rebuild E3")
-    if man["truth_mode"] != pc.truth_mode:
+def check_curve_matches(prob):
+    """The curve must be built from the same KLE basis the sampler uses
+    (multiscale report, consistency requirement 1)."""
+    man = io.read_manifest(io.EXP_CURVE)
+    e3_kle = os.path.join(io.results_dir(io.EXP_CURVE), "kle.npz")
+    if man.get("kle_key") is not None:
+        if man["kle_key"] != prob.kle_key():
+            raise SystemExit(f"E3 curve was built with KLE {man['kle_key']}, "
+                             f"the sampler asks for {prob.kle_key()}: rebuild E3")
+        if not np.array_equal(KLE.load(e3_kle).T, prob.kle.T):
+            raise SystemExit("E3 and E4 KLE bases differ numerically (built on "
+                             "different stores/machines): rebuild E3 in this study")
+    else:                                      # E3 run from before the store
+        pe3 = man["configs"]["ProblemConfig"]
+        for k in ("n", "ell", "energy", "q_in"):
+            if pe3[k] != getattr(prob.pc, k):
+                raise SystemExit(f"curve was built with {k}={pe3[k]}, "
+                                 f"sampler uses {getattr(prob.pc, k)}: rebuild E3")
+    if man["configs"]["ProblemConfig"]["truth_mode"] != prob.pc.truth_mode:
         print("note: curve built under a different truth_mode; the curve "
               "itself is truth-independent (K* is applied at run time).")
 
 
 def setup(pc, scfg, curve_field, curve_statistic, exp):
     out_dir = io.results_dir(exp)
-    for f in glob.glob(os.path.join(out_dir, "chain*.npz")):
-        os.remove(f)                                  # a new setup = a new run
-    check_curve_matches(pc)
+    prob = Problem(pc, store=io.store_dir())      # build once per study, else load
+    check_curve_matches(prob)                     # validate BEFORE touching the run
     src = os.path.join(io.results_dir(io.EXP_CURVE), f"curve_{curve_field}.npz")
     curve = BetaCurve.load(src, curve_statistic)
+    for f in glob.glob(os.path.join(out_dir, "chain*.npz")):
+        os.remove(f)                              # a new setup = a new run
     curve.save(os.path.join(out_dir, "curve.npz"))   # frozen copy for this run
-    prob = Problem(pc)
     prob.freeze(out_dir)                          # one KLE basis + data per run
     io.write_manifest(exp, C.to_dict(pc, scfg),
                       dict(r=prob.r, Kstar=prob.syn.keff_obs,
+                           kle_key=prob.kle_key(), kle=kle_summary(prob),
                            curve=dict(source=src, statistic=curve.statistic,
                                       rho_max=curve.rho_max),
                            truth=prob.syn.summary(), status="set up"))
