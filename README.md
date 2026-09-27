@@ -15,11 +15,16 @@ This code reproduces three experiments on the 2D permeameter problem
 | all | E2 + E3 + E4 on one (β, ρ) plane, plus SUMMARY.md | – | `reports/report_combined.py` |
 
 ```
-make test                 # 7 checks: scaling lemma, KLE, July data, curve, prior invariance
+make test                 # 15 checks (see tests/)
 make quick                # whole pipeline with tiny budgets -> runs/quick/
 make all                  # production: test, e2, e3, prior, e4, reports
-make e2 ROOT=runs/july_raw ARGS="--truth-mode raw"   # July data exactly
+make e2 ROOT=runs/july_raw ARGS="--truth-mode raw --seed-scheme legacy"   # July data and seeds
+make bench                # forward-solve timings on this machine
 ```
+
+On a cluster, each experiment splits into a setup step, one array task per chain
+(or grid pair), and a collect step. See `cluster/README.md` and
+`cluster/submit_pipeline.sh`.
 
 Every config field can be overridden from the command line, for example
 `--n-real 256 --n-rho 40` or `--n-total 80000`. The settings live in
@@ -30,10 +35,11 @@ Every config field can be overridden from the command line, for example
 ```
 brho/                     library (no experiment logic)
   config.py               ProblemConfig, GridStudyConfig, CurveConfig, SamplerConfig, QUICK
-  physics2d.py            Darcy2D: FV solve, keff (Q L / A dp with face reconstruction), obs mask
-  kle.py                  KLE: field(theta), project, spatial_mean, c_one, Cholesky draws
+  fv.py                   Permeameter (2D/3D): numba CSR fill (NumPy fallback), splu / CG solvers, keff, obs mask
+  physics2d.py            Darcy2D = Permeameter((n, n)), kept for compatibility
+  kle.py                  KLE: dense or separable (Kronecker) build, field(theta), Cholesky draws, save/load
   truth.py                make_synthetic -> Synthetic (G, K, p, d_p, sigma_p, K*_true, K*_obs, level)
-  problem.py              Problem = physics + KLE + data; potential(K) -> (Phi, p_obs, Keff)
+  problem.py              Problem = physics + KLE + data; potential(K); frozen runs (kle.npz, truth.npz)
   curve.py                sweep() and BetaCurve: beta_bar(rho, K*) = K*/f(rho), band(), save/load
   samplers.py             pcn_fixed_pair (E2); ThreeStepSampler + run_chunk/load_chains (E4)
   diagnostics.py          psrf, split_rhat, mpsrf, ess, window_curve, summarize, pointwise_coverage
@@ -42,12 +48,40 @@ brho/                     library (no experiment logic)
 experiments/              runners: write results/<exp>/*.npz + manifest.json only
 reports/                  read results, write figures/<exp>/*.png and tables/<exp>/*.{md,csv,json}
 tests/                    python tests/run_tests.py (pytest-compatible)
+benchmarks/               bench_solver.py: timings by grid size, backend and solver
+cluster/                  env.sh, SLURM templates, submit_pipeline.sh, README
 ```
 
 The runners only compute, and the reports only read. Each run records its full
 config in `results/<exp>/manifest.json`, and the reports rebuild the problem from
-that file, so a figure can never be paired with the wrong settings. E4 chains are
-checkpointed every `chunk` iterations and resume when you rerun the same command.
+that file, so a figure can never be paired with the wrong settings. The setup step
+also saves the run's KLE basis and synthetic data (`kle.npz`, `truth.npz`), and every
+chain and report loads them. This matters because the eigenvectors inside repeated
+eigenvalues depend on rounding, so they differ across machines and thread counts
+(`cluster/README.md`). E4 chains are checkpointed every `chunk` iterations and resume
+when you rerun the same command. A rerun that requests different settings stops and
+asks for `--fresh`.
+
+### Speed and scale
+
+The forward solver (`brho/fv.py`) fills a fixed CSR pattern with a numba kernel,
+following `simulators_tools._assemble_slab_coo`; without numba it uses the same
+values from vectorized NumPy. The linear solver is picked per dimension. Measured
+here without numba (`benchmarks/bench_solver.py`), total per forward solve:
+
+| grid | July setting (spsolve) | new default | solver |
+|---|---|---|---|
+| 50×50 | 6.7 ms | 5.0 ms | splu, MMD_AT_PLUS_A |
+| 100×100 | 32 ms | 22–27 ms | splu, MMD_AT_PLUS_A |
+| 200×200 | 201 ms | 156 ms | splu, MMD_AT_PLUS_A |
+| 20³ | 368 ms | 25 ms | Jacobi-scaled CG |
+| 30³ | 5.5 s | 0.14 s | Jacobi-scaled CG |
+
+The CSR fill is 1–2% of a solve at these sizes, so numba's gain shows up mainly
+in the smaller grids and in Python overhead. Run the benchmark on the cluster to
+see it. The KLE is built separably (C = C_x ⊗ C_y ⊗ C_z, which is exact for the
+squared-exponential kernel) above 4,096 cells: 100×100 in 0.01 s, 30³ in 0.03 s,
+with no N×N matrices.
 
 ### Figures and statistics
 
@@ -100,5 +134,5 @@ truncated lognormal, and a QQ plot of w.
 
 ### Runs in this repo
 
-- `runs/july_raw/`: E2 on the July data (see `LOG.md`). Its figures, tables and small results are committed, so the reports redraw without a rerun (`BRHO_ROOT=runs/july_raw python3 reports/report_all.py`).
+- `runs/july_raw/`: E2 on the July data (see `LOG.md`). Its figures, tables, small results and frozen KLE basis are committed, so the reports redraw without a rerun (`BRHO_ROOT=runs/july_raw python3 reports/report_all.py`).
 - `runs/quick/` is for smoke tests and is git-ignored.

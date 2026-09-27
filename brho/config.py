@@ -17,7 +17,10 @@ class ProblemConfig:
     n: int = 16                    # cells per side (16x16 = 256 cells)
     ell: float = 0.1               # squared-exponential correlation length
     energy: float = 0.95           # KLE energy fraction  (-> r = 56 in 2D)
+    kle_method: str = "auto"       # "auto" (dense N<=4096, else kron) | "dense" | "kron"
     q_in: float = 1.0              # unit influx on the left face
+    solver: str = "auto"           # "auto" (splu 2D, cg 3D) | "splu" | "cg" | "spsolve"
+    backend: str = "auto"          # CSR fill: "auto" (numba if installed) | "numba" | "numpy"
     beta_true: float = 2.3
     rho_true: float = 1.5
     # "standardized": G_in centered and scaled to unit sample variance, so
@@ -43,7 +46,8 @@ class GridStudyConfig:
     acc_hi: float = 0.30
     adapt_every: int = 100
     adapt_factor: float = 1.15
-    seed0: int = 1000              # chain k uses seed0 + 17 k
+    seed0: int = 1000
+    seed_scheme: str = "spawn"     # see chain_seed(); "legacy" = July runs
     n_workers: int = 8
 
 
@@ -82,8 +86,25 @@ class SamplerConfig:
     use_keff_term: bool = False    # method report: pressure-only likelihood
     init: str = "prior"            # "prior" draws or "zero"
     seed0: int = 101
+    seed_scheme: str = "spawn"     # see chain_seed(); "legacy" = first runs
     n_workers: int = 4
     prior_test: bool = False       # likelihood switched off (Phi = 0)
+    trace_every: int = 1           # record per-iteration traces every k its
+
+
+def chain_seed(seed0, k, scheme="spawn", legacy_stride=13):
+    """Seed for chain / grid pair k.
+    "spawn":  numpy SeedSequence([seed0, k]) -- statistically independent
+              streams for any number of chains, reproducible from (seed0, k)
+              alone, so array job k needs nothing but its index.
+    "legacy": seed0 + stride * k (the July scripts: stride 17 for the grid,
+              13 for the sampler); fine for a handful of chains."""
+    import numpy as np
+    if scheme == "spawn":
+        return np.random.SeedSequence([seed0, k])
+    if scheme == "legacy":
+        return seed0 + legacy_stride * k
+    raise ValueError(scheme)
 
 
 # ------------------------------------------------------------ quick budgets

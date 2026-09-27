@@ -1,0 +1,25 @@
+# Sourced by every job script.  Edit once for your cluster.
+
+# --- software environment (pick what your cluster uses) -------------------
+# module load python/3.11
+# source ~/venvs/brho/bin/activate        # or: conda activate brho
+
+# --- where results go (one folder per study keeps runs apart) -------------
+export BRHO_ROOT="${BRHO_ROOT:-$PWD/runs/cluster}"
+
+# --- one thread per process: parallelism comes from array tasks ----------
+export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1 NUMBA_NUM_THREADS=1
+# numba caches compiled kernels next to the source; point it somewhere
+# writable and shared if the repo is read-only on compute nodes:
+# export NUMBA_CACHE_DIR="$HOME/.cache/numba"
+
+# --- scheduler defaults used by the templates -----------------------------
+export SLURM_ACCOUNT_ARGS=""              # e.g. "--account=myproj --partition=standard"
+
+# --- study settings (passed to the setup steps) ---------------------------
+export PROBLEM_ARGS="--truth-mode standardized"   # e.g. add "--n 100"
+export E2_ARGS=""                                  # grid study overrides
+export E3_ARGS=""                                  # e.g. "--n-real 512 --n-rho 40"
+export E4_CHAINS=16
+export E4_ARGS="--n-total 51000 --n-burn 15000 --thin 30"

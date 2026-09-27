@@ -14,9 +14,8 @@ Output: results/e3_curve/{curve_kle.npz, curve_cholesky.npz, truth.npz,
 """
 import os
 import time
+import _common  # noqa: F401  (first: pins threads before NumPy loads)
 from dataclasses import replace
-
-import numpy as np
 
 from _common import parser, configs, C
 from brho import io
@@ -31,7 +30,7 @@ def main():
     pc, ccfg = configs(args, C.CurveConfig)
     prob = Problem(pc)
     out_dir = io.results_dir(io.EXP_CURVE)
-    prob.syn.save(os.path.join(out_dir, "truth.npz"))
+    prob.freeze(out_dir)
     t0 = time.time()
 
     kinds = ["kle"] if args.no_cholesky else ["kle", "cholesky"]

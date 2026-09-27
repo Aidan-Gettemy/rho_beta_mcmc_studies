@@ -16,6 +16,7 @@ from scipy import stats
 from _common import have, io
 from report_sampler import load
 from brho import plotting as P
+from brho.samplers import trace_burn_index
 
 EXP = io.EXP_PRIOR
 
@@ -27,7 +28,7 @@ def main():
     kle, r = prob.kle, prob.r
     nb = scfg.n_burn
     th = ch["kept_theta"].reshape(-1, r)
-    w = ch["tr_w"][:, nb:].ravel()
+    w = ch["tr_w"][:, trace_burn_index(nb, scfg.trace_every):].ravel()
     rho = ch["kept_rho"].ravel()
     ref = np.random.default_rng(7).standard_normal(th.shape)
     wmax = (np.log(curve.rho_max) - scfg.mu_rho) / scfg.s_rho
