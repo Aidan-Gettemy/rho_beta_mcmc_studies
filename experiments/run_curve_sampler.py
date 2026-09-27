@@ -28,7 +28,7 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from _common import parser, configs, configs_from_manifest, task_index, C
+from _common import parser, configs, configs_from_manifest, task_indices, C
 from brho import io
 from brho.problem import Problem
 from brho.curve import BetaCurve
@@ -95,6 +95,7 @@ def setup(pc, scfg, curve_field, curve_statistic, exp):
         os.remove(f)                              # a new setup = a new run
     curve.save(os.path.join(out_dir, "curve.npz"))   # frozen copy for this run
     prob.freeze(out_dir)                          # one KLE basis + data per run
+    prob.phys.warmup()                            # compile numba once, before ranks start
     io.write_manifest(exp, C.to_dict(pc, scfg),
                       dict(r=prob.r, Kstar=prob.syn.keff_obs,
                            kle_key=prob.kle_key(), kle=kle_summary(prob),
@@ -128,6 +129,8 @@ def main():
     mode.add_argument("--setup-only", action="store_true")
     mode.add_argument("--chain-id", help="int, or 'env' for the array index")
     mode.add_argument("--status", action="store_true")
+    mode.add_argument("--warmup-only", action="store_true",
+                      help="compile numba for an existing run (resumed node jobs)")
     ap.add_argument("--fresh", action="store_true",
                     help="(pool mode) discard existing chains and start over")
     args = ap.parse_args()
@@ -136,9 +139,15 @@ def main():
 
     if args.status:
         sys.exit(0 if status(exp) else 1)
+    if args.warmup_only:
+        pc, _ = configs_from_manifest(exp, C.SamplerConfig)
+        Problem(pc, frozen=io.results_dir(exp)).phys.warmup()
+        print("numba warm-up done")
+        return
     if args.chain_id is not None:
         pc, scfg = configs_from_manifest(exp, C.SamplerConfig)
-        run_chain(pc, scfg, exp, task_index(args.chain_id))
+        for cid in task_indices(args.chain_id, scfg.n_chains):
+            run_chain(pc, scfg, exp, cid)
         return
 
     pc, scfg = configs(args, C.SamplerConfig)
@@ -157,7 +166,8 @@ def main():
                              "the flags to resume the existing one")
         print(f"resuming {exp} (use --fresh for a new run)")
     if args.setup_only:
-        print(f"set up; submit array tasks 0-{scfg.n_chains - 1} with --chain-id env")
+        print(f"set up; now run --chain-id env over {scfg.n_chains} chains "
+              f"(array 0-{scfg.n_chains - 1}, or srun/mpirun ranks)")
         return
     t0 = time.time()
     with Pool(min(scfg.n_workers, scfg.n_chains)) as pool:

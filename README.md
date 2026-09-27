@@ -22,9 +22,11 @@ make e2 ROOT=runs/july_raw ARGS="--truth-mode raw --seed-scheme legacy"   # July
 make bench                # forward-solve timings on this machine
 ```
 
-On a cluster, each experiment splits into a setup step, one array task per chain
-(or grid pair), and a collect step. See `cluster/README.md` and
-`cluster/submit_pipeline.sh`.
+On a cluster, each experiment splits into a setup step, parallel tasks (one per
+chain or grid pair) and a collect step. They run either as one single-node job
+(`cluster/slurm/node_e2_grid.sbatch` and friends, launched through `srun` or `mpirun`) or as
+array jobs (`cluster/submit_pipeline.sh`). `cluster/README.md` also covers getting
+the code onto the cluster without the committed results, and bringing results back.
 
 Every config field can be overridden from the command line, for example
 `--n-real 256 --n-rho 40` or `--n-total 80000`. The settings live in

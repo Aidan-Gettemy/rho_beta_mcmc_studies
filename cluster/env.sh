@@ -1,11 +1,12 @@
 # Sourced by every job script.  Edit once for your cluster.
 
 # --- software environment (pick what your cluster uses) -------------------
-# module load python/3.11
-# source ~/venvs/brho/bin/activate        # or: conda activate brho
+# e.g. the numba environment from your MCMC jobs:
+# module load conda/22.11.1
+# source activate $HOME/.conda/envs/gd24_numba
 
 # --- where results go (one folder per study keeps runs apart) -------------
-export BRHO_ROOT="${BRHO_ROOT:-$PWD/runs/cluster}"
+export BRHO_ROOT="${BRHO_ROOT:-$PWD/runs/cluster}"   # e.g. /scratch/$USER/brho/grid16
 
 # --- one thread per process: parallelism comes from array tasks ----------
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
