@@ -1,9 +1,14 @@
 # Sourced by every job script.  Edit once for your cluster.
 
 # --- software environment (pick what your cluster uses) -------------------
+# The job scripts run with `set -u` (unset variables are errors).  Lmod and
+# conda's activate scripts read variables that may be unset (e.g. Lmod's
+# "LD_PRELOAD: unbound variable"), so relax -u around them only:
+set +u
 # e.g. the numba environment from your MCMC jobs:
 # module load conda/22.11.1
 # source activate $HOME/.conda/envs/gd24_numba
+set -u
 
 # --- where results go (one folder per study keeps runs apart) -------------
 export BRHO_ROOT="${BRHO_ROOT:-$PWD/runs/cluster}"   # e.g. /scratch/$USER/brho/grid32
