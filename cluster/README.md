@@ -58,8 +58,10 @@ it gives no `git pull` for updates and no way to push results.
    matplotlib and numba (`requirements.txt`).
 2. Edit `cluster/env.sh`: the `module load` / `source activate` lines, and
    `BRHO_ROOT`. Put studies on scratch, e.g. `/scratch/$USER/brho/<study>`.
-3. Edit the `#SBATCH` headers in `cluster/slurm/node_*.sbatch`: partition, time
-   and memory.
+3. Check the `#SBATCH` headers in `cluster/slurm/*.sbatch`: every script sets
+   `--partition=g1mig`; adjust time and memory as needed. `cluster/env.sh` runs
+   inside the job and cannot change scheduling; use `sbatch --partition=...` or
+   `export SBATCH_PARTITION=...` in your login shell to override without editing.
 4. Smoke test: `sbatch cluster/slurm/smoke.sbatch` (tests, solver benchmark,
    tiny pipeline). Every test must PASS. With numba installed,
    `test_backends_agree_when_numba_present` checks the compiled kernel against
