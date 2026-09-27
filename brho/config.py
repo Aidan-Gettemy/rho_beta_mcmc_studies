@@ -112,12 +112,39 @@ def chain_seed(seed0, k, scheme="spawn", legacy_stride=13):
     raise ValueError(scheme)
 
 
+# ------------------------------------ E1: naive global pCN on (theta, beta, rho)
+@dataclass(frozen=True)
+class NaiveConfig:
+    """Joint model log K = log beta + rho G(theta), pressure data only.
+    Whitened: u = (theta, xi_b, xi_r) ~ N(0, I_{r+2}),
+        log beta = mu_logbeta + s_logbeta xi_b,  log rho = mu_logrho + s_logrho xi_r,
+    sampled by ONE global pCN move on u (a single step size)."""
+    n_iter: int = 100000
+    n_burn: int = 10000            # step-size adaptation window (frozen after)
+    thin: int = 100                # theta / p_obs saved every `thin` iterations
+    s0: float = 0.10               # initial pCN step size
+    target: float = 0.25           # acceptance target during adaptation
+    adapt_every: int = 100
+    adapt_factor: float = 1.12
+    mu_logbeta: float = 0.0        # beta prior: lognormal, median 1
+    s_logbeta: float = 1.0
+    mu_logrho: float = 0.0         # rho prior: lognormal, median 1 (as in E4)
+    s_logrho: float = 0.75
+    init: str = "prior"            # "prior" draws or "zero"
+    seed0: int = 2024
+    seed_scheme: str = "spawn"
+    checkpoint_every: int = 5000   # iterations between checkpoint writes
+    log_every: int = 5000          # progress line every k iterations
+
+
 # ------------------------------------------------------------ quick budgets
 QUICK = {
     GridStudyConfig: dict(n_iter=300, n_burn=150, n_workers=2),
     CurveConfig: dict(n_rho=8, n_real=16),
     SamplerConfig: dict(n_total=1200, n_burn=400, thin=10, chunk=600,
                         n_workers=2),
+    NaiveConfig: dict(n_iter=1500, n_burn=500, thin=10, checkpoint_every=500,
+                      log_every=500),
 }
 
 

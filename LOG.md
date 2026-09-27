@@ -48,6 +48,27 @@ Quick (`--quick`) smoke runs are not logged; they go to `runs/quick/`, which git
   available in this workspace; `benchmarks/kle_compare_matlab.py` prints and saves
   the eigenvalues to compare.
 
+## 2026-09-27 - E1 driver: naive global pCN on (θ, β, ρ), mpi4py
+
+- New: `brho/naive.py` (kernel, resumable chain, field reconstruction),
+  `experiments/run_e1_naive.py` (mpi4py driver, one chain per rank; process-pool
+  fallback without MPI), `reports/report_e1.py`, `cluster/slurm/mpi_e1_naive.sbatch`.
+- Saved per chain: per-iteration acceptance, Φ, relative error, log β, ρ, level
+  and amplitude (float32); every `thin` iterations θ, β, ρ, Φ and p_obs (float64),
+  from which the report rebuilds log K and full pressure fields exactly (tested).
+  Resuming from a checkpoint is bit-identical to an uninterrupted chain (tested).
+- Local demo (4 chains × 30k iterations, standardized truth, prior
+  β ~ logN(0, 1), ρ ~ logN(0, 0.75²); not a production run): acceptance 26.7%
+  after adaptation (step 0.0066); relative error 0.026–0.030 against noise 0.021,
+  still decreasing. The chains end at different pairs, (β, ρ) = (2.57, 1.10),
+  (1.29, 1.44), (2.15, 1.22) and (1.86, 0.98), against the truth (2.3, 1.5).
+  Spread of chain means over the prior sd: log β 0.26 and ρ 0.14, against level 0.04
+  and amplitude 0.08. PSRF is > 2 for all four: global pCN mixes slowly at this length.
+- For the cluster: 64 chains × 200k iterations (the sbatch default). Expect the level
+  to settle while β and ρ stay spread.
+- Not verified here: a real mpi4py run (not installable in this workspace). The MPI
+  code path ran against a one-rank stand-in for COMM_WORLD.
+
 ## Pending decisions before E3 and E4 at full budget
 
 1. Truth: `standardized` (default) or `raw`
