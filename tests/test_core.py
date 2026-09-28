@@ -283,3 +283,15 @@ def test_spectrum_check_recovers_anisotropy_and_slow_directions():
     assert s["spearman_R_vs_sd"] > 0.6
     assert s["c_direction"] == 0 and s["c_direction_cos"] > 0.9
     assert s["R_argmax"] <= 2 and abs(s["step_over_sd_min"] - 1) < 0.3
+    # conditional part: theta = u * (lb / 0.3) + tiny noise along u, so the
+    # marginal width along u is ~1 but the width given lb is 0.02
+    u = Q[:, 0]
+    lb = 0.3 * rng.standard_normal((m, n, 1))
+    th2 = rng.standard_normal((m, n, r)) * 0.5
+    th2 -= (th2 @ u)[..., None] * u
+    th2 += (lb / 0.3 + 0.02 * rng.standard_normal((m, n, 1))) * u
+    hyp = np.concatenate([lb, rng.standard_normal((m, n, 1))], axis=2)
+    s2 = spectrum(th2, step=0.01, hyper=hyp, u_level=u)["summary"]
+    assert 0.9 < s2["sd_marg_along_level"] < 1.1
+    assert 0.015 < s2["sd_cond_along_level"] < 0.025
+    assert s2["cos_level_tightest_cond"] > 0.99

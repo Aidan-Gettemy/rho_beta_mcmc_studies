@@ -16,6 +16,12 @@ for E1 the samples before n_burn are dropped.  For each run:
     cos_k   |cos| between v_k and c (KLE coordinates of the constant field,
             the direction that trades against log beta)
 
+Also, because the theta move keeps (beta, rho) fixed: the conditional
+covariance of theta given (log beta, log rho) (linear / Schur-complement
+estimate), its spectrum, the widths along the level direction (Gbar), and
+sum_k (s / sd_k)^2 for the marginal and conditional widths (a Gaussian
+random walk accepts ~25% when this is ~2.38^2 = 5.7).
+
 The E5 report predicts:
   (1) sd_k spans orders of magnitude: a few tight, data-informed directions
       and a prior-like remainder (sd near 1);
@@ -51,8 +57,10 @@ LABELS = {"e1_blocked": "E1 naive pCN (blocked)", "e1_global": "E1 naive pCN (gl
 
 
 # --------------------------------------------------------------- analysis
-def spectrum(theta, c=None, step=None):
-    """theta: (m chains, n samples, r).  Pure function (tested in tests/)."""
+def spectrum(theta, c=None, step=None, hyper=None, u_level=None):
+    """theta: (m chains, n samples, r); hyper: (m, n, h) = (log beta, log rho)
+    at the same samples; u_level: the vector with Gbar = u_level . theta.
+    Pure function (tested in tests/)."""
     th = np.asarray(theta, float)
     m, n, r = th.shape
     flat = th.reshape(-1, r)
@@ -96,31 +104,71 @@ def spectrum(theta, c=None, step=None):
                  # AR(1) estimate tau ~ 4 / (a s_k^2) in direction k, with s_k
                  # the step relative to that direction's sd; a = 0.25
                  tau_broadest_estimate=float(4 / (0.25 * (step / sd[0]) ** 2)))
+    if hyper is not None:
+        # The theta move acts with (beta, rho) FIXED, so what limits its step is
+        # the CONDITIONAL width of theta given (log beta, log rho).  Linear
+        # (Schur complement) estimate from the joint samples: it is an upper
+        # bound on the average conditional covariance (nonlinear dependence
+        # left in the residual only adds variance).
+        hh = np.asarray(hyper, float).reshape(-1, np.shape(hyper)[-1])
+        J = np.cov(np.hstack([flat, hh]), rowvar=False)
+        Stt, Sth, Shh = J[:r, :r], J[:r, r:], J[r:, r:]
+        B = np.linalg.solve(Shh, Sth.T).T                # theta ~ a + B h
+        Sc = Stt - B @ Sth.T
+        Sc = 0.5 * (Sc + Sc.T)
+        lc, Vc = np.linalg.eigh(Sc)
+        oc = np.argsort(lc)[::-1]
+        lc, Vc = lc[oc], Vc[:, oc]
+        sd_c = np.sqrt(np.clip(lc, 0, None))
+        out.update(Sigma_cond=Sc, B_cond=B, mean_h=hh.mean(0), lam_cond=lc,
+                   V_cond=Vc, sd_cond=sd_c)
+        s.update(sd_cond_max=float(sd_c[0]), sd_cond_min=float(sd_c[-1]),
+                 sd_cond_ratio=float(sd_c[0] / sd_c[-1]))
+        if u_level is not None:
+            u = np.asarray(u_level, float) / np.linalg.norm(u_level)
+            s.update(sd_marg_along_level=float(np.sqrt(u @ Sigma @ u)),
+                     sd_cond_along_level=float(np.sqrt(u @ Sc @ u)),
+                     cos_level_tightest_cond=float(abs(Vc[:, -1] @ u)))
+        if step is not None:
+            # Gaussian random-walk rule of thumb: ~25% acceptance when
+            # sum_k (s / sd_k)^2 ~ 2.38^2 = 5.7 (sd_k: widths the move sees)
+            s.update(step_over_sd_cond_min=float(step / sd_c[-1]),
+                     sum_step_over_sd2_marginal=float(np.sum((step / sd) ** 2)),
+                     sum_step_over_sd2_conditional=float(np.sum((step / sd_c) ** 2)),
+                     rule_of_thumb_sum=2.38 ** 2)
     out["summary"] = s
     return out
 
 
 # --------------------------------------------------------------- loading
 def load_theta(exp, n_chains=None):
-    """Post-burn-in theta samples (m, n, r), the constant-field vector c, and
-    the median final pCN step of the theta move."""
+    """Post-burn-in theta samples (m, n, r), (log beta, log rho) at the same
+    samples (m, n, 2), the constant-field vector c, the level vector
+    u_level (Gbar = u_level . theta) and the median final theta pCN step."""
     paths = _chain_paths(exp, n_chains)
     zs = [np.load(p) for p in paths]
     man = io.read_manifest(exp)
     L = min(len(z["kept_theta"]) for z in zs)
     theta = np.stack([z["kept_theta"][:L] for z in zs])
+    lr = np.log(np.stack([z["kept_rho"][:L] for z in zs]))
+    if "kept_logbeta" in zs[0].files:
+        lb = np.stack([z["kept_logbeta"][:L] for z in zs])
+    else:
+        lb = np.log(np.stack([z["kept_beta"][:L] for z in zs]))
+    hyper = np.stack([lb, lr], axis=2)
     if "kept_it" in zs[0].files:                     # E1: kept from iteration 0
         nb = man["configs"]["NaiveConfig"]["n_burn"]
-        its = np.asarray(zs[0]["kept_it"][:L])
-        theta = theta[:, its >= nb]
+        keep = np.asarray(zs[0]["kept_it"][:L]) >= nb
+        theta, hyper = theta[:, keep], hyper[:, keep]
     key = "s" if "s" in zs[0].files else ("s_final" if "s_final" in zs[0].files else None)
     step = float(np.median([np.atleast_1d(z[key])[0] for z in zs])) if key else None
     kle = os.path.join(io.results_dir(exp), "kle.npz")
-    c = None
+    c = u_level = None
     if os.path.exists(kle):
         T = np.load(kle)["T"]
         c, *_ = np.linalg.lstsq(T, np.ones(T.shape[0]), rcond=None)
-    return theta, c, step
+        u_level = T.mean(0)
+    return theta, hyper, c, u_level, step
 
 
 # --------------------------------------------------------------- figures
@@ -133,6 +181,9 @@ def fig_one(exp, res, path):
                    label=r"pooled posterior: $\sqrt{\mathrm{eig}(\Sigma)}$")
     ax[0].semilogy(k, res["sd_within"], "s--", ms=3, lw=1, color="#7f9fbf",
                    label=r"within-chain: $\sqrt{\mathrm{eig}(W)}$")
+    if "sd_cond" in res:
+        ax[0].semilogy(k, res["sd_cond"], "^-", ms=3, lw=1.2, color="#d4a017",
+                       label=r"given $(\beta,\rho)$: $\sqrt{\mathrm{eig}(\Sigma_{\theta|\beta,\rho})}$")
     ax[0].axhline(1.0, color="k", lw=1, ls=":", label="prior sd = 1")
     if "pcn_step" in s:
         ax[0].axhline(s["pcn_step"], color="r", lw=1.5, ls="--",
@@ -167,6 +218,9 @@ def fig_compare(results, path):
         k = np.arange(1, res["r"] + 1)
         lab = LABELS.get(exp, exp)
         ax[0].semilogy(k, res["sd"], "o-", ms=3, color=col, label=lab)
+        if "sd_cond" in res:
+            ax[0].semilogy(k, res["sd_cond"], "^:", ms=3, color=col,
+                           label=lab + r": given $(\beta,\rho)$")
         if "pcn_step" in res["summary"]:
             ax[0].axhline(res["summary"]["pcn_step"], color=col, ls="--", lw=1,
                           label=f"{lab}: pCN step")
@@ -188,8 +242,8 @@ def fig_compare(results, path):
 
 
 def run(exp, n_chains=None):
-    theta, c, step = load_theta(exp, n_chains)
-    res = spectrum(theta, c, step)
+    theta, hyper, c, u_level, step = load_theta(exp, n_chains)
+    res = spectrum(theta, c, step, hyper=hyper, u_level=u_level)
     fdir, tdir = io.figures_dir(exp), io.tables_dir(exp)
     os.makedirs(fdir, exist_ok=True)
     os.makedirs(tdir, exist_ok=True)
@@ -197,7 +251,9 @@ def run(exp, n_chains=None):
     io.save_json(os.path.join(tdir, "spectrum.json"), res["summary"])
     np.savez_compressed(os.path.join(tdir, "spectrum.npz"),
                         **{k: res[k] for k in ("mean", "Sigma", "lam", "V", "sd",
-                                               "sd_within", "R", "cos_c")})
+                                               "sd_within", "R", "cos_c", "Sigma_cond",
+                                               "B_cond", "mean_h", "lam_cond", "V_cond",
+                                               "sd_cond") if k in res})
     print(f"[{exp}] {res['m']} chains x {res['n']} samples")
     for key, v in res["summary"].items():
         print(f"    {key:24s} {v:.4g}" if isinstance(v, float) else f"    {key:24s} {v}")
