@@ -9,11 +9,11 @@ getMSPRF (one window, theta: (dim, n, m) in MATLAB, here (m, n, dim)):
     V      = (n-1)/n W + (m+1)/m B/n
     PSRF   = max_i sqrt(V_ii / W_ii)             (worst single component)
 
-Curve (computeMPSRFcurve): evaluated at thinned-sample counts
-    k = iter_burn, iter_burn + step, ...,  on the window of samples
-    (k - k // skip, k]  -> skip = 2 keeps the second half of the first k
-    samples (Gelman-Rubin "discard the first half"), skip = 5 the last 4/5.
-The x axis is the MCMC iteration of sample k (thinned index * thinning).
+Curve (computeMPSRFcurve): at thinned-sample counts
+    k = step + iter_burn, step + iter_burn + step, ..., <= n  (1-based)
+the window is samples iter_burn, iter_burn + skip, ..., k: it grows, always
+starts at sample iter_burn (the burn-in), and uses every skip-th sample.
+The x axis is k * thinning (MCMC iterations).
 
 Convergence read-out: first curve point (after the first 10) with
 MPSRF < 1.2, linearly interpolated between it and the previous point.
@@ -42,31 +42,36 @@ def get_mpsrf(theta):
 
 def mpsrf_curve(samples, skip=2, step=15, iter_burn=10, chains=None,
                 dispiter=0, log=print):
-    """samples: (m, n, dim) thinned samples.  Returns dict of arrays:
-    k (thinned count), mpsrf, psrf (max over components), psrf_i (len(k), dim)."""
+    """computeMPSRFcurve.  samples: (m, n, dim) thinned samples.
+
+    MATLAB (1-based):  iter_step = (step + iter_burn):step:maxIter
+                       idx       = iter_burn:skip:iter_step(u)
+    i.e. a growing window that always starts at sample iter_burn and uses
+    every skip-th sample.  Returns k (= iter_step, 1-based thinned count),
+    mpsrf, psrf (max over components), psrf_i (len(k), dim).  A point whose
+    window is too short for W to be invertible is NaN (kept, so that the
+    'ignore the first 10 points' rule counts the same points as MATLAB)."""
     s = np.asarray(samples, float)
     if chains is not None:
         s = s[list(chains)]
     m, n, dim = s.shape
     if m < 2:
         raise ValueError("MPSRF needs at least 2 chains")
-    ks = np.arange(iter_burn, n + 1, step)
-    if len(ks) == 0 or ks[-1] != n:
-        ks = np.append(ks, n)
+    ks = np.arange(step + iter_burn, n + 1, step)
     out = dict(k=[], mpsrf=[], psrf=[], psrf_i=[])
-    for i, k in enumerate(ks):
-        a = k // skip                       # discard the first 1/skip
-        if k - a < 2:
-            continue
-        if m * (k - a - 1) <= dim:          # W singular: not enough samples yet
-            continue
-        mp, pm, pi = get_mpsrf(s[:, a:k])
+    for u, k in enumerate(ks, start=1):
+        sub = s[:, iter_burn - 1:k:skip]            # MATLAB iter_burn:skip:k
+        nw = sub.shape[1]
+        if nw < 2 or m * (nw - 1) <= dim:           # W singular
+            mp, pm, pi = np.nan, np.nan, np.full(dim, np.nan)
+        else:
+            mp, pm, pi = get_mpsrf(sub)
         out["k"].append(k)
         out["mpsrf"].append(mp)
         out["psrf"].append(pm)
         out["psrf_i"].append(pi)
-        if dispiter and i % dispiter == 0:
-            log(f"  k = {k}/{n}  window {k - a}  MPSRF {mp:.3f}  max PSRF {pm:.3f}")
+        if dispiter and u % dispiter == 0:
+            log(f"Step {u} / {len(ks)} | MPSRF = {mp:.3f}")
     return {key: np.asarray(v) for key, v in out.items()}
 
 
@@ -79,6 +84,7 @@ def convergence_iteration(iters, curve, level=1.2, ignore_first=10):
     interpolated as in the MATLAB script.  None if it never crosses."""
     c = np.abs(np.asarray(curve, float)).copy()
     c[:ignore_first] = np.inf
+    c[np.isnan(c)] = np.inf
     idx = np.flatnonzero(c < level)
     if len(idx) == 0:
         return None

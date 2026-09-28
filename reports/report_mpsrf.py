@@ -7,8 +7,9 @@ group's MATLAB convention (brho/mpsrf.py has the formulas).
                                    [--at 4900] [--level 1.2]
 
 Uses the thinned samples saved in every chain file (kept_theta, every `thin`
-iterations from iteration 0, so burn-in is included and the growing window
-drops it).  Two parameter sets:
+iterations from iteration 0).  As in computeMPSRFcurve, the curve point at
+thinned count k uses samples iter_burn, iter_burn + skip, ..., k (a growing
+window from sample iter_burn); the x axis is k * thinning.  Two parameter sets:
     theta   all r KLE coefficients
     all     (theta, log beta, log rho)  = the whole sampled state up to an
             affine map (MPSRF is invariant to those)
@@ -135,6 +136,10 @@ def run(exp, n_chains=None, skip=2, step=15, iter_burn=10, level=1.2, at=4900,
         r = arr.shape[2]
         cur = M.mpsrf_curve(arr, skip=skip, step=step, iter_burn=iter_burn,
                             dispiter=dispiter)
+        if len(cur["k"]) == 0 or np.all(np.isnan(cur["mpsrf"])):
+            print(f"[{name}] too few samples for a curve "
+                  f"({len(its)} per chain, step {step}, iter burn {iter_burn})")
+            continue
         x = its[cur["k"] - 1].astype(float) + thin      # iterations run so far
         conv = M.convergence_iteration(x, cur["mpsrf"], level)
         conv_p = M.convergence_iteration(x, cur["psrf"], level)

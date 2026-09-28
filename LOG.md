@@ -159,10 +159,11 @@ Quick (`--quick`) smoke runs are not logged; they go to `runs/quick/`, which git
   linearly interpolated).  `reports/report_mpsrf.py` draws the curves for
   theta (r dims) and (theta, log beta, log rho), and runs at the end of the
   E1 job and in report_all.
-- ASSUMED (computeMPSRFcurve was not shared): points at thinned counts
-  k = iter_burn, iter_burn + step, ...; window (k // skip, k], i.e. skip = 2
-  discards the first half.  Change `a = k // skip` in brho/mpsrf.py if the
-  MATLAB function differs.
+- Curve exactly as computeMPSRFcurve: points at thinned counts
+  k = step + iter_burn : step : n, window iter_burn : skip : k (growing,
+  starts at sample iter_burn, every skip-th sample); x = k * thinning.
+  With thin = 200, the default iter_burn = 10 drops only the first 2000
+  iterations; the E1 adaptation runs to 20000 (use --iter-burn 100 to drop it).
 - E1 blocked run 2026-09 (64 chains, 200k it., r = 57): log beta PSRF 2.10,
   rho 1.21, level 1.15, amplitude 1.11; chains settle at relerr 0.0253 vs
   noise 0.0196 (KLE truncation: the full-rank truth has 5.5% of its energy
