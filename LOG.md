@@ -168,3 +168,16 @@ Quick (`--quick`) smoke runs are not logged; they go to `runs/quick/`, which git
   rho 1.21, level 1.15, amplitude 1.11; chains settle at relerr 0.0253 vs
   noise 0.0196 (KLE truncation: the full-rank truth has 5.5% of its energy
   outside the 57 modes).  Kept: full-rank truth, 95% energy.
+
+## 2026-09-27: E2 grid, 32x32, relative likelihood (sigma_rel 2e-3)
+- 25 fixed-(beta, rho) pCN chains, 50000 it. (10000 burn), same KLE basis and
+  full-rank truth as E1 (runs/e2_grid_2026-09).  Acceptance 0.20-0.30.
+- Posterior-mean RMS/sigma_p 1.14-1.24 for every pair with rho >= 1 (beta from
+  0.5 to 10, a factor 20); 1.36-1.41 for rho = 0.5.  beta is not identified;
+  rho is bounded below by the data only (too little variability to fit).
+- ||theta||^2 / r (prior value 1) goes 4-7.5 at rho = 0.5, ~1.0 at rho = 1.5
+  (the truth), 0.3-0.6 at rho = 3: the prior penalty on theta is what points
+  at rho; posterior-mean log K maps agree across beta at fixed rho.
+- Link to E1: MPSRF(theta) final 2.17 (never below 1.2); worst PSRFs are
+  theta1 (1.87) and theta5 (1.63), the modes that carry the spatial mean,
+  i.e. the ones that absorb a change of log beta.
