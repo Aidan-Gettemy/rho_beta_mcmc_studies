@@ -8,6 +8,7 @@ Setup figures and numbers (report Fig. 1 + checks).
         r, energy, sigma_p, K*_true, K*_obs, level, Gbar, scaling-lemma errors
 Uses whichever experiment ran first (E2, E3 or E4) for the configuration.
 """
+import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
 import numpy as np
 import matplotlib.pyplot as plt
 

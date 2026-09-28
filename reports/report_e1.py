@@ -40,6 +40,7 @@ Tables per run
 Data (results/e1_<move>/pfield_samples.npz)
     the reconstructed samples: chain, iteration, beta, rho, log K, pressure
 """
+import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
 import argparse
 import glob
 import os

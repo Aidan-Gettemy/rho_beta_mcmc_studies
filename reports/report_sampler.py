@@ -19,6 +19,7 @@ E4 figures and tables (3-step sampler with the beta_bar(rho) curve).
     tables/e4_sampler/e4_chains.{md,csv}  per-chain acceptance, steps, means
     tables/e4_sampler/e4_summary.json     coverage, mean Phi vs floor, MPSRF, ...
 """
+import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
 import glob
 import os
 import numpy as np

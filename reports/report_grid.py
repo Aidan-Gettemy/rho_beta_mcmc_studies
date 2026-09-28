@@ -11,6 +11,7 @@ E2 figures and tables (non-uniqueness report Figs. 2-5 + two extras).
     fig_grid_fields.png     posterior-mean log K maps for a 5x5 panel
     tables/e2_grid/grid_table.{md,csv}, grid_summary.json
 """
+import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
 import numpy as np
 import matplotlib.pyplot as plt
 

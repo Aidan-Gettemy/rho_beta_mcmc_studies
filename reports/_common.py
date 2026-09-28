@@ -1,6 +1,14 @@
-"""Bootstrap shared by the report scripts."""
+"""Bootstrap shared by the report scripts.  Import it FIRST: it caps the
+BLAS/OpenMP threads (unless already set) before NumPy loads.  Unset,
+OpenBLAS starts one thread per core, and on a login node with a per-user
+memory limit that fails ("OpenBLAS error: Memory allocation still failed").
+The report matrices are small; a few threads are plenty."""
 import os
 import sys
+
+for _v in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
+           "NUMEXPR_NUM_THREADS", "NUMBA_NUM_THREADS"):
+    os.environ.setdefault(_v, "4")
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO not in sys.path:

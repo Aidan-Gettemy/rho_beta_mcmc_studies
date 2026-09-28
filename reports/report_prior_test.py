@@ -9,6 +9,7 @@ the ridge-move Jacobian (-r eta) and the pCN blocks without any PDE solve.
                          (d) QQ plot of w vs truncated N(0,1)
     tables/e4_prior_test/prior_test.{md,csv,json}
 """
+import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
