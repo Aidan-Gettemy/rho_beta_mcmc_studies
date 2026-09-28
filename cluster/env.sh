@@ -38,7 +38,10 @@ export NUMEXPR_NUM_THREADS=1 NUMBA_NUM_THREADS=1
 export SLURM_ACCOUNT_ARGS=""              # e.g. "--account=myproj"
 
 # --- study settings (passed to the setup steps) ---------------------------
-export PROBLEM_ARGS="--truth-mode standardized"
+# Each line only sets a DEFAULT: a value given when you submit wins, e.g.
+#   E2_ARGS="--n-iter 20000" sbatch cluster/slurm/node_e2_grid.sbatch
+# (sbatch passes your shell's variables into the job; "${X:-default}" keeps them).
+export PROBLEM_ARGS="${PROBLEM_ARGS:---truth-mode standardized}"
 # likelihood (brho/problem.py): relative by default, sigma_rel = rel_eps/sqrt(rel_n_eff)
 #   = 0.02/sqrt(128) = 1.77e-3; the same form as MCMCpar.py (sigma = s, Phi =
 #   relerr^2/(2 s^2)), so "--sigma-rel s" matches it.  Set it directly, or
@@ -50,7 +53,9 @@ export PROBLEM_ARGS="--truth-mode standardized"
 #   PROBLEM_ARGS="--n 100 --ell 0.05 --kle-method nystrom_sep --kle-nq 60"
 # kle-nq ~ 3/ell converges the eigenvalues to ~1e-10 for sq-exp; the setup
 # log and manifest report the check (nq_check).
-export E2_ARGS=""                                  # grid study overrides
-export E3_ARGS=""                                  # e.g. "--n-real 512 --n-rho 40"
-export E4_CHAINS=16
-export E4_ARGS="--n-total 51000 --n-burn 15000 --thin 30"
+export E2_ARGS="${E2_ARGS:---n-iter 50000 --n-burn 10000}"   # per-pair pCN budget
+export E3_ARGS="${E3_ARGS:-}"                      # e.g. "--n-real 512 --n-rho 40"
+# E4 chains: array jobs (submit_pipeline.sh, e4_setup) default to 16; the
+# single-node launcher node_e4_sampler.sbatch defaults to one per rank.
+export E4_CHAINS="${E4_CHAINS:-}"
+export E4_ARGS="${E4_ARGS:---n-total 51000 --n-burn 15000 --thin 30}"

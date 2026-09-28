@@ -13,5 +13,5 @@ set -euo pipefail
 source cluster/env.sh
 # the KLE build (eigensolve + Nystrom extension) runs on BLAS threads here
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1} MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1} OPENBLAS_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
-python experiments/run_curve_sampler.py --setup-only --n-chains "$E4_CHAINS" \
+python experiments/run_curve_sampler.py --setup-only --n-chains "${E4_CHAINS:-16}" \
     --prior-test "${PRIOR_TEST:-0}" $PROBLEM_ARGS $E4_ARGS
