@@ -257,3 +257,19 @@ step of 0.010 (now 0.041).
 - MPSRF of all theta at equal work: E4 1.66 vs E1 2.17 (448k vs 400k solves);
   neither crosses 1.2.  E4: worst single PSRF 1.33 (21/57 above 1.2, spread
   over modes); E1: worst 1.87 (theta1), 5/57 above 1.2.
+
+## 2026-09-28: E6 planned (adaptive theta proposal for BOTH samplers); spectrum check first
+Revises decision 4 above (no posterior-informed proposal).  Reason: E5 fixed
+beta and rho (PSRF 1.007 / 1.024, honest beta width); what is left is theta
+only (pCN step 0.012 in E1, E4 and E5 alike; 22/57 modes at PSRF 1.2-1.28;
+level moves only through the theta move).  Plan (report "E5: the
+hyperparameters converge, theta does not", 28 Sep): generalized pCN for the
+theta move, reference N(m, Gamma) estimated from pooled burn-in and frozen,
+given identically to E1 (E6a) and E5 (E6b), same truth, sigma_rel, budget.
+Expected: E6b converges, E6a still fails on log beta (a theta-only proposal
+cannot move along E1's theta-beta ridge); reported either way.
+Step 0, before any sampler code: reports/report_spectrum.py on the existing
+E1 (kle truth) and E5 chains.  The argument needs (1) posterior sds of theta
+spread over orders of magnitude, (2) pCN step ~ smallest sd, (3) in E5, PSRF
+per principal direction growing with its sd; in E1, the worst direction
+aligned with c.  If the spectrum is flat, stop and rethink.

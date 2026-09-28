@@ -247,3 +247,39 @@ def test_soft_sampler_moves_c_and_d_preserve_logK():
     logK_d = lb + d + rho * p.kle.field(th - d / rho * s.c)
     assert np.sqrt(np.mean((logK_d - logK) ** 2)) <= d * (s.c_resid + 1e-12) * 1.0001
     assert s.c_resid < 0.1
+
+
+def test_spectrum_check_recovers_anisotropy_and_slow_directions():
+    """reports/report_spectrum.spectrum on synthetic chains: a rotated
+    Gaussian with sds from 0.01 to 1, AR(1) chains that are slow in the broad
+    directions (as pCN is), started over-dispersed.  It must recover the sds,
+    find R growing with sd, and flag the slow direction aligned with c."""
+    import importlib
+    rep = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                       "reports")
+    saved = {k: sys.modules.pop(k) for k in ("_common",) if k in sys.modules}
+    sys.path.insert(0, rep)
+    try:                               # reports/ has its own _common: isolate it
+        spectrum = importlib.import_module("report_spectrum").spectrum
+    finally:
+        sys.path.remove(rep)
+        sys.modules.pop("_common", None)
+        sys.modules.pop("report_spectrum", None)
+        sys.modules.pop("report_mpsrf", None)
+        sys.modules.update(saved)
+    rng = np.random.default_rng(1)
+    r, m, n = 12, 16, 400
+    sd = np.logspace(0, -2, r)                              # broadest first
+    Q, _ = np.linalg.qr(rng.standard_normal((r, r)))
+    phi = 1 - 0.002 / sd                                    # slow when broad
+    z = np.empty((m, n, r))
+    z[:, 0] = 3 * sd * rng.standard_normal((m, r))          # over-dispersed start
+    for t in range(1, n):
+        z[:, t] = phi * z[:, t - 1] + sd * np.sqrt(1 - phi ** 2) * rng.standard_normal((m, r))
+    res = spectrum(z @ Q.T, c=3.0 * Q[:, 0], step=0.01)
+    s = res["summary"]
+    assert np.allclose(res["sd"][r // 2:], sd[r // 2:], rtol=0.2)   # informed dirs
+    assert s["sd_ratio"] > 20
+    assert s["spearman_R_vs_sd"] > 0.6
+    assert s["c_direction"] == 0 and s["c_direction_cos"] > 0.9
+    assert s["R_argmax"] <= 2 and abs(s["step_over_sd_min"] - 1) < 0.3
