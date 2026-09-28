@@ -339,3 +339,22 @@ length in the manifest (recorded under "extensions"); RESUME=1 continues
 each chain exactly (tested).  Nothing else changes (burn-in, thinning,
 frozen steps, truth, sigma_rel).  Expected E1 theta MPSRF at 1.2M solves
 ~1.4 (extrapolated), i.e. no crossing.
+
+## 2026-09-28: setup stays as laid out (sigma, prior, boundary conditions)
+Considered and NOT adopted (Aidan): (a) loosening sigma_rel to 5e-3 or 1e-2
+(faster theta mixing, but the beta ridge fattens and E1 may converge too;
+possible later sweep: E1 log-beta PSRF vs sigma_rel, E5 alongside);
+(b) a flat prior on log beta; (c) the Dirichlet slab.
+Notes for the paper: with proper priors E1's posterior is proper and pCN is
+ergodic, so E1 converges in principle; its cost grows like (ridge length /
+width)^2, the width set by how tightly the pressures pin the level (~sigma).
+Claim "impractically slow, and slower as the data sharpen", not "never".
+In this flux-driven problem (q = 1 prescribed, pressures measured) the data
+see the level, so a flat log-beta prior still gives a proper posterior
+(log beta ~ level - rho Gbar, width ~0.32-0.35) and changes E1 little; the
+pressures already carry K_eff, so the extra K_eff datum informs beta through
+the E3 curve (log beta sd 0.32 -> 0.25) and moves C/D make E5 mix.  Only a
+Dirichlet-Dirichlet slab with a flat prior would make E1's posterior
+improper (never converges).
+Next: extend E5 to 400k and E1 to 600k iterations (1.2M solves each) at
+sigma_rel 2e-3; goal theta MPSRF < 1.2 in E5, not in E1.
