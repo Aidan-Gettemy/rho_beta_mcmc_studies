@@ -102,3 +102,26 @@ def test_reconstruction_matches_saved_observations():
         pobs = pf[:, p.phys.obs_mask]
         assert np.abs(pobs - z["kept_pobs"]).max() < 1e-5 * np.abs(pobs).max()
         assert set(np.unique(z["acc"])) <= {0.0, 1.0}
+
+
+def test_mpsrf_matlab_port():
+    """get_mpsrf matches diagnostics.mpsrf; iid chains give ~1, a shifted
+    component is caught by its own PSRF; AR(1) chains from spread-out starts
+    give a falling curve that crosses 1.2."""
+    from brho import mpsrf as M, diagnostics as D
+    rng = np.random.default_rng(0)
+    x = rng.standard_normal((16, 400, 20))
+    mp, pm, pi = M.get_mpsrf(x)
+    assert abs(mp - D.mpsrf(x)) < 1e-10 and mp < 1.05 and pm < 1.05
+    y = x.copy()
+    y[:, :, 3] += rng.normal(0, 1, (16, 1))
+    _, _, pi = M.get_mpsrf(y)
+    assert pi[3] > 1.2 and np.delete(pi, 3).max() < 1.05
+    z = np.zeros((16, 1500, 4))
+    z[:, 0] = rng.normal(0, 10, (16, 4))
+    for t in range(1, 1500):
+        z[:, t] = 0.95 * z[:, t - 1] + np.sqrt(1 - 0.95 ** 2) * rng.standard_normal((16, 4))
+    cur = M.mpsrf_curve(z, step=50, dispiter=0)
+    assert cur["mpsrf"][0] > 2 and cur["mpsrf"][-1] < 1.2
+    c = M.convergence_iteration(cur["k"] * 1.0, cur["mpsrf"])
+    assert c is not None and cur["k"][0] < c < cur["k"][-1]

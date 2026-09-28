@@ -56,4 +56,5 @@ done
 
 # --- post-processing (one process): each move, plus the comparison if both exist
 python3 reports/report_e1.py --move all
+python3 reports/report_mpsrf.py          # MPSRF / PSRF curves of all theta (MATLAB convention)
 echo "figures: $BRHO_ROOT/figures/e1_{blocked,global,compare}"
