@@ -295,3 +295,26 @@ def test_spectrum_check_recovers_anisotropy_and_slow_directions():
     assert 0.9 < s2["sd_marg_along_level"] < 1.1
     assert 0.015 < s2["sd_cond_along_level"] < 0.025
     assert s2["cos_level_tightest_cond"] > 0.99
+
+
+def test_soft_sampler_extension_is_exact():
+    """E5 run to n_total, then continued to a larger n_total (what
+    experiments/extend_run.py does) == one uninterrupted run."""
+    import tempfile
+    from brho.samplers import SoftCurveSampler, run_chunk
+    p = prob()
+    full = replace(C.SoftSamplerConfig(), n_total=1200, n_burn=300, thin=20, chunk=500)
+    short = replace(full, n_total=700)
+    with tempfile.TemporaryDirectory() as d:
+        a, b = os.path.join(d, "a.npz"), os.path.join(d, "b.npz")
+        for cfg_, path in ((full, a), (short, b), (full, b)):
+            s = SoftCurveSampler(p, _soft_curve(), cfg_)
+            it = 0
+            while it < cfg_.n_total:
+                it = run_chunk(s, 2, path)
+        za, zb = np.load(a), np.load(b)
+        assert int(za["it"]) == int(zb["it"]) == 1200
+        for k in za.files:
+            if k != "rng_state":
+                assert np.array_equal(za[k], zb[k]), k
+        assert za["rng_state"] == zb["rng_state"]
