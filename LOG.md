@@ -193,3 +193,17 @@ Quick (`--quick`) smoke runs are not logged; they go to `runs/quick/`, which git
 - Link to E1: MPSRF(theta) final 2.17 (never below 1.2); worst PSRFs are
   theta1 (1.87) and theta5 (1.63), the modes that carry the spatial mean,
   i.e. the ones that absorb a change of log beta.
+
+## 2026-09-28: E4 three-step sampler, 64 chains x 150k it. (runs/e4_sampler_2026-09)
+- Prior test (16 chains, Phi = 0) passed: w mean/sd -0.042/0.953 vs truncated
+  N(0,1) -0.041/0.955; sd(Gbar) 0.231 vs 0.227; ridge acceptance 45%.
+- rho 1.509 [1.26, 1.83] (truth 1.5), PSRF 1.035, ESS ~2500.  E1: log beta
+  PSRF 2.10.  theta_norm2/r = 1.00; mean Phi 80 (same fit as E1).
+- beta = beta_bar(rho) 2.18 [2.12, 2.29] misses 2.3: the curve's own 5%
+  offset at rho 1.5 (E3); the interval carries only rho's uncertainty, not
+  the realization spread of E3 (1.27-4.14).  To discuss for the paper.
+- level 0.867 [0.74, 0.95] covers 0.833 but PSRF 1.20: a few chains dip to
+  0.5-0.6 for tens of thousands of iterations (mean-carrying theta modes).
+- MPSRF of all theta at equal work: E4 1.66 vs E1 2.17 (448k vs 400k solves);
+  neither crosses 1.2.  E4: worst single PSRF 1.33 (21/57 above 1.2, spread
+  over modes); E1: worst 1.87 (theta1), 5/57 above 1.2.
