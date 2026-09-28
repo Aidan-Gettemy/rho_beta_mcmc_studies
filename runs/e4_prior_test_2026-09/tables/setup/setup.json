@@ -1,0 +1,22 @@
+{
+ "truth_mode": "standardized",
+ "n": 32,
+ "ell": 0.1,
+ "kle_method": "dense",
+ "kle_nq": "",
+ "kle_quadrature": "",
+ "kle_nq_rel_change": "",
+ "r": 57,
+ "energy": 0.9516350366489337,
+ "mean_pointwise_var": 0.9516350366489335,
+ "n_obs": 512,
+ "sigma_p": 0.005756749086700425,
+ "sigma_e": 0.05,
+ "keff_true": 1.9906862938401289,
+ "keff_obs": 1.9949341170501156,
+ "level_true": 0.8329091229351038,
+ "Gbar": 1.3877787807814457e-17,
+ "G_std": 1.0,
+ "scaling_p_err": 3.963777714871445e-14,
+ "scaling_keff_err": 3.83026943495679e-14
+}
