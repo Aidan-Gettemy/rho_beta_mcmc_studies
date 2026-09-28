@@ -168,3 +168,16 @@ Quick (`--quick`) smoke runs are not logged; they go to `runs/quick/`, which git
   rho 1.21, level 1.15, amplitude 1.11; chains settle at relerr 0.0253 vs
   noise 0.0196 (KLE truncation: the full-rank truth has 5.5% of its energy
   outside the 57 modes).  Kept: full-rank truth, 95% energy.
+
+## 2026-09-28: E3 beta_bar(rho), 40 rho x 1024 realizations (runs/e3_curve_2026-09)
+- Decisions: rho_max stays 5; statistic ratio_of_mean.
+- rho = 1.5: beta_bar 2.18 vs beta_true 2.3 (-5%); 5-95% of beta_i 1.27-4.14;
+  KLE vs full-rank Cholesky: 1% at the truth.
+- The std of beta_i explodes (0.95 at rho 1.5, 80 at 3, 2.7e5 at 5).  Cause:
+  sd(log beta_i) = sd(log Keff_i) grows with rho -- the realization's own
+  level (sd Gbar = 0.231 exactly for sq-exp, l = 0.1; R^2 0.96 at rho 0.56)
+  plus flow structure (series low-K bands; skew of log Keff -0.8 at rho 5,
+  level R^2 0.15).  Near-lognormal: std/median ~ exp(s^2).  ratio_of_mean
+  averages Keff (s.e. 1-11% of mean) so the curve is stable; mean_of_ratio
+  inherits the tail (9.5e3 at rho 5).  Full note for the paper:
+  project doc claude/e3_beta_curve_spread_note.md.
