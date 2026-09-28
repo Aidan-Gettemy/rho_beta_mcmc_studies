@@ -5,7 +5,7 @@ E2 figures and tables (non-uniqueness report Figs. 2-5 + two extras).
                             posterior-mean RMS/sigma_p; truth star
     fig_grid_fit.png        posterior-mean predicted vs observed pressure, 25 chains
     fig_grid_slice.png      posterior-mean log K along y=0.53 for 3 pairs + truth
-    fig_grid_traces.png     misfit traces of all 25 chains vs floor n_obs/2
+    fig_grid_traces.png     misfit traces of all 25 chains vs the noise floor E[Phi(truth)]
     fig_grid_theta_norm.png posterior mean ||theta||^2 / r per pair (the weak
                             prior penalty that the hierarchical model exploits)
     fig_grid_fields.png     posterior-mean log K maps for a 5x5 panel
@@ -81,7 +81,7 @@ def main():
     th = max(1, z["traces"].shape[1] // 400)
     for tr in z["traces"]:
         ax.semilogy(np.arange(0, len(tr), th), tr[::th], lw=0.6, alpha=0.6)
-    ax.axhline(floor, color="k", ls=":", label=rf"floor $n_{{obs}}/2={floor:.0f}$")
+    ax.axhline(floor, color="k", ls=":", label=(rf"noise floor $n_{{obs}}/2={floor:.0f}$" if prob.pc.likelihood == "absolute" else rf"noise floor $\Phi$(truth) $\approx {floor:.0f}$"))
     ax.axvline(n_burn, color="gray", ls="--", lw=1, label="end burn-in")
     ax.set_xlabel("pCN iteration"); ax.set_ylabel(r"$\Phi(\theta)$")
     ax.set_title(f"Misfit traces of the {len(beta)} chains"); ax.legend()

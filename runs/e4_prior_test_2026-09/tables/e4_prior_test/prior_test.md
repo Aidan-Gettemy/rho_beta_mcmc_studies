@@ -1,0 +1,3 @@
+| n_samples | frob_chain | frob_reference | gbar_sd_chain | gbar_sd_reference | w_mean | w_sd | w_mean_target | w_sd_target | ks_w_p | ks_gbar_p | prior_mass_above_rho_max |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 19200 | 0.05253 | 0.05576 | 0.2309 | 0.2273 | -0.04203 | 0.9529 | -0.04054 | 0.9546 | 0.08524 | 0.6671 | 0.01594 |
