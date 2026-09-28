@@ -292,3 +292,21 @@ aligned with c.  If the spectrum is flat, stop and rethink.
   worst 1.28, 22/57 above 1.2, spread over modes (theta-pCN pace).
 - E1 on the same truth: log beta PSRF 2.03, chain-mean spread 0.29 prior sd;
   relerr 0.0236 vs noise 0.0203.
+
+## 2026-09-28: spectrum check results (runs/e5_kle_2026-09, PR #30)
+- theta posterior widths (sqrt eig of pooled cov): 0.05 to 0.97 (E5), 0.05 to
+  1.08 (E1); smooth decay, no gap.  E1 and E5 spectra coincide (same theta
+  posterior) except E1's broadest direction.
+- Mixing: PSRF along each principal direction rises with its width (rank
+  corr. +0.89 E5, +0.85 E1); all directions above 1.2 have width > 0.7;
+  within-chain variance is ~0.65 of pooled in the 5 broadest, ~0.95 in the
+  20 tightest.  E1's worst direction (PSRF 1.74) is aligned with c (cos
+  0.88): the beta ridge.  In E5 the c-aligned direction has PSRF 1.13.
+- NOT as predicted: pCN step 0.012 is 1/4 of the narrowest marginal width,
+  and sum_k (s/sd_k)^2 = 0.44, far below ~5.7 for a Gaussian random walk at
+  25%.  The marginal covariance does not explain the step size.  Likely
+  reason: move A holds (beta, rho) fixed, and given them the data pin the
+  level direction (Gbar); marginally that direction is wide (0.72 = sd(log
+  beta) / (rho * 0.231)) because beta moves.  Consequence for E6: Gamma must
+  be the covariance of theta GIVEN (beta, rho), not the pooled covariance.
+  report_spectrum.py now estimates it (Schur complement); rerun to confirm.
