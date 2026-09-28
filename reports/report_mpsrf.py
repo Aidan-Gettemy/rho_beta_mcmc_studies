@@ -20,6 +20,7 @@ Writes, for each set, into figures/<exp>/ and tables/<exp>/:
     mpsrf_<set>.csv       iteration, MPSRF, max PSRF, PSRF of each component
     mpsrf_summary.json    convergence iterations and values at --at
 """
+import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
 import argparse
 import glob
 import os

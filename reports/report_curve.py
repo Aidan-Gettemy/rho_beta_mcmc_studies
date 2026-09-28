@@ -15,6 +15,7 @@ E3 figures and tables (method report Fig. 1 + finite-size diagnostics).
                             makes the constant-Keff set a band
     tables/e3_curve/curve_table.{md,csv}, curve_summary.json
 """
+import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
 import os
 import numpy as np
 import matplotlib.pyplot as plt

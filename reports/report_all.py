@@ -1,4 +1,5 @@
 """Run every report whose experiment has results, then the combined summary."""
+import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
 import report_setup
 import report_e1
 import report_mpsrf

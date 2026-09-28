@@ -9,6 +9,7 @@ single Markdown summary collecting every table.
         rho posterior (E4) vs prior, with the E2 grid rho values marked
     SUMMARY.md   (at BRHO_ROOT) - all tables/*.md + figure list
 """
+import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
 import glob
 import os
 import numpy as np
