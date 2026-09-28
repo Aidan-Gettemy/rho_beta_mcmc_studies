@@ -134,7 +134,9 @@ def main(argv=None):
     ax.fill_between(rr, np.exp(mm - ss), np.exp(mm + ss), color=P.C_BAND,
                     alpha=0.35, label=r"soft prior $\pm s(\rho)$")
     ax.plot(rr, np.exp(mm), color=P.C_CURVE, lw=1.5, label=r"$\bar\beta(\rho)$ (E3)")
-    ax.plot(rho_s, beta_s, ".", color=P.C_POST, ms=2, alpha=0.35, label="E5 posterior")
+    ax.plot(rho_s, beta_s, ".", color=P.C_POST, ms=2, alpha=0.35)
+    # proxy handle: the scatter's own marker (ms=2, alpha=0.35) is invisible in the legend
+    ax.plot([], [], "o", color=P.C_POST, ms=5, label="E5 posterior")
     P.truth_star(ax, syn.rho_true, syn.beta_true)
     ax.set_yscale("log"); ax.set_xlabel(r"$\rho$"); ax.set_ylabel(r"$\beta$")
     ax.set_xlim(0, min(curve.rho_max, max(3.5, rho_s.max() * 1.2)))

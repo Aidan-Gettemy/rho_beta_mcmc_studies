@@ -257,3 +257,23 @@ step of 0.010 (now 0.041).
 - MPSRF of all theta at equal work: E4 1.66 vs E1 2.17 (448k vs 400k solves);
   neither crosses 1.2.  E4: worst single PSRF 1.33 (21/57 above 1.2, spread
   over modes); E1: worst 1.87 (theta1), 5/57 above 1.2.
+
+## 2026-09-28: E5 on the cluster (runs/e5_kle_2026-09), truth_mode kle
+64 chains x 150k it. (30k burn), sigma_rel 2e-3, same budget as E4.
+- Prior test (likelihood off): w -0.041/0.954 (target -0.041/0.955), xi_b
+  -0.001/1.000, corr 0.002, |theta|^2/r 1.000, cov error 0.027 (direct 0.028).
+- rho 1.472 [1.23, 1.78] (truth 1.5), PSRF 1.024, ESS 3840.
+- beta 2.15 [1.43, 3.23] (truth 2.3), PSRF 1.007, ESS 38800; sd(log beta)
+  0.247 = the prediction from theta prior (0.32) + soft prior (0.377)
+  combined: 1/sqrt(1/0.32^2 + 1/0.377^2) = 0.244.
+- level 0.864 [0.74, 0.94] (truth 0.835), PSRF 1.16, ESS 660: a few chains
+  make slow excursions to 0.55-0.6 (the theta-limited direction).
+- mean Phi 70 vs floor 52 (+ r/2 at most); log K pointwise 90% coverage 94.6%
+  (82% with the full-rank truth): no truncation floor any more.
+- Acceptance A/B/C/D 0.25/0.26/0.46/0.46; steps 0.012/0.041/0.20/0.50.
+- MPSRF of all theta at equal work (MATLAB convention): E5 1.56 at 448k
+  solves vs E1 (same truth) 2.05 at 400k; neither crosses 1.2.  E1 worst
+  components log beta 1.96, theta1 1.85, theta5 1.56 (the beta ridge); E5
+  worst 1.28, 22/57 above 1.2, spread over modes (theta-pCN pace).
+- E1 on the same truth: log beta PSRF 2.03, chain-mean spread 0.29 prior sd;
+  relerr 0.0236 vs noise 0.0203.
