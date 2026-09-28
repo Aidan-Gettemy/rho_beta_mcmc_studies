@@ -152,3 +152,19 @@ Quick (`--quick`) smoke runs are not logged; they go to `runs/quick/`, which git
 2. Curve statistic: `ratio_of_mean` (default) or `mean_of_ratio`
 3. Accepted: the ridge move costs one solve with the curve (3 solves per iteration)
 4. Accepted: the ρ prior is truncated at the curve range, ρ ≤ 5 (1.6% of prior mass)
+
+## 2026-09-27: MPSRF / PSRF of all theta (MATLAB convention)
+- `brho/mpsrf.py` ports getMSPRF (MPSRF; PSRF = worst component) and the
+  crossing read-out (first point after the first 10 with MPSRF < 1.2,
+  linearly interpolated).  `reports/report_mpsrf.py` draws the curves for
+  theta (r dims) and (theta, log beta, log rho), and runs at the end of the
+  E1 job and in report_all.
+- Curve exactly as computeMPSRFcurve: points at thinned counts
+  k = step + iter_burn : step : n, window iter_burn : skip : k (growing,
+  starts at sample iter_burn, every skip-th sample); x = k * thinning.
+  With thin = 200, the default iter_burn = 10 drops only the first 2000
+  iterations; the E1 adaptation runs to 20000 (use --iter-burn 100 to drop it).
+- E1 blocked run 2026-09 (64 chains, 200k it., r = 57): log beta PSRF 2.10,
+  rho 1.21, level 1.15, amplitude 1.11; chains settle at relerr 0.0253 vs
+  noise 0.0196 (KLE truncation: the full-rank truth has 5.5% of its energy
+  outside the 57 modes).  Kept: full-rank truth, 95% energy.
