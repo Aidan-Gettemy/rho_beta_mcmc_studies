@@ -92,6 +92,22 @@ sbatch cluster/slurm/node_e4_sampler.sbatch     # E4: 64 chains (after E3)
 RESUME=1 sbatch cluster/slurm/node_e4_sampler.sbatch   # continue after a time limit
 ```
 
+### E5 study: beta free, truth in the KLE (decided 2026-09-28, see LOG.md)
+
+Its own study folder, and `--truth-mode kle` in EVERY step (E3 first: K*
+comes from the truth, and E5 refuses a curve built under another truth):
+
+```bash
+export BRHO_ROOT=$PWD/runs/cluster_kle
+export PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3"
+sbatch cluster/slurm/node_e3_curve.sbatch                       # curve for this truth
+PRIOR_TEST=1 sbatch cluster/slurm/node_e5_soft.sbatch           # likelihood off
+sbatch cluster/slurm/node_e5_soft.sbatch                        # E5: 64 chains
+MOVE=blocked sbatch cluster/slurm/mpi_e1_naive.sbatch           # E1 on the same truth
+```
+(sbatch passes BRHO_ROOT and PROBLEM_ARGS into the job; env.sh only fills
+them in when they are unset.)
+
 Numba: each node job compiles once in its setup step into a node-local cache
 (`NUMBA_CACHE_DIR=/tmp/numba_cache_$SLURM_JOB_ID`). The ranks then load the
 compiled kernel instead of compiling 64 times at once.

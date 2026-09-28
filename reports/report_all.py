@@ -7,10 +7,12 @@ import report_grid
 import report_curve
 import report_prior_test
 import report_sampler
+import report_soft
+import report_soft_prior_test
 import report_combined
 
 if __name__ == "__main__":
     for mod in (report_setup, report_e1, report_mpsrf, report_grid, report_curve, report_prior_test,
-                report_sampler, report_combined):
+                report_sampler, report_soft, report_soft_prior_test, report_combined):
         print(f"== {mod.__name__}")
-        mod.main([]) if mod in (report_e1, report_mpsrf) else mod.main()
+        mod.main([]) if mod in (report_e1, report_mpsrf, report_soft) else mod.main()

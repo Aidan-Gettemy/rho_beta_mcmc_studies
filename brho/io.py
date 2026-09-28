@@ -29,6 +29,8 @@ EXP_GRID = "e2_grid"
 EXP_CURVE = "e3_curve"
 EXP_SAMPLER = "e4_sampler"
 EXP_PRIOR = "e4_prior_test"
+EXP_SOFT = "e5_soft"             # E5: soft curve prior, beta free
+EXP_SOFT_PRIOR = "e5_prior_test"
 EXP_SETUP = "setup"
 
 

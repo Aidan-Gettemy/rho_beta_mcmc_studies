@@ -59,3 +59,10 @@ export E3_ARGS="${E3_ARGS:-}"                      # e.g. "--n-real 512 --n-rho 
 # single-node launcher node_e4_sampler.sbatch defaults to one per rank.
 export E4_CHAINS="${E4_CHAINS:-}"
 export E4_ARGS="${E4_ARGS:---n-total 51000 --n-burn 15000 --thin 30}"
+# E5 (beta free, soft curve prior, moves A-D).  Main study (2026-09-28): truth
+# drawn in the truncated KLE -> use its own study folder and add
+# "--truth-mode kle" to PROBLEM_ARGS for EVERY step of that study (E3 first):
+#   export BRHO_ROOT=$PWD/runs/cluster_kle
+#   export PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3"
+export E5_CHAINS="${E5_CHAINS:-}"                  # empty: one chain per rank
+export E5_ARGS="${E5_ARGS:---n-total 150000 --n-burn 30000 --thin 100}"   # = E4 budget

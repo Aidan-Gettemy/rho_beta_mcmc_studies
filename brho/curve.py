@@ -62,6 +62,10 @@ class BetaCurve:
         x = np.concatenate([[0.0], self.rhos])
         y = np.concatenate([[0.0], np.log(f)])        # anchor f(0) = 1
         self._logf = PchipInterpolator(x, y, extrapolate=False)
+        # realization scatter of log Keff (= of log beta_i), anchored at 0 for rho = 0
+        sd = np.log(self.keff1).std(-1, ddof=1)
+        self._logsd = PchipInterpolator(x, np.concatenate([[0.0], sd]),
+                                        extrapolate=False)
 
     # ------------------------------------------------------------ evaluate
     def f(self, rho):
@@ -70,6 +74,12 @@ class BetaCurve:
     def beta_bar(self, rho, Kstar):
         """NaN outside [0, rho_max] (the sampler treats that as rejection)."""
         return Kstar / self.f(rho)
+
+    def log_scatter(self, rho):
+        """sd_i of log beta_i(rho) = sd_i of log Keff_i(rho) (E3 realizations);
+        NaN outside [0, rho_max].  The soft curve prior (E5) uses
+        s(rho)^2 = log_scatter(rho)^2 + sigma_e^2 (report.pdf, Remark 3)."""
+        return self._logsd(rho)
 
     def band(self, Kstar):
         """Per-grid-point statistics of the beta_i sample (for plots/tables)."""
