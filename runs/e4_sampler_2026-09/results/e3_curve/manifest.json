@@ -1,0 +1,95 @@
+{
+ "experiment": "e3_curve",
+ "time": "2026-09-27 21:34:22",
+ "argv": [
+  "experiments/run_beta_curve.py",
+  "--truth-mode",
+  "standardized",
+  "--sigma_rel",
+  "2e-3",
+  "--n-real",
+  "1024",
+  "--n-rho",
+  "40"
+ ],
+ "python": "3.11.15",
+ "numpy": "1.26.4",
+ "configs": {
+  "ProblemConfig": {
+   "n": 32,
+   "ell": 0.1,
+   "energy": 0.95,
+   "kernel": "sqexp",
+   "kle_method": "auto",
+   "kle_nq": 40,
+   "kle_quadrature": "gauss_legendre",
+   "q_in": 1.0,
+   "solver": "auto",
+   "backend": "auto",
+   "beta_true": 2.3,
+   "rho_true": 1.5,
+   "truth_mode": "standardized",
+   "truth_seed": 2026,
+   "noise_rel": 0.01,
+   "sigma_e": 0.05,
+   "likelihood": "relative",
+   "sigma_rel": 0.002,
+   "rel_eps": 0.02,
+   "rel_n_eff": 128.0
+  },
+  "CurveConfig": {
+   "rho_min": 0.05,
+   "rho_max": 5.0,
+   "n_rho": 40,
+   "n_real": 1024,
+   "field": "kle",
+   "statistic": "ratio_of_mean",
+   "seed": 99
+  }
+ },
+ "minutes": 2.551134546597799,
+ "r": 57,
+ "kle_key": {
+  "v": 1,
+  "grid": [
+   32,
+   32
+  ],
+  "kernel": "sqexp",
+  "ell": 0.1,
+  "energy": 0.95,
+  "method": "dense"
+ },
+ "kle": {
+  "method": "dense",
+  "r": 57,
+  "energy": 0.9516350366489337,
+  "total": 1023.9999999999998
+ },
+ "likelihood": {
+  "likelihood": "relative",
+  "noise_floor": 47.95928888382515,
+  "data_norm": 6.650142021128811,
+  "sigma_rel": 0.002,
+  "eps_at_n_eff": {
+   "n_eff": 128.0,
+   "eps": 0.022627416997969524
+  },
+  "weight_vs_absolute": 0.187340972202442
+ },
+ "Kstar": 1.9949341170501156,
+ "truth": {
+  "mode": "standardized",
+  "beta_true": 2.3,
+  "rho_true": 1.5,
+  "n_obs": 512,
+  "sigma_p": 0.005756749086700425,
+  "sigma_e": 0.05,
+  "keff_true": 1.9906862938401289,
+  "keff_obs": 1.9949341170501156,
+  "level_true": 0.8329091229351038,
+  "Gbar": 1.3877787807814457e-17,
+  "G_std": 1.0,
+  "noise_rel": 0.019587606057673335
+ }
+}

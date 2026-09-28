@@ -1,0 +1,126 @@
+{
+ "experiment": "e4_sampler",
+ "time": "2026-09-28 08:36:46",
+ "argv": [
+  "experiments/run_curve_sampler.py",
+  "--setup-only",
+  "--n-chains",
+  "64",
+  "--prior-test",
+  "0",
+  "--truth-mode",
+  "standardized",
+  "--sigma_rel",
+  "2e-3",
+  "--n-total",
+  "150000",
+  "--n-burn",
+  "30000",
+  "--thin",
+  "100"
+ ],
+ "python": "3.11.15",
+ "numpy": "1.26.4",
+ "configs": {
+  "ProblemConfig": {
+   "n": 32,
+   "ell": 0.1,
+   "energy": 0.95,
+   "kernel": "sqexp",
+   "kle_method": "auto",
+   "kle_nq": 40,
+   "kle_quadrature": "gauss_legendre",
+   "q_in": 1.0,
+   "solver": "auto",
+   "backend": "auto",
+   "beta_true": 2.3,
+   "rho_true": 1.5,
+   "truth_mode": "standardized",
+   "truth_seed": 2026,
+   "noise_rel": 0.01,
+   "sigma_e": 0.05,
+   "likelihood": "relative",
+   "sigma_rel": 0.002,
+   "rel_eps": 0.02,
+   "rel_n_eff": 128.0
+  },
+  "SamplerConfig": {
+   "n_chains": 64,
+   "n_total": 150000,
+   "n_burn": 30000,
+   "thin": 100,
+   "chunk": 5000,
+   "mu_rho": 0.0,
+   "s_rho": 0.75,
+   "s_init": [
+    0.15,
+    0.2,
+    0.2
+   ],
+   "targets": [
+    0.25,
+    0.25,
+    0.45
+   ],
+   "adapt_every": 100,
+   "adapt_factor": 1.12,
+   "use_keff_term": false,
+   "init": "prior",
+   "seed0": 101,
+   "seed_scheme": "spawn",
+   "n_workers": 4,
+   "prior_test": false,
+   "trace_every": 1
+  }
+ },
+ "r": 57,
+ "Kstar": 1.9949341170501156,
+ "kle_key": {
+  "v": 1,
+  "grid": [
+   32,
+   32
+  ],
+  "kernel": "sqexp",
+  "ell": 0.1,
+  "energy": 0.95,
+  "method": "dense"
+ },
+ "kle": {
+  "method": "dense",
+  "r": 57,
+  "energy": 0.9516350366489337,
+  "total": 1023.9999999999998
+ },
+ "likelihood": {
+  "likelihood": "relative",
+  "noise_floor": 47.95928888382515,
+  "data_norm": 6.650142021128811,
+  "sigma_rel": 0.002,
+  "eps_at_n_eff": {
+   "n_eff": 128.0,
+   "eps": 0.022627416997969524
+  },
+  "weight_vs_absolute": 0.187340972202442
+ },
+ "curve": {
+  "source": "/scratch/ganymede2/arg210006/rho_beta_mcmc_studies/runs/cluster/results/e3_curve/curve_kle.npz",
+  "statistic": "ratio_of_mean",
+  "rho_max": 5.0
+ },
+ "truth": {
+  "mode": "standardized",
+  "beta_true": 2.3,
+  "rho_true": 1.5,
+  "n_obs": 512,
+  "sigma_p": 0.005756749086700425,
+  "sigma_e": 0.05,
+  "keff_true": 1.9906862938401289,
+  "keff_obs": 1.9949341170501156,
+  "level_true": 0.8329091229351038,
+  "Gbar": 1.3877787807814457e-17,
+  "G_std": 1.0,
+  "noise_rel": 0.019587606057673335
+ },
+ "status": "set up"
+}
