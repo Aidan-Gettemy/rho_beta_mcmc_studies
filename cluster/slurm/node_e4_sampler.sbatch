@@ -42,4 +42,6 @@ srun --ntasks="$SLURM_NTASKS" --cpu-bind=cores --output="logs/brho-e4-%j-rank%t.
 
 python experiments/run_curve_sampler.py --status --prior-test "$PT" || true
 if [[ "$PT" == 1 ]]; then python reports/report_prior_test.py
-else python reports/report_sampler.py && python reports/report_combined.py; fi
+else python reports/report_sampler.py && python reports/report_combined.py
+     python reports/report_mpsrf.py        # MPSRF/PSRF, MATLAB style; E1 vs E4 if E1 is here
+fi

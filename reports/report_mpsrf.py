@@ -13,6 +13,14 @@ window from sample iter_burn); the x axis is k * thinning.  Two parameter sets:
     theta   all r KLE coefficients
     all     (theta, log beta, log rho)  = the whole sampled state up to an
             affine map (MPSRF is invariant to those)
+Runs: e1_blocked, e1_global (E1) and e4_sampler (E4).  For E4, beta =
+beta_bar(rho) is not a free parameter, so its "all" set is (theta, log rho),
+and its samples start after burn-in (the sampler keeps only those).
+With E1 and E4 both present, figures/mpsrf_compare/ adds
+    fig_mpsrf_compare_theta.png   MPSRF of all theta, every run on one axis
+    fig_psrf_compare_theta.png    worst-component PSRF of theta, same
+with x = PDE solves per chain (E1 blocked 2 per iteration, global 1, E4 3),
+so equal x means equal work; tables/mpsrf_compare/mpsrf_compare.json.
 Writes, for each set, into figures/<exp>/ and tables/<exp>/:
     fig_mpsrf_<set>.png   MPSRF vs iteration: y = 1, y = 1.2, crossing marked
     fig_psrf_<set>.png    max-over-components PSRF vs iteration, and the final
@@ -32,21 +40,44 @@ from _common import io
 from brho import mpsrf as M
 
 
-def load_kept(exp, n_chains=None):
+def _chain_paths(exp, n_chains=None):
     paths = sorted(glob.glob(os.path.join(io.results_dir(exp), "chain*.npz")),
                    key=lambda p: int(os.path.basename(p)[5:-4]))
     if not paths:
         raise FileNotFoundError(f"no chain files in {io.results_dir(exp)}")
-    if n_chains:
-        paths = paths[:n_chains]
+    return paths[:n_chains] if n_chains else paths
+
+
+def load_kept(exp, n_chains=None):
+    """Thinned samples of one run in a common form.
+
+    E1 (e1_blocked / e1_global): kept from iteration 0 (burn-in included);
+        sets theta and all = (theta, log beta, log rho); 2 / 1 solves per it.
+    E4 (e4_sampler): kept after burn-in only (the sampler's own layout);
+        beta = beta_bar(rho) is not a free parameter, so all = (theta, log rho);
+        3 solves per iteration."""
+    paths = _chain_paths(exp, n_chains)
     zs = [np.load(p) for p in paths]
-    L = min(len(z["kept_it"]) for z in zs)
-    theta = np.stack([z["kept_theta"][:L] for z in zs])            # (m, L, r)
-    lb = np.stack([z["kept_logbeta"][:L] for z in zs])
-    rho = np.stack([z["kept_rho"][:L] for z in zs])
-    its = np.asarray(zs[0]["kept_it"][:L])
-    return dict(theta=theta, all=np.concatenate(
-        [theta, lb[..., None], np.log(rho)[..., None]], axis=2)), its, len(paths)
+    if "kept_it" in zs[0].files:                                   # E1
+        L = min(len(z["kept_it"]) for z in zs)
+        theta = np.stack([z["kept_theta"][:L] for z in zs])
+        lb = np.stack([z["kept_logbeta"][:L] for z in zs])
+        lr = np.log(np.stack([z["kept_rho"][:L] for z in zs]))
+        its = np.asarray(zs[0]["kept_it"][:L])
+        move = str(zs[0]["move"]) if "move" in zs[0].files else "global"
+        full = np.concatenate([theta, lb[..., None], lr[..., None]], axis=2)
+        return dict(sets=dict(theta=theta, all=full),
+                    extra=dict(theta=[], all=["logβ", "logρ"]),
+                    its=its, m=len(paths), solves=2 if move == "blocked" else 1,
+                    label=f"E1 naive pCN ({move})")
+    L = min(len(z["kept_theta"]) for z in zs)                      # E4
+    theta = np.stack([z["kept_theta"][:L] for z in zs])
+    lr = np.log(np.stack([z["kept_rho"][:L] for z in zs]))
+    sc = io.read_manifest(exp)["configs"]["SamplerConfig"]
+    its = sc["n_burn"] + sc["thin"] * np.arange(L)
+    return dict(sets=dict(theta=theta, all=np.concatenate([theta, lr[..., None]], axis=2)),
+                extra=dict(theta=[], all=["logρ"]),
+                its=its, m=len(paths), solves=3, label="E4 3-step curve sampler")
 
 
 def style(ax, fs=20):
@@ -104,11 +135,11 @@ def fig_psrf(x, psrf_max, psrf_final, conv, level, names, title, path):
     ax[1].bar(idx, psrf_final, color=np.where(psrf_final > level, "#c44", "#48a"))
     ax[1].axhline(1.0, color="r", lw=2)
     ax[1].axhline(level, color="r", ls=":", lw=2)
-    n = len(idx) - (2 if names is not None else 0)          # theta components
-    ticks = list(range(0, n, 5)) + ([n, n + 1] if names is not None else [])
+    extra = names or []                                      # names after theta
+    n = len(idx) - len(extra)                                # theta components
+    ticks = list(range(0, n, 5)) + list(range(n, n + len(extra)))
     ax[1].set_xticks(ticks)
-    ax[1].set_xticklabels([f"θ{t + 1}" for t in ticks[:len(range(0, n, 5))]]
-                          + (["logβ", "logρ"] if names is not None else []),
+    ax[1].set_xticklabels([f"θ{t + 1}" for t in range(0, n, 5)] + extra,
                           rotation=60, fontsize=12)
     top = max(5.0, 1.05 * float(np.max(psrf_final)))
     ax[1].set_ylim(0, top)
@@ -126,12 +157,16 @@ def fig_psrf(x, psrf_max, psrf_final, conv, level, names, title, path):
 
 def run(exp, n_chains=None, skip=2, step=15, iter_burn=10, level=1.2, at=4900,
         dispiter=10):
-    sets, its, m = load_kept(exp, n_chains)
+    run_ = load_kept(exp, n_chains)
+    sets, its, m = run_["sets"], run_["its"], run_["m"]
     thin = int(its[1] - its[0]) if len(its) > 1 else 1
+    curves = {}
     fdir, tdir = io.figures_dir(exp), io.tables_dir(exp)
     print(f"{exp}: {m} chains, {len(its)} thinned samples each (thinning {thin})")
     print(f"Thinning {thin}: skip {skip}, step {step}, iter burn {iter_burn}")
-    summary = dict(exp=exp, n_chains=m, n_samples=len(its), thinning=thin,
+    summary = dict(exp=exp, label=run_["label"], n_chains=m, n_samples=len(its),
+                   thinning=thin, first_kept_iteration=int(its[0]),
+                   solves_per_iteration=run_["solves"],
                    skip=skip, step=step, iter_burn=iter_burn, level=level)
     for name, arr in sets.items():
         r = arr.shape[2]
@@ -145,13 +180,15 @@ def run(exp, n_chains=None, skip=2, step=15, iter_burn=10, level=1.2, at=4900,
         conv = M.convergence_iteration(x, cur["mpsrf"], level)
         conv_p = M.convergence_iteration(x, cur["psrf"], level)
         j = int(np.searchsorted(x, at)) if x.max() >= at else len(x) - 1
-        labels = ([f"θ{i + 1}" for i in range(r - 2)] + ["logβ", "logρ"]
-                  if name == "all" else None)
+        extra = run_["extra"][name]
+        labels = ([f"θ{i + 1}" for i in range(r - len(extra))] + extra) if extra else None
         what = (f"all {r} KLE coefficients θ" if name == "theta"
-                else f"(θ, log β, log ρ), {r} dims")
+                else f"(θ, {', '.join(e.replace('log', 'log ') for e in extra)}), {r} dims")
         fig_mpsrf(x, cur["mpsrf"], conv, level, f"MPSRF vs Iteration: {what}, {m} chains",
                   os.path.join(fdir, f"fig_mpsrf_{name}.png"))
-        fig_psrf(x, cur["psrf"], cur["psrf_i"][-1], conv_p, level, labels,
+        curves[name] = dict(x=x, mpsrf=cur["mpsrf"], psrf=cur["psrf"], conv=conv,
+                            conv_psrf=conv_p, dim=r)
+        fig_psrf(x, cur["psrf"], cur["psrf_i"][-1], conv_p, level, extra,
                  f"PSRF: {what}, {m} chains", os.path.join(fdir, f"fig_psrf_{name}.png"))
         head = "iteration,mpsrf,psrf_max," + ",".join(
             labels or [f"theta{i + 1}" for i in range(r)])
@@ -172,14 +209,68 @@ def run(exp, n_chains=None, skip=2, step=15, iter_burn=10, level=1.2, at=4900,
               f"[{name}] While at iteration {int(x[j])} MPSRF = {cur['mpsrf'][j]:.4f}, "
               f"max PSRF = {cur['psrf'][j]:.4f}; final MPSRF = {cur['mpsrf'][-1]:.4f}")
     io.save_json(os.path.join(tdir, "mpsrf_summary.json"), summary)
-    return summary
+    return dict(summary=summary, curves=curves, solves=run_["solves"],
+                label=run_["label"], m=m)
+
+
+COLORS = {"e1_blocked": "#c0392b", "e1_global": "#e67e22", "e4_sampler": "#1f5fa8"}
+
+
+def compare(results, level=1.2):
+    """E1 vs E4 on the same axes, MATLAB style, x = PDE solves per chain
+    (E1 blocked: 2 per iteration, E1 global: 1, E4: 3), so equal x = equal work."""
+    exp = "mpsrf_compare"
+    fdir, tdir = io.figures_dir(exp), io.tables_dir(exp)
+    table = {}
+    for name, key, ylab, title in (
+            ("theta", "mpsrf", r"$\hat{R}$", "MPSRF of all θ"),
+            ("theta", "psrf", r"$\max_i \hat{R}_i$", "worst-component PSRF of θ")):
+        f, ax = plt.subplots(figsize=(11, 8))
+        xmax = 0.0
+        for e, res in results.items():
+            c = res["curves"].get(name)
+            if c is None:
+                continue
+            xs = c["x"] * res["solves"]
+            conv = c["conv"] if key == "mpsrf" else c["conv_psrf"]
+            conv_s = None if conv is None else conv * res["solves"]
+            lab = (f"{res['label']}, {res['m']} chains: "
+                   + ("no crossing" if conv_s is None else f"{int(conv_s):,} solves")
+                   + f" (final {abs(c[key][-1]):.2f})")
+            col = COLORS.get(e)
+            ax.plot(xs, np.abs(c[key]), lw=2.5, color=col, label=lab)
+            if conv_s is not None:
+                ax.plot([conv_s, conv_s], [0, level], "--", lw=3, color=col)
+                ax.scatter([conv_s], [level], color=col, zorder=5, s=60)
+            xmax = max(xmax, float(np.nanmax(xs)))
+            table.setdefault(e, {})[key] = dict(
+                convergence_iteration=conv, convergence_solves=conv_s,
+                final=float(np.abs(c[key])[-1]),
+                final_solves=float(xs[-1]), dim=c["dim"])
+        ax.axhline(1.0, color="r", ls="-", lw=3, label="y=1.0")
+        ax.axhline(level, color="r", ls=":", lw=3, label=f"y={level:g}")
+        ax.set_ylim(0, 5)
+        ax.set_xlim(0, xmax)
+        ax.set_xlabel("PDE solves per chain")
+        ax.set_ylabel(ylab)
+        ax.set_title(f"{title}: E1 vs E4 at equal work")
+        ax.legend(fontsize=15, loc="upper right")
+        style(ax)
+        f.tight_layout()
+        path = os.path.join(fdir, f"fig_{key}_compare_theta.png")
+        f.savefig(path, dpi=150)
+        plt.close(f)
+        print(f"  wrote {os.path.relpath(path, io.root())}")
+    io.save_json(os.path.join(tdir, "mpsrf_compare.json"), table)
+    return table
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--exp", default=None,
-                    help="run folder, e.g. e1_blocked, e1_global (default: every E1 run)")
+                    help="run folder, e.g. e1_blocked, e1_global, e4_sampler "
+                         "(default: every run present, plus the E1-vs-E4 comparison)")
     ap.add_argument("--chains", type=int, default=None, help="use the first N chains")
     ap.add_argument("--skip", type=int, default=2)
     ap.add_argument("--step", type=int, default=15)
@@ -188,10 +279,14 @@ def main(argv=None):
     ap.add_argument("--at", type=float, default=4900,
                     help="also report the values at this iteration")
     a = ap.parse_args(argv)
-    exps = [a.exp] if a.exp else [e for e in (io.exp_e1("blocked"), io.exp_e1("global"))
-                                  if glob.glob(os.path.join(io.results_dir(e), "chain*.npz"))]
+    exps = [a.exp] if a.exp else [
+        e for e in (io.exp_e1("blocked"), io.exp_e1("global"), io.EXP_SAMPLER)
+        if glob.glob(os.path.join(io.results_dir(e), "chain*.npz"))]
+    results = {}
     for e in exps:
-        run(e, a.chains, a.skip, a.step, a.iter_burn, a.level, a.at)
+        results[e] = run(e, a.chains, a.skip, a.step, a.iter_burn, a.level, a.at)
+    if not a.exp and any(e.startswith("e1") for e in results) and io.EXP_SAMPLER in results:
+        compare(results, a.level)
 
 
 if __name__ == "__main__":
