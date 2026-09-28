@@ -28,13 +28,15 @@ class Synthetic:
     level_true: float          # spatial mean of log K_true
     Gbar: float                # spatial mean of G_true
     G_std: float               # spatial std of G_true
+    theta_true: np.ndarray = None   # truth_mode "kle" only: KLE coordinates
 
     @property
     def n_obs(self):
         return int(self.obs_mask.sum())
 
     def save(self, path):
-        np.savez_compressed(path, **{k: np.asarray(v) for k, v in asdict(self).items()})
+        np.savez_compressed(path, **{k: np.asarray(v) for k, v in asdict(self).items()
+                                     if v is not None})
 
     @classmethod
     def load(cls, path):
@@ -47,7 +49,11 @@ class Synthetic:
         return cls(**kw)
 
     def summary(self):
-        return dict(mode=self.mode, beta_true=self.beta_true,
+        extra = {}
+        if self.theta_true is not None:
+            extra = dict(theta_norm2_over_r=float(self.theta_true @ self.theta_true
+                                                  / len(self.theta_true)))
+        return dict(**extra, mode=self.mode, beta_true=self.beta_true,
                     rho_true=self.rho_true, n_obs=self.n_obs,
                     sigma_p=self.sigma_p, sigma_e=self.sigma_e,
                     keff_true=self.keff_true, keff_obs=self.keff_obs,
@@ -56,11 +62,30 @@ class Synthetic:
                     noise_rel=float(self.sigma_p * np.sqrt(self.n_obs) / np.linalg.norm(self.d_p)))
 
 
-def make_synthetic(phys, full, pc):
-    """full: kle.FullRankGaussian on the cells (exact Cholesky draw)."""
+def make_synthetic(phys, full, pc, kle=None):
+    """full: kle.FullRankGaussian on the cells (exact Cholesky draw).
+    truth_mode "kle": the "standardized" truth (the E1-E4 field) projected
+    onto the span of the truncated KLE `kle` (the samplers' own basis):
+    theta_true = T^+ G_std, G = T theta_true.  It is the E1-E4 field minus its
+    small-scale part (spatial mean ~0, sd ~0.97), so (beta, rho) are still
+    what the data see, and it lies exactly in the sampler's space.
+    truth_mode "kle_raw": the raw full-rank draw projected instead; since the
+    KLE modes are eigenvectors of C this is exactly theta_true ~ N(0, I_r), a
+    draw from the sampler's prior, with its own nonzero spatial mean.
+    Projecting (rather than drawing theta directly) keeps both independent of
+    how eigh rotates tied modes (BLAS threads, machine)."""
     rng = np.random.default_rng(pc.truth_seed)
+    theta_true = None
     G_raw = full.sample(rng)
-    if pc.truth_mode == "standardized":
+    if pc.truth_mode in ("kle", "kle_raw"):
+        if kle is None:
+            raise ValueError(f'truth_mode "{pc.truth_mode}" needs the KLE basis')
+        src = ((G_raw - G_raw.mean()) / G_raw.std() if pc.truth_mode == "kle"
+               else G_raw)
+        theta_true = kle.project(src)
+    if theta_true is not None:
+        G = kle.field(theta_true)
+    elif pc.truth_mode == "standardized":
         G = (G_raw - G_raw.mean()) / G_raw.std()
     elif pc.truth_mode == "raw":
         G = G_raw.copy()
@@ -77,6 +102,7 @@ def make_synthetic(phys, full, pc):
                      rho_true=pc.rho_true, G_raw=G_raw, G_true=G,
                      logK_true=logK, K_true=K, p_true=p,
                      obs_mask=phys.obs_mask.copy(), d_p=d_p,
+                     theta_true=theta_true,
                      sigma_p=float(sigma_p), sigma_e=pc.sigma_e,
                      keff_true=float(keff_true), keff_obs=float(keff_obs),
                      level_true=float(logK.mean()), Gbar=float(G.mean()),

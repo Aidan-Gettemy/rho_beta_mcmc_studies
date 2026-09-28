@@ -168,3 +168,82 @@ def test_old_manifests_keep_absolute_likelihood():
     assert C.from_dict(C.ProblemConfig, old).likelihood == "absolute"
     new = C.to_dict(C.ProblemConfig())["ProblemConfig"]
     assert C.from_dict(C.ProblemConfig, new).likelihood == "relative"
+
+
+def test_truth_kle_mode_is_a_draw_in_the_basis():
+    """truth_mode "kle": the true G lies exactly in the sampler's KLE span
+    (no truncation floor), is not standardized, and carries theta_true."""
+    p = prob("kle")
+    syn, kle = p.syn, p.kle
+    assert syn.theta_true is not None and len(syn.theta_true) == p.r
+    assert np.allclose(kle.field(syn.theta_true), syn.G_true)
+    th = kle.project(syn.G_true)
+    assert np.linalg.norm(kle.field(th) - syn.G_true) < 1e-8 * np.linalg.norm(syn.G_true)
+    assert np.allclose(syn.logK_true, np.log(2.3) + 1.5 * syn.G_true)
+    assert "theta_norm2_over_r" in syn.summary()
+    # "kle" = the standardized truth projected: nearly the same field
+    q = prob()
+    assert abs(syn.G_true.mean()) < 0.05
+    assert np.linalg.norm(syn.G_true - q.syn.G_true) < 0.5 * np.linalg.norm(q.syn.G_true)
+
+
+def _soft_curve():
+    """A curve whose realization scatter grows with rho (exercises s(rho))."""
+    rng = np.random.default_rng(3)
+    rhos = np.linspace(0.05, 5, 12)
+    z = rng.standard_normal(64)
+    keff1 = np.exp(-0.4 * rhos[:, None] ** 2 + 0.3 * rhos[:, None] * z[None, :])
+    return BetaCurve(rhos, keff1)
+
+
+def test_soft_sampler_prior_invariance():
+    """E5 with Phi = 0 must sample the prior exactly: theta ~ N(0, I),
+    w ~ N(0,1) truncated at rho_max, xi_b = (log beta - m(rho))/s(rho) ~ N(0,1),
+    independent.  Checks the ridge Jacobian with a rho-dependent s(rho) and
+    the level-swap move (moves C and D carry all the non-pCN terms)."""
+    from brho.samplers import SoftCurveSampler
+    p = prob()
+    # small B step and a ridge step ~ 1/sqrt(r): C does much of the w-moving,
+    # so an error in its ratio shows up in the law of (w, xi_b)
+    cfg = replace(C.SoftSamplerConfig(), prior_test=True,
+                  s_init=(0.5, 0.3, 0.12, 0.6))
+    s = SoftCurveSampler(p, _soft_curve(), cfg)
+    rng = np.random.default_rng(2)
+    st = s.init_state(rng)
+    ad = StepAdapter(cfg.s_init, targets=cfg.targets, every=10 ** 9)
+    th, w, xi = [], [], []
+    for it in range(60000):
+        s.step(st, ad, rng)
+        if it > 2000 and it % 5 == 0:
+            th.append(st["theta"].copy()); w.append(st["w"])
+            xi.append(s.extra_traces(st)["xi_b"])
+    th, w, xi = np.array(th), np.array(w), np.array(xi)
+    frob = np.linalg.norm(np.cov(th.T) - np.eye(p.r)) / np.sqrt(p.r)
+    assert frob < 0.15, frob
+    assert abs(np.mean((th ** 2).sum(1)) / p.r - 1) < 0.05
+    assert abs(np.mean(w) + 0.041) < 0.08 and abs(np.std(w) - 0.955) < 0.04
+    # tolerance 0.05 on sd(xi_b): dropping the curve-prior ratio from move C
+    # gives 1.07, from move D 1.2 (checked by mutation)
+    assert abs(np.mean(xi)) < 0.06 and abs(np.std(xi) - 1) < 0.05, (xi.mean(), xi.std())
+    assert abs(np.corrcoef(w, xi)[0, 1]) < 0.08
+    acc = ad.acc  # not reset (every=1e9): acceptance counts of the 4 moves
+    assert all(a > 0 for a in acc)
+
+
+def test_soft_sampler_moves_c_and_d_preserve_logK():
+    """C leaves log K exactly unchanged; D changes it only by the part of the
+    constant field outside the KLE span."""
+    from brho.samplers import SoftCurveSampler
+    p = prob()
+    s = SoftCurveSampler(p, _soft_curve(), C.SoftSamplerConfig())
+    rng = np.random.default_rng(0)
+    th, w, lb = rng.standard_normal(p.r), 0.3, 0.7
+    rho = s.rho(w)
+    logK = lb + rho * p.kle.field(th)
+    eta = 0.2
+    logK_c = lb + s.rho(w + eta / s.cfg.s_rho) * p.kle.field(np.exp(-eta) * th)
+    assert np.allclose(logK_c, logK)
+    d = 0.3
+    logK_d = lb + d + rho * p.kle.field(th - d / rho * s.c)
+    assert np.sqrt(np.mean((logK_d - logK) ** 2)) <= d * (s.c_resid + 1e-12) * 1.0001
+    assert s.c_resid < 0.1

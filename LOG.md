@@ -193,3 +193,54 @@ Quick (`--quick`) smoke runs are not logged; they go to `runs/quick/`, which git
 - Link to E1: MPSRF(theta) final 2.17 (never below 1.2); worst PSRFs are
   theta1 (1.87) and theta5 (1.63), the modes that carry the spatial mean,
   i.e. the ones that absorb a change of log beta.
+
+## 2026-09-28: DECISIONS after E4, and E5 (beta free, soft curve prior)
+Why: E4's hard constraint beta = beta_bar(rho) gives beta an interval of sd
+0.05 around a curve value 5% below the truth.  The pressures fix the level
+log beta + rho * Gbar, and only the theta prior separates beta from Gbar, so
+the honest posterior sd of log beta is ~ rho / |c| = 0.32 at rho = 1.5
+(|c| = 4.65, c = KLE coordinates of the constant field; also rho * sd(Gbar)
+= 0.35).  E1's pooled chains already spread over 0.37.
+
+Decided (Aidan, 2026-09-28):
+1. Main demonstration uses a truth in the samplers' own 57-mode KLE:
+   truth_mode "kle" = the E1-E4 (standardized, seed 2026) field projected onto
+   the KLE span (theta_true = T^+ G; spatial mean 0.001, sd 0.97,
+   |theta|^2/r = 1.27), i.e. the same field minus its small scales.
+   Alternative "kle_raw" = the raw draw projected (exactly N(0, I) in theta,
+   but its spatial mean is 0.35 = 1.5 prior sd, which offsets beta by design).
+   Projection keeps the truth machine-independent (eigh may rotate tied modes); noise added to the pressures (1% of range) and to Keff
+   (sigma_e = 0.05) exactly as before.  This removes the truncation floor;
+   the inverse crime is deliberate and must be stated in the paper.  The
+   full-rank "standardized" runs (E1-E4 above) stay as the robustness check.
+   Run it in its own study folder (runs/cluster_kle), E3 first (K* changes).
+2. beta is FREE with the soft curve prior of report.pdf, Remark 3:
+   log beta | rho ~ N(log beta_bar(rho), s(rho)^2), s^2 = (E3 scatter of
+   log Keff_i)^2 + sigma_e^2.  Likelihood = pressures only, so K* is used
+   once (through the prior).  New move D (beta-theta swap): log beta += delta,
+   theta -= (delta/rho) c; log K changes only by the 3.4% (rms) of the
+   constant field outside the 57-mode span.  The ridge move C is now free
+   (beta fixed, log K exactly unchanged), as in the hierarchical report.
+3. sigma_rel stays 2e-3.
+4. NO posterior-informed / preconditioned proposal: it would have to be given
+   to the naive sampler (E1) too; we keep the group's pCN standard.
+Code: brho/samplers.py SoftCurveSampler, config.SoftSamplerConfig,
+experiments/run_soft_sampler.py, reports/report_soft*.py,
+cluster/slurm/node_e5_soft.sbatch; truth_mode "kle" in brho/truth.py.
+Tests: prior invariance of the 4 moves (mutation-checked: dropping the curve
+prior ratio from C or D, or the Jacobian, fails the test), C/D preserve log K,
+the kle truth lies in the basis.
+Values for this truth are in the E5 setup log and manifest (Gbar, G_std,
+theta_norm2_over_r, noise_rel, noise floor at sigma_rel = 2e-3).
+
+Local check before the cluster (8 chains x 24k it., 6k burn, truth "kle",
+sigma_rel 2e-3, 2 cores): beta 2.23 [1.52, 3.32] (truth 2.3), PSRF 1.015,
+ESS 9900; rho 1.39 [1.17, 1.67] (truth 1.5), PSRF 1.04; acceptance A/B/C/D
+0.22/0.26/0.46/0.47, steps 0.016/0.041/0.20/0.50; mean Phi 80 (floor 52 +
+r/2).  Still slow: level (PSRF 1.36, ESS 50) and theta, which move only
+through A's small pCN steps -- the same pace as E4.  A pure level move
+(random walk on log beta alone) was tried and dropped: given theta the data
+pin the level to ~0.006, so its step adapted to 0.0065 and it did not help.
+Move B was changed from pCN on (w, xi_b) to pCN on w with beta fixed: the
+joint version dragged the level along with beta_bar(rho) and adapted to a
+step of 0.010 (now 0.041).

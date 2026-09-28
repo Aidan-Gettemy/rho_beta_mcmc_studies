@@ -49,11 +49,14 @@ def kle_key(pc, N):
     return key
 
 
-def truth_key(pc):
-    return dict(v=KEY_VERSION, grid=[pc.n, pc.n], kernel=pc.kernel, ell=pc.ell,
-                q_in=pc.q_in, beta_true=pc.beta_true, rho_true=pc.rho_true,
-                truth_mode=pc.truth_mode, truth_seed=pc.truth_seed,
-                noise_rel=pc.noise_rel, sigma_e=pc.sigma_e)
+def truth_key(pc, N=None):
+    key = dict(v=KEY_VERSION, grid=[pc.n, pc.n], kernel=pc.kernel, ell=pc.ell,
+               q_in=pc.q_in, beta_true=pc.beta_true, rho_true=pc.rho_true,
+               truth_mode=pc.truth_mode, truth_seed=pc.truth_seed,
+               noise_rel=pc.noise_rel, sigma_e=pc.sigma_e)
+    if pc.truth_mode in ("kle", "kle_raw"):   # the truth depends on the KLE basis
+        key["kle"] = kle_key(pc, N if N is not None else pc.n * pc.n)
+    return key
 
 
 class Problem:
@@ -82,16 +85,17 @@ class Problem:
             build_k = lambda: build_kle(self.phys.points, self.phys.axes,
                                         pc.kernel, kernel_params(pc), pc.energy,
                                         pc.kle_method, pc.kle_nq, pc.kle_quadrature)
-            build_t = lambda: make_synthetic(self.phys, self.full, pc)
+            build_t = lambda: make_synthetic(self.phys, self.full, pc, kle=self.kle)
             if store:
                 self.kle, _ = ST.get_or_build(store, "kle", kle_key(pc, self.phys.N),
                                               build_k, lambda o, p: o.save(p),
                                               KLE.load, log=log)
-                self.syn, _ = ST.get_or_build(store, "truth", truth_key(pc), build_t,
+                self.syn, _ = ST.get_or_build(store, "truth", truth_key(pc, self.phys.N), build_t,
                                               lambda o, p: o.save(p), Synthetic.load,
                                               log=log)
             else:
-                self.kle, self.syn = build_k(), build_t()
+                self.kle = build_k()
+                self.syn = build_t()
             self.frozen = False
         self.r = self.kle.r
         # weight w of the squared pressure residual: Phi = w ||d - G||^2 / 2

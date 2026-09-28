@@ -13,14 +13,15 @@ window from sample iter_burn); the x axis is k * thinning.  Two parameter sets:
     theta   all r KLE coefficients
     all     (theta, log beta, log rho)  = the whole sampled state up to an
             affine map (MPSRF is invariant to those)
-Runs: e1_blocked, e1_global (E1) and e4_sampler (E4).  For E4, beta =
+Runs: e1_blocked, e1_global (E1), e4_sampler (E4) and e5_soft (E5; beta free,
+so its "all" set is (theta, log beta, log rho) like E1's).  For E4, beta =
 beta_bar(rho) is not a free parameter, so its "all" set is (theta, log rho),
 and its samples start after burn-in (the sampler keeps only those).
-With E1 and E4 both present, figures/mpsrf_compare/ adds
+With two or more runs present, figures/mpsrf_compare/ adds
     fig_mpsrf_compare_theta.png   MPSRF of all theta, every run on one axis
     fig_psrf_compare_theta.png    worst-component PSRF of theta, same
-with x = PDE solves per chain (E1 blocked 2 per iteration, global 1, E4 3),
-so equal x means equal work; tables/mpsrf_compare/mpsrf_compare.json.
+with x = PDE solves per chain (E1 blocked 2 per iteration, global 1, E4 3,
+E5 3: A, B, D; C is free), so equal x means equal work; tables/mpsrf_compare/mpsrf_compare.json.
 Writes, for each set, into figures/<exp>/ and tables/<exp>/:
     fig_mpsrf_<set>.png   MPSRF vs iteration: y = 1, y = 1.2, crossing marked
     fig_psrf_<set>.png    max-over-components PSRF vs iteration, and the final
@@ -70,10 +71,20 @@ def load_kept(exp, n_chains=None):
                     extra=dict(theta=[], all=["logβ", "logρ"]),
                     its=its, m=len(paths), solves=2 if move == "blocked" else 1,
                     label=f"E1 naive pCN ({move})")
-    L = min(len(z["kept_theta"]) for z in zs)                      # E4
+    L = min(len(z["kept_theta"]) for z in zs)                      # E4 / E5
     theta = np.stack([z["kept_theta"][:L] for z in zs])
     lr = np.log(np.stack([z["kept_rho"][:L] for z in zs]))
-    sc = io.read_manifest(exp)["configs"]["SamplerConfig"]
+    cfgs = io.read_manifest(exp)["configs"]
+    if "SoftSamplerConfig" in cfgs:                                # E5: beta free
+        sc = cfgs["SoftSamplerConfig"]
+        lb = np.log(np.stack([z["kept_beta"][:L] for z in zs]))
+        its = sc["n_burn"] + sc["thin"] * np.arange(L)
+        full = np.concatenate([theta, lb[..., None], lr[..., None]], axis=2)
+        return dict(sets=dict(theta=theta, all=full),
+                    extra=dict(theta=[], all=["logβ", "logρ"]),
+                    its=its, m=len(paths), solves=3,
+                    label="E5 soft-curve sampler (β free)")
+    sc = cfgs["SamplerConfig"]
     its = sc["n_burn"] + sc["thin"] * np.arange(L)
     return dict(sets=dict(theta=theta, all=np.concatenate([theta, lr[..., None]], axis=2)),
                 extra=dict(theta=[], all=["logρ"]),
@@ -213,12 +224,14 @@ def run(exp, n_chains=None, skip=2, step=15, iter_burn=10, level=1.2, at=4900,
                 label=run_["label"], m=m)
 
 
-COLORS = {"e1_blocked": "#c0392b", "e1_global": "#e67e22", "e4_sampler": "#1f5fa8"}
+COLORS = {"e1_blocked": "#c0392b", "e1_global": "#e67e22", "e4_sampler": "#1f5fa8",
+          "e5_soft": "#2e8b57"}
 
 
 def compare(results, level=1.2):
-    """E1 vs E4 on the same axes, MATLAB style, x = PDE solves per chain
-    (E1 blocked: 2 per iteration, E1 global: 1, E4: 3), so equal x = equal work."""
+    """All runs on the same axes, MATLAB style, x = PDE solves per chain
+    (E1 blocked: 2 per iteration, E1 global: 1, E4: 3, E5: 3; E5's ridge
+    move costs no solve), so equal x = equal work."""
     exp = "mpsrf_compare"
     fdir, tdir = io.figures_dir(exp), io.tables_dir(exp)
     table = {}
@@ -253,7 +266,7 @@ def compare(results, level=1.2):
         ax.set_xlim(0, xmax)
         ax.set_xlabel("PDE solves per chain")
         ax.set_ylabel(ylab)
-        ax.set_title(f"{title}: E1 vs E4 at equal work")
+        ax.set_title(f"{title}: all runs at equal work")
         ax.legend(fontsize=15, loc="upper right")
         style(ax)
         f.tight_layout()
@@ -280,12 +293,12 @@ def main(argv=None):
                     help="also report the values at this iteration")
     a = ap.parse_args(argv)
     exps = [a.exp] if a.exp else [
-        e for e in (io.exp_e1("blocked"), io.exp_e1("global"), io.EXP_SAMPLER)
+        e for e in (io.exp_e1("blocked"), io.exp_e1("global"), io.EXP_SAMPLER, io.EXP_SOFT)
         if glob.glob(os.path.join(io.results_dir(e), "chain*.npz"))]
     results = {}
     for e in exps:
         results[e] = run(e, a.chains, a.skip, a.step, a.iter_burn, a.level, a.at)
-    if not a.exp and any(e.startswith("e1") for e in results) and io.EXP_SAMPLER in results:
+    if not a.exp and len(results) > 1:
         compare(results, a.level)
 
 

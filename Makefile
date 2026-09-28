@@ -38,6 +38,8 @@ quick:         ## smoke test of the whole pipeline into runs/quick
 	BRHO_ROOT=runs/quick python3 experiments/run_beta_curve.py --quick
 	BRHO_ROOT=runs/quick python3 experiments/run_curve_sampler.py --quick --fresh
 	BRHO_ROOT=runs/quick python3 experiments/run_curve_sampler.py --quick --fresh --prior-test 1
+	BRHO_ROOT=runs/quick python3 experiments/run_soft_sampler.py --quick --fresh
+	BRHO_ROOT=runs/quick python3 experiments/run_soft_sampler.py --quick --fresh --prior-test 1
 	BRHO_ROOT=runs/quick python3 reports/report_all.py
 
 clean-quick:

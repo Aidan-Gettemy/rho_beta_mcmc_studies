@@ -34,6 +34,15 @@ class ProblemConfig:
     #                 (short-report decision).
     # "raw":          the uncentered Cholesky draw used in the July reports
     #                 (reproduces their data exactly: same seed, same order).
+    # "kle":          (2026-09-28 decision) the "standardized" field projected
+    #                 onto the span of the truncated KLE the samplers use
+    #                 (theta_true = T^+ G, G <- T theta_true): the E1-E4 truth
+    #                 minus its small scales, exactly in the sampler's space, so
+    #                 no truncation floor.  "kle_raw": the raw draw projected
+    #                 (theta_true ~ N(0, I_r) exactly, own spatial mean).  Noise
+    #                 is added to the pressures and to Keff as in the other modes.
+    #                 The paper must state this (the inverse crime is deliberate;
+    #                 the full-rank "standardized" runs are the robustness check).
     truth_mode: str = "standardized"
     truth_seed: int = 2026
     noise_rel: float = 0.01        # sigma_p = noise_rel * (max p - min p)
@@ -127,6 +136,43 @@ def chain_seed(seed0, k, scheme="spawn", legacy_stride=13):
     raise ValueError(scheme)
 
 
+# ------------------------- E5: soft-curve sampler (beta free, 4 moves)
+@dataclass(frozen=True)
+class SoftSamplerConfig:
+    """E5 (2026-09-28): beta is a free unknown with the SOFT curve prior of
+    report.pdf, Remark 3, instead of E4's hard beta = beta_bar(rho):
+        log beta | rho ~ N( log beta_bar(rho),  s(rho)^2 ),
+        s(rho)^2 = var_i log(Keff_i(rho)) [E3 scatter] + sigma_e^2.
+    (Equivalently log beta = log beta_bar(rho) + s(rho) xi_b, xi_b ~ N(0, 1).)
+    Likelihood: pressures only (K* enters once, through the curve prior).
+    Moves per iteration (step sizes adapted in burn-in, then frozen):
+      A  pCN on theta                                       1 solve
+      B  pCN on w, beta fixed                               1 solve
+      C  ridge: rho' = rho e^eta, theta' = e^-eta theta,
+         beta fixed -> log K unchanged                      0 solves
+      D  level swap: log beta' = log beta + delta,
+         theta' = theta - (delta / rho) c, c = KLE coords
+         of the constant field -> log K nearly unchanged    1 solve"""
+    n_chains: int = 64
+    n_total: int = 150000          # same budget as the E4 run (3 solves / it)
+    n_burn: int = 30000
+    thin: int = 100
+    chunk: int = 5000
+    mu_rho: float = 0.0
+    s_rho: float = 0.75
+    s_init: tuple = (0.15, 0.20, 0.20, 0.20)   # (s_theta, s_w, s_ridge, s_swap)
+    targets: tuple = (0.25, 0.25, 0.45, 0.45)
+    adapt_every: int = 100
+    adapt_factor: float = 1.12
+    curve_sigma_e: bool = True     # add sigma_e^2 to the curve scatter
+    init: str = "prior"
+    seed0: int = 505
+    seed_scheme: str = "spawn"
+    n_workers: int = 4
+    prior_test: bool = False
+    trace_every: int = 1
+
+
 # ------------------------------------ E1: naive global pCN on (theta, beta, rho)
 @dataclass(frozen=True)
 class NaiveConfig:
@@ -163,6 +209,8 @@ QUICK = {
     CurveConfig: dict(n_rho=8, n_real=16),
     SamplerConfig: dict(n_total=1200, n_burn=400, thin=10, chunk=600,
                         n_workers=2),
+    SoftSamplerConfig: dict(n_chains=4, n_total=1200, n_burn=400, thin=10,
+                            chunk=600, n_workers=2),
     NaiveConfig: dict(n_iter=1500, n_burn=500, thin=10, checkpoint_every=500,
                       log_every=500),
 }

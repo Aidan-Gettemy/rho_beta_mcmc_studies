@@ -4,6 +4,9 @@ MCMC kernels.
 E2  pcn_fixed_pair      pCN on theta with (beta, rho) held fixed
                         (one chain per grid pair; mcmc_study.py logic).
 
+E5  SoftCurveSampler    beta free with the soft curve prior; moves A-D
+                        (see the class docstring and config.SoftSamplerConfig)
+
 E4  ThreeStepSampler    unknowns (theta, w), log rho = mu_rho + s_rho w,
                         beta eliminated by the offline curve beta_bar(rho):
                             log K = log beta_bar(rho) + rho * G(theta)
@@ -124,6 +127,7 @@ def pcn_fixed_pair(prob, beta, rho, gcfg, seed):
 # ================================================================ E4 kernel
 class ThreeStepSampler:
     N_TRACK = 5                      # leading theta modes traced every iteration
+    STATE = ("w",)                   # checkpointed state besides theta
 
     def __init__(self, prob, curve, scfg):
         self.prob, self.curve, self.cfg = prob, curve, scfg
@@ -155,6 +159,19 @@ class ThreeStepSampler:
             return 0.0, None, np.nan
         K = b * np.exp(rho * self.prob.kle.field(theta))
         return self.prob.potential(K, self.cfg.use_keff_term)
+
+    # ---------------------------------------------- run_chunk interface
+    def potential_st(self, st):
+        return self.potential(st["theta"], st["w"])
+
+    def beta_st(self, st):
+        return self.beta(self.rho(st["w"]))
+
+    def level_st(self, st):
+        return self.level(st["theta"], st["w"])
+
+    def extra_traces(self, st):
+        return {}
 
     # ------------------------------------------------------------- state
     def init_state(self, rng):
@@ -198,6 +215,158 @@ class ThreeStepSampler:
         return st
 
 
+# ================================================================ E5 kernel
+class SoftCurveSampler:
+    """E5: beta free with the soft curve prior (report.pdf, Remark 3).
+
+    Unknowns (theta, w, lb = log beta), prior
+        theta ~ N(0, I_r),  w ~ N(0, 1) [rho = exp(mu_rho + s_rho w) <= rho_max],
+        lb | rho ~ N(m(rho), s(rho)^2),  m = log beta_bar(rho; K*),
+        s^2 = (E3 scatter of log Keff_i)^2 + sigma_e^2.
+    Likelihood: pressures only; K* enters once, through m(rho).
+    One iteration = A, B, C, D (see config.SoftSamplerConfig):
+      A pCN on theta                                     accept e^{Phi - Phi'}
+      B pCN on w, beta fixed                             1 solve,
+        log a = Phi - Phi' + log p(lb|rho') - log p(lb|rho)
+        (moving w at fixed xi_b would drag the level along with beta_bar(rho)
+        and force tiny steps; with beta fixed only rho * Gbar moves)
+      C ridge: rho' = rho e^eta, theta' = e^-eta theta, lb fixed.  log K is
+        EXACTLY unchanged (no solve); only priors + Jacobian e^{-r eta}:
+        log a = -(|th'|^2-|th|^2)/2 - (w'^2-w^2)/2 + log p(lb|rho') - log p(lb|rho) - r eta
+      D level swap: lb' = lb + delta, theta' = theta - (delta/rho) c, where
+        T c ~ 1 (least squares; the constant field is in the KLE span to a few
+        percent), so log K moves only by delta (1 - Tc): one solve,
+        log a = Phi - Phi' - (|th'|^2-|th|^2)/2 + log p(lb'|rho) - log p(lb|rho)
+      C and D are deterministic maps given eta / delta with symmetric
+      N(0, s^2) draws, so the ratios above are the full MH ratios.
+    Solves per iteration: A 1, B 1, C 0, D 1 = 3.  (A pure level move --
+    random walk on log beta alone -- was tried and dropped: the data pin the
+    level to ~0.006 given theta, so it adapts to tiny steps and does not help;
+    the level's marginal spread comes through theta.)"""
+    N_TRACK = 5
+    STATE = ("w", "lb")
+
+    def __init__(self, prob, curve, scfg):
+        self.prob, self.curve, self.cfg = prob, curve, scfg
+        self.r = prob.r
+        self.Kstar = prob.syn.keff_obs
+        self.sig_e2 = prob.syn.sigma_e ** 2 if scfg.curve_sigma_e else 0.0
+        T = prob.kle.T
+        ones = np.ones(T.shape[0])
+        self.c, *_ = np.linalg.lstsq(T, ones, rcond=None)
+        self.c_resid = float(np.linalg.norm(T @ self.c - ones) / np.sqrt(len(ones)))
+
+    # ------------------------------------------------------------- model
+    def rho(self, w):
+        return float(np.exp(self.cfg.mu_rho + self.cfg.s_rho * w))
+
+    def m(self, rho):
+        return float(np.log(self.curve.beta_bar(rho, self.Kstar)))
+
+    def s(self, rho):
+        return float(np.sqrt(self.curve.log_scatter(rho) ** 2 + self.sig_e2))
+
+    def log_p_lb(self, lb, rho):
+        m, s = self.m(rho), self.s(rho)
+        if not (np.isfinite(m) and np.isfinite(s)) or s <= 0:
+            return -np.inf
+        return -0.5 * ((lb - m) / s) ** 2 - np.log(s)
+
+    def potential(self, theta, w, lb):
+        rho = self.rho(w)
+        if not np.isfinite(self.m(rho)):
+            return np.inf, None, np.nan
+        if self.cfg.prior_test:
+            return 0.0, None, np.nan
+        return self.prob.potential(np.exp(lb + rho * self.prob.kle.field(theta)))
+
+    # ---------------------------------------------- run_chunk interface
+    def potential_st(self, st):
+        return self.potential(st["theta"], st["w"], st["lb"])
+
+    def beta_st(self, st):
+        return float(np.exp(st["lb"]))
+
+    def level_st(self, st):
+        return float(st["lb"] + self.rho(st["w"]) * self.prob.kle.spatial_mean(st["theta"]))
+
+    def extra_traces(self, st):
+        if st is None:
+            return {"xi_b": None}
+        rho = self.rho(st["w"])
+        return {"xi_b": (st["lb"] - self.m(rho)) / self.s(rho)}
+
+    def init_state(self, rng):
+        if self.cfg.init == "prior":
+            theta = rng.standard_normal(self.r)
+            while True:                                  # w truncated at rho_max
+                w = float(rng.standard_normal())
+                if np.isfinite(self.m(self.rho(w))):
+                    break
+            rho = self.rho(w)
+            lb = self.m(rho) + self.s(rho) * float(rng.standard_normal())
+        else:
+            theta, w = np.zeros(self.r), 0.0
+            lb = self.m(self.rho(w))
+        phi, pobs, keff = self.potential(theta, w, lb)
+        return dict(theta=theta, w=w, lb=lb, phi=phi, pobs=pobs, keff=keff)
+
+    # ------------------------------------------------------------ one sweep
+    def step(self, st, ad, rng):
+        s_th, s_h, s_rg, s_lv = ad.s
+        th, w, lb = st["theta"], st["w"], st["lb"]
+        rho = self.rho(w)
+        # A: pCN on theta
+        th_p = pcn(th, s_th, rng)
+        phi_p, pobs_p, keff_p = self.potential(th_p, w, lb)
+        a = np.log(rng.random()) < st["phi"] - phi_p
+        if a:
+            st.update(theta=th_p, phi=phi_p, pobs=pobs_p, keff=keff_p)
+        ad.record(0, a)
+        # B: pCN on w with beta fixed (the level barely moves: beta mixes
+        #    through D, rho through B and C).  pCN preserves N(0,1) for w;
+        #    the curve prior of lb enters the ratio.
+        th, lb = st["theta"], st["lb"]
+        w_p = float(pcn(w, s_h, rng))
+        lp_new = self.log_p_lb(lb, self.rho(w_p))
+        a = False
+        if np.isfinite(lp_new):
+            phi_p, pobs_p, keff_p = self.potential(th, w_p, lb)
+            logA = st["phi"] - phi_p + lp_new - self.log_p_lb(lb, rho)
+            a = np.log(rng.random()) < logA
+            if a:
+                st.update(w=w_p, phi=phi_p, pobs=pobs_p, keff=keff_p)
+        ad.record(1, a)
+        # C: ridge (rho, theta) with beta fixed -- log K unchanged, no solve
+        th, w, lb = st["theta"], st["w"], st["lb"]
+        eta = s_rg * rng.standard_normal()
+        w_p = w + eta / self.cfg.s_rho
+        th_p = np.exp(-eta) * th
+        lp_new = self.log_p_lb(lb, self.rho(w_p))
+        a = False
+        if np.isfinite(lp_new):
+            logA = (-0.5 * (th_p @ th_p - th @ th) - 0.5 * (w_p ** 2 - w ** 2)
+                    + lp_new - self.log_p_lb(lb, self.rho(w)) - self.r * eta)
+            a = np.log(rng.random()) < logA
+            if a:
+                st.update(theta=th_p, w=float(w_p))    # phi, pobs, keff unchanged
+        ad.record(2, a)
+        # D: level swap (beta, theta-mean) -- log K nearly unchanged, 1 solve
+        th, w, lb = st["theta"], st["w"], st["lb"]
+        rho = self.rho(w)
+        delta = s_lv * rng.standard_normal()
+        lb_p = lb + delta
+        th_p = th - (delta / rho) * self.c
+        phi_p, pobs_p, keff_p = self.potential(th_p, w, lb_p)
+        logA = (st["phi"] - phi_p - 0.5 * (th_p @ th_p - th @ th)
+                + self.log_p_lb(lb_p, rho) - self.log_p_lb(lb, rho))
+        a = np.log(rng.random()) < logA
+        if a:
+            st.update(theta=th_p, lb=float(lb_p), phi=phi_p, pobs=pobs_p, keff=keff_p)
+        ad.record(3, a)
+        return st
+
+
 # ------------------------------------------------------ checkpointed chains
 TRACE_KEYS = ("rho", "beta", "phi", "level", "w", "theta_norm2")
 KEPT_KEYS = ("theta", "rho", "beta", "pobs", "keff")
@@ -205,8 +374,14 @@ KEPT_KEYS = ("theta", "rho", "beta", "pobs", "keff")
 
 def run_chunk(sampler, chain_id, ckpt_path):
     """Advance one chain by cfg.chunk iterations (or to n_total) from its
-    checkpoint; returns the new iteration count."""
+    checkpoint; returns the new iteration count.  Works for any sampler with
+    STATE (state variables besides theta), step(), potential_st(), beta_st(),
+    level_st(), rho(), extra_traces() -- ThreeStepSampler (E4) and
+    SoftCurveSampler (E5)."""
     cfg = sampler.cfg
+    n_moves = len(cfg.s_init)
+    extra_keys = tuple(sampler.extra_traces(None))
+    trace_keys = TRACE_KEYS + extra_keys
     if os.path.exists(ckpt_path):
         ck = dict(np.load(ckpt_path, allow_pickle=False))
         it0 = int(ck["it"])
@@ -214,11 +389,13 @@ def run_chunk(sampler, chain_id, ckpt_path):
             return it0
         rng = np.random.default_rng()
         rng.bit_generator.state = json.loads(str(ck["rng_state"]))
-        st = dict(theta=ck["theta_cur"], w=float(ck["w_cur"]))
-        st["phi"], st["pobs"], st["keff"] = sampler.potential(st["theta"], st["w"])
+        st = dict(theta=ck["theta_cur"])
+        for key in sampler.STATE:
+            st[key] = float(ck[key + "_cur"])
+        st["phi"], st["pobs"], st["keff"] = sampler.potential_st(st)
         s = ck["s"]
         acc_tot = ck["acc_tot"]
-        traces = {k: list(ck["tr_" + k]) for k in TRACE_KEYS}
+        traces = {k: list(ck["tr_" + k]) for k in trace_keys}
         traces["theta_lead"] = list(ck["tr_theta_lead"])
         kept = {k: list(ck["kept_" + k]) for k in KEPT_KEYS}
         s_hist = list(ck["s_hist"])
@@ -228,15 +405,15 @@ def run_chunk(sampler, chain_id, ckpt_path):
                                                cfg.seed_scheme, 13))
         st = sampler.init_state(rng)
         s = np.array(cfg.s_init, float)
-        acc_tot = np.zeros(3)
-        traces = {k: [] for k in TRACE_KEYS}
+        acc_tot = np.zeros(n_moves)
+        traces = {k: [] for k in trace_keys}
         traces["theta_lead"] = []
         kept = {k: [] for k in KEPT_KEYS}
         s_hist = []
     ad = StepAdapter(s, targets=cfg.targets, every=cfg.adapt_every,
                      factor=cfg.adapt_factor)
     n_steps = min(cfg.chunk, cfg.n_total - it0)
-    k = ThreeStepSampler.N_TRACK
+    k = sampler.N_TRACK
     for loc in range(n_steps):
         it = it0 + loc
         before = ad.acc.copy()
@@ -246,25 +423,30 @@ def run_chunk(sampler, chain_id, ckpt_path):
         if it < cfg.n_burn and (it + 1) % cfg.adapt_every == 0:
             s_hist.append(ad.s.copy())
         rho = sampler.rho(st["w"])
+        beta = sampler.beta_st(st)
         if it % cfg.trace_every == 0:
             traces["rho"].append(rho)
-            traces["beta"].append(sampler.beta(rho))
+            traces["beta"].append(beta)
             traces["phi"].append(st["phi"])
-            traces["level"].append(sampler.level(st["theta"], st["w"]))
+            traces["level"].append(sampler.level_st(st))
             traces["w"].append(st["w"])
             traces["theta_norm2"].append(float(st["theta"] @ st["theta"]))
             traces["theta_lead"].append(st["theta"][:k].copy())
+            for key, v in sampler.extra_traces(st).items():
+                traces[key].append(v)
         if it >= cfg.n_burn and (it - cfg.n_burn) % cfg.thin == 0:
             kept["theta"].append(st["theta"].copy())
             kept["rho"].append(rho)
-            kept["beta"].append(sampler.beta(rho))
+            kept["beta"].append(beta)
             kept["pobs"].append(st["pobs"] if st["pobs"] is not None
                                 else np.full(sampler.prob.syn.n_obs, np.nan))
             kept["keff"].append(st["keff"])
     it_new = it0 + n_steps
     out = dict(it=it_new, s=ad.s, acc_tot=acc_tot, theta_cur=st["theta"],
-               w_cur=st["w"], rng_state=json.dumps(rng.bit_generator.state),
-               s_hist=np.array(s_hist).reshape(-1, 3))
+               rng_state=json.dumps(rng.bit_generator.state),
+               s_hist=np.array(s_hist).reshape(-1, n_moves))
+    for key in sampler.STATE:
+        out[key + "_cur"] = st[key]
     for key, v in traces.items():
         out["tr_" + key] = np.array(v)
     for key, v in kept.items():
