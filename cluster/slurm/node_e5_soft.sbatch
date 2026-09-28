@@ -30,7 +30,7 @@ echo "BRHO_ROOT=$BRHO_ROOT  tasks=$SLURM_NTASKS  chains=$NCH  prior_test=$PT"
 if [[ "${RESUME:-0}" != 1 ]]; then
     OMP_NUM_THREADS=$SLURM_NTASKS MKL_NUM_THREADS=$SLURM_NTASKS OPENBLAS_NUM_THREADS=$SLURM_NTASKS \
         python experiments/run_soft_sampler.py --setup-only --n-chains "$NCH" \
-        --prior-test "$PT" $PROBLEM_ARGS $E5_ARGS
+        --prior-test "$PT" $PROBLEM_ARGS ${E5_ARGS:---n-total 150000 --n-burn 30000 --thin 100}
 else    # resuming: keep the run, only compile numba into this job's cache
     python experiments/run_soft_sampler.py --warmup-only --prior-test "$PT"
 fi
