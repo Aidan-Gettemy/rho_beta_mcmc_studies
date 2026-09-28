@@ -310,3 +310,32 @@ aligned with c.  If the spectrum is flat, stop and rethink.
   beta) / (rho * 0.231)) because beta moves.  Consequence for E6: Gamma must
   be the covariance of theta GIVEN (beta, rho), not the pooled covariance.
   report_spectrum.py now estimates it (Schur complement); rerun to confirm.
+
+## 2026-09-28: E6 detour closed (considered, not pursued); plan = extend E1 and E5
+Conditional spectrum (PR #32, Cov(theta | log beta, log rho), Schur estimate):
+width along the level direction 0.72 -> 0.19 given (beta, rho) (E5; E1 0.98
+-> 0.21) = the level's own posterior sd (0.062 / (1.47 * 0.231)); narrowest
+width 0.051 -> 0.037; sum (s/sd_k)^2 only 0.44 -> 0.54 (a Gaussian random
+walk at 25% would need ~5.7).  So neither the marginal nor the conditional
+covariance explains the pCN step 0.012: the theta posterior is locally much
+stiffer than its global spread (non-Gaussian).  A covariance-preconditioned
+theta proposal is therefore not supported by the data; a Hessian-informed
+one might be, but was NOT pursued:
+Decided (Aidan, 2026-09-28): the paper's story is (1) beta-rho-theta
+non-identifiability (E1, E2) and (2) a corrected sampler that is not much
+more expensive and needs one extra datum (K_eff -> soft curve prior, moves
+C and D).  A new theta proposal (covariance or Hessian) would blur that
+story and is not what the advisor's industrial codes use.  Decision 4 of
+2026-09-28 (plain pCN for theta, same in E1 and E5) STANDS.  The E6 section
+of the E5 report and its step-size argument (Sec. 5, point 3) are
+withdrawn.  report_spectrum.py stays as a diagnostic.
+Requirement (advisor): theta itself must reach MPSRF < 1.2 in one method
+and not in the other.  Extrapolation of the existing curves (power law on
+the last half): E5 crosses at ~290k it. (~870k solves), E1 at ~1.1M it.
+(~2.2M solves).  Plan: extend both runs from their checkpoints to equal
+work, 1.2M PDE solves per chain: E5 150k -> 400k it. (3 solves/it), E1
+200k -> 600k it. (2 solves/it).  experiments/extend_run.py raises the
+length in the manifest (recorded under "extensions"); RESUME=1 continues
+each chain exactly (tested).  Nothing else changes (burn-in, thinning,
+frozen steps, truth, sigma_rel).  Expected E1 theta MPSRF at 1.2M solves
+~1.4 (extrapolated), i.e. no crossing.
