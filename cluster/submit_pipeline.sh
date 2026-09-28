@@ -41,8 +41,8 @@ if [[ "$what" == all || "$what" == e3 || "$what" == e4 ]]; then
     fi
     if [[ "$what" != e3 ]]; then
         j5=$($S $e3dep cluster/slurm/e4_setup.sbatch)
-        j6=$($S --dependency=afterok:$j5 --array=0-$((E4_CHAINS - 1)) cluster/slurm/e4_chain.sbatch)
-        echo "E4: setup $j5, chains $j6 (0-$((E4_CHAINS - 1)))"
+        j6=$($S --dependency=afterok:$j5 --array=0-$((${E4_CHAINS:-16} - 1)) cluster/slurm/e4_chain.sbatch)
+        echo "E4: setup $j5, chains $j6 (0-$((${E4_CHAINS:-16} - 1)))"
         dep="${dep:+$dep:}$j6"
     fi
 fi
