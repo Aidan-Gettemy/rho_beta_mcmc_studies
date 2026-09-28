@@ -1,0 +1,118 @@
+{
+ "experiment": "e1_blocked",
+ "time": "2026-09-28 13:52:24",
+ "argv": [
+  "experiments/run_e1_naive.py",
+  "--move",
+  "blocked",
+  "--truth-mode",
+  "kle",
+  "--sigma-rel",
+  "2e-3",
+  "--n-iter",
+  "200000",
+  "--n-burn",
+  "20000",
+  "--thin",
+  "200",
+  "--checkpoint-every",
+  "10000",
+  "--log-every",
+  "20000"
+ ],
+ "python": "3.11.15",
+ "numpy": "1.26.4",
+ "configs": {
+  "ProblemConfig": {
+   "n": 32,
+   "ell": 0.1,
+   "energy": 0.95,
+   "kernel": "sqexp",
+   "kle_method": "auto",
+   "kle_nq": 40,
+   "kle_quadrature": "gauss_legendre",
+   "q_in": 1.0,
+   "solver": "auto",
+   "backend": "auto",
+   "beta_true": 2.3,
+   "rho_true": 1.5,
+   "truth_mode": "kle",
+   "truth_seed": 2026,
+   "noise_rel": 0.01,
+   "sigma_e": 0.05,
+   "likelihood": "relative",
+   "sigma_rel": 0.002,
+   "rel_eps": 0.02,
+   "rel_n_eff": 128.0
+  },
+  "NaiveConfig": {
+   "move": "blocked",
+   "n_iter": 200000,
+   "n_burn": 20000,
+   "thin": 200,
+   "s0": 0.1,
+   "s0_h": 0.1,
+   "target": 0.25,
+   "target_h": 0.25,
+   "adapt_every": 100,
+   "adapt_factor": 1.12,
+   "mu_logbeta": 0.0,
+   "s_logbeta": 1.0,
+   "mu_logrho": 0.0,
+   "s_logrho": 0.75,
+   "init": "prior",
+   "seed0": 2024,
+   "seed_scheme": "spawn",
+   "checkpoint_every": 10000,
+   "log_every": 20000
+  }
+ },
+ "n_chains": 64,
+ "mpi_size": 64,
+ "r": 57,
+ "kle_key": {
+  "v": 1,
+  "grid": [
+   32,
+   32
+  ],
+  "kernel": "sqexp",
+  "ell": 0.1,
+  "energy": 0.95,
+  "method": "dense"
+ },
+ "kle": {
+  "method": "dense",
+  "r": 57,
+  "energy": 0.9516350366489337,
+  "total": 1024.0
+ },
+ "likelihood": {
+  "likelihood": "relative",
+  "noise_floor": 51.65704666299076,
+  "data_norm": 6.6541140402821926,
+  "sigma_rel": 0.002,
+  "eps_at_n_eff": {
+   "n_eff": 128.0,
+   "eps": 0.022627416997969524
+  },
+  "weight_vs_absolute": 0.20178533852730765
+ },
+ "truth": {
+  "theta_norm2_over_r": 1.278743664611375,
+  "mode": "kle",
+  "beta_true": 2.3,
+  "rho_true": 1.5,
+  "n_obs": 512,
+  "sigma_p": 0.0059781256538663854,
+  "sigma_e": 0.05,
+  "keff_true": 2.032147585589113,
+  "keff_obs": 2.0364838809194694,
+  "level_true": 0.8349525043890009,
+  "Gbar": 0.0013622543025981204,
+  "G_std": 0.9721347776021572,
+  "noise_rel": 0.020328708107106217
+ },
+ "status": "complete",
+ "minutes": 33.893776047229764
+}

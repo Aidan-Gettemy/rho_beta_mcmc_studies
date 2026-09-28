@@ -1,0 +1,34 @@
+{
+ "e1_blocked": {
+  "mpsrf": {
+   "convergence_iteration": null,
+   "convergence_solves": null,
+   "final": 2.053240458139497,
+   "final_solves": 400000.0,
+   "dim": 57
+  },
+  "psrf": {
+   "convergence_iteration": null,
+   "convergence_solves": null,
+   "final": 1.8504484531750798,
+   "final_solves": 400000.0,
+   "dim": 57
+  }
+ },
+ "e5_soft": {
+  "mpsrf": {
+   "convergence_iteration": null,
+   "convergence_solves": null,
+   "final": 1.5579077289994825,
+   "final_solves": 448500.0,
+   "dim": 57
+  },
+  "psrf": {
+   "convergence_iteration": null,
+   "convergence_solves": null,
+   "final": 1.282733250529219,
+   "final_solves": 448500.0,
+   "dim": 57
+  }
+ }
+}
