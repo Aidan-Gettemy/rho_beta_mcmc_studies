@@ -85,3 +85,14 @@ def pointwise_coverage(samples, truth, prob=(5, 95)):
     """Fraction of cells whose truth lies in the pointwise interval."""
     lo, hi = np.percentile(samples, prob, axis=0)
     return float(np.mean((truth >= lo) & (truth <= hi)))
+
+
+def pointwise_moments(theta, T):
+    """Pointwise mean and variance over samples of the field G = T theta,
+    exactly from the sample mean and (population) covariance of theta:
+        mean = T mu,   var_i = (T C T^T)_ii.
+    No (n_samples x cells) matrix is formed.  theta: (..., r)."""
+    th = np.asarray(theta, float).reshape(-1, np.shape(theta)[-1])
+    mu = th.mean(0)
+    C0 = np.cov(th.T, bias=True)
+    return T @ mu, np.einsum("ij,jk,ik->i", T, C0, T)

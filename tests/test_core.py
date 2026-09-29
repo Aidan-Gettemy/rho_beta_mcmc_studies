@@ -388,3 +388,14 @@ def test_soft_sampler_global_innovation_unchanged():
     a = pcn(th, 0.3, np.random.default_rng(7))
     b = np.sqrt(1 - 0.09) * th + 0.3 * np.random.default_rng(7).standard_normal(p.r)
     assert np.array_equal(a, b)
+
+
+def test_pointwise_moments_exact():
+    """Pointwise mean/variance of G = T theta from the moments of theta equal
+    the brute-force values over the sample fields."""
+    from brho import diagnostics as D
+    p = prob()
+    th = np.random.default_rng(6).standard_normal((3, 400, p.r)) * 0.7 + 0.1
+    pm, pv = D.pointwise_moments(th, p.kle.T)
+    G = p.kle.field(th.reshape(-1, p.r))
+    assert np.allclose(pm, G.mean(0)) and np.allclose(pv, G.var(0))

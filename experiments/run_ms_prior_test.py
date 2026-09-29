@@ -43,6 +43,7 @@ from brho.problem import Problem  # noqa: E402
 from brho.multiscale import from_problem  # noqa: E402
 from brho.mpsrf import get_mpsrf  # noqa: E402
 from brho import plotting as P  # noqa: E402
+from brho import diagnostics as D  # noqa: E402
 
 EXP = "ms_prior_test"
 VARIANTS = ("raw", "whitened", "normalized")
@@ -72,15 +73,13 @@ def stats(th, kle, n_show=3):
     r = flat.shape[1]
     Cv = np.cov(flat.T)
     G = kle.field(flat)
-    mu = flat.mean(0)
-    C0 = np.cov(flat.T, bias=True)                   # population covariance
-    T = kle.T
+    pmean, pvar = D.pointwise_moments(flat, kle.T)
     # thinned sample fields: the last kept sample of the first chains
     # (independent chains, well after the start)
     show = th[:n_show, -1] if th.shape[0] >= n_show else th[0, -n_show:]
     return dict(frob=float(np.linalg.norm(Cv - np.eye(r)) / np.sqrt(r)),
                 diag=np.sort(np.diag(Cv))[::-1], mean=G.mean(1), var=G.var(1),
-                pmean=T @ mu, pvar=np.einsum("ij,jk,ik->i", T, C0, T),
+                pmean=pmean, pvar=pvar,
                 samples=kle.field(show))
 
 
@@ -158,40 +157,14 @@ def main(argv=None):
 
     # ------------------------------------------------ pointwise fields
     target = (kle.T ** 2).sum(1)                     # exact pointwise prior variance
-    n = pc.n
-    edges = [i / a.blocks for i in range(1, a.blocks)]
-    ns = res["reference"]["samples"].shape[0]
-    fig, axs = plt.subplots(len(order), ns + 3, figsize=(3.1 * (ns + 3), 2.9 * len(order)))
-    vs = 3.0
-    vm = max(float(np.abs(res[k]["pmean"]).max()) for k in order)
-    vv = max(float(res[k]["pvar"].max()) for k in order)
-    for i, k in enumerate(order):
-        for j in range(ns):
-            P.field(axs[i, j], res[k]["samples"][j], n, f"{k}: sample {j + 1}",
-                    cmap="viridis", vmin=-vs, vmax=vs, cbar=(j == ns - 1))
-        P.field(axs[i, ns], res[k]["pmean"], n,
-                f"pointwise mean (max |.| {np.abs(res[k]['pmean']).max():.3f})",
-                cmap="RdBu_r", vmin=-vm, vmax=vm)
-        P.field(axs[i, ns + 1], res[k]["pvar"], n,
-                f"pointwise variance ({res[k]['pvar'].min():.2f}-{res[k]['pvar'].max():.2f})",
-                cmap="magma", vmin=0, vmax=vv)
-        ratio = res[k]["pvar"] / target
-        P.field(axs[i, ns + 2], ratio, n,
-                f"variance / target ({ratio.min():.2f}-{ratio.max():.2f})",
-                cmap="RdBu_r", vmin=0.5, vmax=1.5)
-        for e in edges:                              # subdomain interfaces
-            axs[i, ns + 2].axvline(e, color="k", lw=0.8, ls="--")
-            axs[i, ns + 2].axhline(e, color="k", lw=0.8, ls="--")
-        res[k]["pvar_ratio"] = ratio
-    for ax in axs.ravel():
-        ax.set_xticks([]); ax.set_yticks([])
-        ax.title.set_fontsize(9)
-    fig.suptitle(f"Pointwise fields after prior sampling (likelihood off), "
-                 f"{a.blocks}x{a.blocks} subdomains (dashed); target variance = "
-                 f"diag(T T^T), mean {target.mean():.3f}")
-    fig.tight_layout()
+    fig = P.prior_fields([(k, res[k]["samples"], res[k]["pmean"], res[k]["pvar"])
+                          for k in order], target, pc.n, a.blocks,
+                         f"Pointwise fields after prior sampling (likelihood off), "
+                         f"{a.blocks}x{a.blocks} subdomains (dashed).")
     fig.savefig(os.path.join(fdir, "fig_ms_prior_fields.png"), dpi=130)
     plt.close(fig)
+    for k in order:
+        res[k]["pvar_ratio"] = fig.ratios[k]
 
     table = {k: dict(frob=res[k]["frob"], spatial_mean_sd=float(res[k]["mean"].std()),
                      field_var_mean=float(res[k]["var"].mean()),
