@@ -46,8 +46,8 @@ def main():
             ax[1].plot(cur.beta_bar(rr, prob_c.syn.keff_obs), rr, color=P.C_CURVE,
                        lw=2, label=r"E3: $\bar\beta(\rho)$")
         if parts[2]:
-            zs = [np.load(f) for f in sorted(glob.glob(
-                io.results_dir(io.EXP_SAMPLER) + "/chain*.npz"))]
+            zs = [np.load(f) for f in io.chain_files(
+                io.results_dir(io.EXP_SAMPLER))]
             rb = np.concatenate([q["kept_beta"] for q in zs])
             rr_ = np.concatenate([q["kept_rho"] for q in zs])
             ax[1].plot(rb, rr_, ".", color=P.C_POST, ms=2, alpha=0.35,

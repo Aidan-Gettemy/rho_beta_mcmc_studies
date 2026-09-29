@@ -16,7 +16,6 @@ E1 (NaiveConfig.n_iter).  Exactness is tested (tests: resume/extension).
 """
 import _common  # noqa: F401  (first: pins threads before NumPy loads)
 import argparse
-import glob
 import os
 import time
 
@@ -46,7 +45,7 @@ def main(argv=None):
     if a.to <= old:
         raise SystemExit(f"{a.exp}: --to {a.to} must exceed the current {key} = {old}")
 
-    paths = glob.glob(os.path.join(io.results_dir(a.exp), "chain*.npz"))
+    paths = io.chain_files(io.results_dir(a.exp))
     its = sorted({int(np.load(p)["it"]) for p in paths})
     if not paths:
         raise SystemExit(f"{a.exp}: no chain files in {io.results_dir(a.exp)}")
