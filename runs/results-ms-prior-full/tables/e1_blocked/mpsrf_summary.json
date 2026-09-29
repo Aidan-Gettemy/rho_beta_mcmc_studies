@@ -1,0 +1,79 @@
+{
+ "exp": "e1_blocked",
+ "label": "E1 naive pCN (blocked)",
+ "n_chains": 64,
+ "n_samples": 5000,
+ "thinning": 200,
+ "first_kept_iteration": 0,
+ "solves_per_iteration": 2,
+ "skip": 2,
+ "step": 15,
+ "iter_burn": 10,
+ "level": 1.2,
+ "theta": {
+  "dim": 57,
+  "mpsrf_convergence_iteration": null,
+  "psrf_convergence_iteration": 802155.0,
+  "at_iteration": 5000.0,
+  "mpsrf_at": 18.730220435031587,
+  "psrf_max_at": 8.86496127170081,
+  "mpsrf_final": 1.2116103502090454,
+  "psrf_max_final": 1.1770320821527733,
+  "n_components_above_level_final": 0,
+  "worst_components_final": [
+   [
+    "theta1",
+    1.177
+   ],
+   [
+    "theta5",
+    1.155
+   ],
+   [
+    "theta17",
+    1.08
+   ],
+   [
+    "theta11",
+    1.043
+   ],
+   [
+    "theta31",
+    1.041
+   ]
+  ]
+ },
+ "all": {
+  "dim": 59,
+  "mpsrf_convergence_iteration": null,
+  "psrf_convergence_iteration": null,
+  "at_iteration": 5000.0,
+  "mpsrf_at": 19.2940878224723,
+  "psrf_max_at": 12.400728932990548,
+  "mpsrf_final": 1.212520892741902,
+  "psrf_max_final": 1.2010807906744736,
+  "n_components_above_level_final": 1,
+  "worst_components_final": [
+   [
+    "log\u03b2",
+    1.201
+   ],
+   [
+    "\u03b81",
+    1.177
+   ],
+   [
+    "\u03b85",
+    1.155
+   ],
+   [
+    "\u03b817",
+    1.08
+   ],
+   [
+    "\u03b811",
+    1.043
+   ]
+  ]
+ }
+}
