@@ -397,3 +397,24 @@ as global pCN.  E7 must reproduce E5 within Monte Carlo error (posterior,
 step size, MPSRF); it demonstrates correctness of the multiscale
 machinery, not a speed-up.  The global path is unchanged bit for bit
 (tested), so the running E5 extension is unaffected.
+
+## 2026-09-29: E5 and E1 at 2.0M PDE solves per chain (runs/e5_kle_2026-09, PR #38)
+- theta MPSRF crosses 1.2: E5 at 1.26M solves (it. 418,847); E1 not by 2.0M
+  (final 1.212; trend ~2.03M).  Worst single-theta PSRF crosses: E5 0.60M,
+  E1 1.60M.  E5: all 59 components (theta, log beta, log rho) < 1.06 at 2.0M.
+- log beta: E5 PSRF 1.002, ESS 36,000; E1 PSRF 1.207, ESS 467 (77x); E1
+  chain-mean spread 0.19 vs within-chain sd 0.27; E1 worst components log
+  beta, theta1, theta5 (level ridge).  rho ESS 7,095 vs 1,598.  Level ESS
+  E5 1,807 vs E1 2,316: the level moves only through the theta move in both;
+  per theta move comparable (2.8e-3 vs 2.4e-3), E1 spends 1/2 of its solves
+  on theta moves, E5 1/3.
+- E5 posterior (stable since 450k solves): rho 1.473 [1.23, 1.79], beta
+  2.144 [1.43, 3.21], sd log beta 0.247 (predicted 0.244), level 0.865
+  [0.74, 0.94]; log K 90% coverage 95.8%.  One chain's level dips to ~0.2
+  near it. 190k and returns.
+- Paper claim: E1 converges in principle (proper priors) but its cost is set
+  by the level ridge; at this sigma_rel it is 1.6-2.7x costlier in theta and
+  77x less efficient in beta than E5, which needs one extra datum (K_eff).
+- Progress report (LaTeX, 29 Sept) written from these runs.  Next: E7
+  multiscale prior tests (ms_raw, ms_white) and E7 = E5 + whitened
+  multiscale theta innovation (PR #37).

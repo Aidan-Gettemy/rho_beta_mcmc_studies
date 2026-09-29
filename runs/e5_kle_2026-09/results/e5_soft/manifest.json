@@ -46,7 +46,7 @@
   },
   "SoftSamplerConfig": {
    "n_chains": 64,
-   "n_total": 400000,
+   "n_total": 667000,
    "n_burn": 30000,
    "thin": 100,
    "chunk": 5000,
@@ -133,7 +133,7 @@
   "G_std": 0.9721347776021572,
   "noise_rel": 0.020328708107106217
  },
- "status": "extending to 400000",
+ "status": "extending to 667000",
  "extensions": [
   {
    "key": "SoftSamplerConfig.n_total",
@@ -141,6 +141,13 @@
    "new": 400000,
    "note": "theta MPSRF at equal work (1.2M solves)",
    "time": "2026-09-28 16:41:29"
+  },
+  {
+   "key": "SoftSamplerConfig.n_total",
+   "old": 400000,
+   "new": 667000,
+   "note": "run both to theta MPSRF crossing (2.0M solves)",
+   "time": "2026-09-29 10:43:13"
   }
  ]
 }

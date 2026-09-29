@@ -3,31 +3,31 @@
   "mpsrf": {
    "convergence_iteration": null,
    "convergence_solves": null,
-   "final": 1.3393018136073098,
-   "final_solves": 1198000.0,
+   "final": 1.2116103502090454,
+   "final_solves": 1996000.0,
    "dim": 57
   },
   "psrf": {
-   "convergence_iteration": null,
-   "convergence_solves": null,
-   "final": 1.2890153912293378,
-   "final_solves": 1198000.0,
+   "convergence_iteration": 802155.0,
+   "convergence_solves": 1604310.0,
+   "final": 1.1770320821527733,
+   "final_solves": 1996000.0,
    "dim": 57
   }
  },
  "e5_soft": {
   "mpsrf": {
-   "convergence_iteration": null,
-   "convergence_solves": null,
-   "final": 1.2073797680011464,
-   "final_solves": 1200000.0,
+   "convergence_iteration": 418847.0,
+   "convergence_solves": 1256541.0,
+   "final": 1.1223761325455075,
+   "final_solves": 2001000.0,
    "dim": 57
   },
   "psrf": {
    "convergence_iteration": 201016.0,
    "convergence_solves": 603048.0,
-   "final": 1.1042680992376657,
-   "final_solves": 1200000.0,
+   "final": 1.0593790517646031,
+   "final_solves": 2001000.0,
    "dim": 57
   }
  }

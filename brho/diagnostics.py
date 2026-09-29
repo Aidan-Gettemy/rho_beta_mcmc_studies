@@ -105,3 +105,12 @@ def logK_summaries(logbeta, rho, theta, kle, truth=None, prob=(5, 95), cells_per
     if truth is not None:
         out["coverage"] = float(np.mean((truth >= out["lo"]) & (truth <= out["hi"])))
     return out
+def pointwise_moments(theta, T):
+    """Pointwise mean and variance over samples of the field G = T theta,
+    exactly from the sample mean and (population) covariance of theta:
+        mean = T mu,   var_i = (T C T^T)_ii.
+    No (n_samples x cells) matrix is formed.  theta: (..., r)."""
+    th = np.asarray(theta, float).reshape(-1, np.shape(theta)[-1])
+    mu = th.mean(0)
+    C0 = np.cov(th.T, bias=True)
+    return T @ mu, np.einsum("ij,jk,ik->i", T, C0, T)

@@ -12,14 +12,20 @@ three innovations built from local KLEs on ms_blocks x ms_blocks subdomains
                 and variance 1 and re-projected (a nonlinear map whose
                 Jacobian never enters the ratio)          -> must FAIL
 against direct prior draws theta ~ N(0, I_r).  Checks: cov(theta) = I_r,
-the law of the spatial mean of G = T theta, the law of its empirical variance.
+the law of the spatial mean of G = T theta, the law of its empirical variance,
+and the POINTWISE fields: pointwise mean (target 0) and pointwise variance of
+G (target diag(T T^T), the truncated-KLE variance at each cell), their ratio,
+and a few thinned sample fields per strategy (from different chains, at the
+end of the run).  Pointwise moments are computed exactly from the mean and
+covariance of theta (no sample x cell matrix is formed).
 
     python experiments/run_ms_prior_test.py [--from-exp e5_soft] [--blocks 2]
            [--local-energy 0.95] [--chains 16] [--n-iter 40000] [--s 0.5]
 
 The KLE (and grid) is read from a frozen run of the study (default e5_soft),
 so the test uses exactly the basis the samplers use.
-Writes figures/ms_prior_test/fig_ms_prior_test.png and
+Writes figures/ms_prior_test/fig_ms_prior_test.png (laws),
+figures/ms_prior_test/fig_ms_prior_fields.png (pointwise fields) and
 tables/ms_prior_test/ms_prior_test.{json,md}.
 """
 import _common  # noqa: F401  (first: pins threads before NumPy loads)
@@ -36,6 +42,8 @@ from brho import io  # noqa: E402
 from brho.problem import Problem  # noqa: E402
 from brho.multiscale import from_problem  # noqa: E402
 from brho.mpsrf import get_mpsrf  # noqa: E402
+from brho import plotting as P  # noqa: E402
+from brho import diagnostics as D  # noqa: E402
 
 EXP = "ms_prior_test"
 VARIANTS = ("raw", "whitened", "normalized")
@@ -60,13 +68,19 @@ def run_chains(kind, ms, kle, m, n_iter, thin, s, seed):
     return np.stack(kept, 1)                          # (m, n, r)
 
 
-def stats(th, kle):
+def stats(th, kle, n_show=3):
     flat = th.reshape(-1, th.shape[-1])
     r = flat.shape[1]
     Cv = np.cov(flat.T)
     G = kle.field(flat)
+    pmean, pvar = D.pointwise_moments(flat, kle.T)
+    # thinned sample fields: the last kept sample of the first chains
+    # (independent chains, well after the start)
+    show = th[:n_show, -1] if th.shape[0] >= n_show else th[0, -n_show:]
     return dict(frob=float(np.linalg.norm(Cv - np.eye(r)) / np.sqrt(r)),
-                diag=np.sort(np.diag(Cv))[::-1], mean=G.mean(1), var=G.var(1))
+                diag=np.sort(np.diag(Cv))[::-1], mean=G.mean(1), var=G.var(1),
+                pmean=pmean, pvar=pvar,
+                samples=kle.field(show))
 
 
 def main(argv=None):
@@ -101,7 +115,8 @@ def main(argv=None):
         psrf[kind] = float(get_mpsrf(th)[1])
         print(f"  {kind:10s} done")
     n_ref = a.chains * (a.n_iter // a.thin)
-    ref = np.random.default_rng(a.seed + 99).standard_normal((1, n_ref, kle.r))
+    ref = np.random.default_rng(a.seed + 99).standard_normal((a.chains, n_ref // a.chains,
+                                                               kle.r))
     res["reference"] = stats(ref, kle)
 
     fig, ax = plt.subplots(1, 3, figsize=(15, 4.4))
@@ -140,12 +155,27 @@ def main(argv=None):
     fig.savefig(os.path.join(fdir, "fig_ms_prior_test.png"), dpi=150)
     plt.close(fig)
 
+    # ------------------------------------------------ pointwise fields
+    target = (kle.T ** 2).sum(1)                     # exact pointwise prior variance
+    fig = P.prior_fields([(k, res[k]["samples"], res[k]["pmean"], res[k]["pvar"])
+                          for k in order], target, pc.n, a.blocks,
+                         f"Pointwise fields after prior sampling (likelihood off), "
+                         f"{a.blocks}x{a.blocks} subdomains (dashed).")
+    fig.savefig(os.path.join(fdir, "fig_ms_prior_fields.png"), dpi=130)
+    plt.close(fig)
+    for k in order:
+        res[k]["pvar_ratio"] = fig.ratios[k]
+
     table = {k: dict(frob=res[k]["frob"], spatial_mean_sd=float(res[k]["mean"].std()),
                      field_var_mean=float(res[k]["var"].mean()),
                      field_var_sd=float(res[k]["var"].std()),
                      theta_var_max=float(res[k]["diag"][0]),
                      theta_var_min=float(res[k]["diag"][-1]),
-                     worst_psrf=psrf.get(k))
+                     worst_psrf=psrf.get(k),
+                     pointwise_mean_max_abs=float(np.abs(res[k]["pmean"]).max()),
+                     pointwise_var_ratio_min=float(res[k]["pvar_ratio"].min()),
+                     pointwise_var_ratio_max=float(res[k]["pvar_ratio"].max()),
+                     pointwise_var_ratio_mean=float(res[k]["pvar_ratio"].mean()))
              for k in order}
     out = dict(settings=vars(a), multiscale=msum, results=table)
     tdir = io.tables_dir(EXP)
@@ -153,12 +183,16 @@ def main(argv=None):
     io.save_json(os.path.join(tdir, "ms_prior_test.json"), out)
     with open(os.path.join(tdir, "ms_prior_test.md"), "w") as f:
         f.write("| innovation | cov(θ) error (Frob./√r) | θ variances (max / min) | "
-                "sd of spatial mean | empirical variance (mean ± sd) |\n|---|---|---|---|---|\n")
+                "sd of spatial mean | empirical variance (mean ± sd) | "
+                "pointwise var / target (min–max) | max abs pointwise mean |\n"
+                "|---|---|---|---|---|---|---|\n")
         for k in order:
             t = table[k]
             f.write(f"| {k} | {t['frob']:.3f} | {t['theta_var_max']:.2f} / "
                     f"{t['theta_var_min']:.2f} | {t['spatial_mean_sd']:.3f} | "
-                    f"{t['field_var_mean']:.3f} ± {t['field_var_sd']:.3f} |\n")
+                    f"{t['field_var_mean']:.3f} ± {t['field_var_sd']:.3f} | "
+                    f"{t['pointwise_var_ratio_min']:.2f}–{t['pointwise_var_ratio_max']:.2f} | "
+                    f"{t['pointwise_mean_max_abs']:.3f} |\n")
     print(open(os.path.join(tdir, "ms_prior_test.md")).read())
 
 

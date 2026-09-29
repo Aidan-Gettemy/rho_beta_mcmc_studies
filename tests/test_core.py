@@ -407,3 +407,12 @@ def test_logK_summaries_match_the_full_matrix():
     assert np.allclose(fs["lo"], lo) and np.allclose(fs["hi"], hi)
     assert fs["coverage"] == D.pointwise_coverage(full, truth)
     assert np.allclose(lb + rho * p.kle.spatial_mean(th), full.mean(1))
+def test_pointwise_moments_exact():
+    """Pointwise mean/variance of G = T theta from the moments of theta equal
+    the brute-force values over the sample fields."""
+    from brho import diagnostics as D
+    p = prob()
+    th = np.random.default_rng(6).standard_normal((3, 400, p.r)) * 0.7 + 0.1
+    pm, pv = D.pointwise_moments(th, p.kle.T)
+    G = p.kle.field(th.reshape(-1, p.r))
+    assert np.allclose(pm, G.mean(0)) and np.allclose(pv, G.var(0))
