@@ -388,3 +388,22 @@ def test_soft_sampler_global_innovation_unchanged():
     a = pcn(th, 0.3, np.random.default_rng(7))
     b = np.sqrt(1 - 0.09) * th + 0.3 * np.random.default_rng(7).standard_normal(p.r)
     assert np.array_equal(a, b)
+
+
+def test_logK_summaries_match_the_full_matrix():
+    """The chunked pointwise summaries equal those of the full sample x cell
+    matrix (reports use them so long runs fit in memory)."""
+    from brho import diagnostics as D
+    p = prob()
+    rng = np.random.default_rng(5)
+    n = 900
+    th = rng.standard_normal((n, p.r))
+    lb, rho = rng.normal(0.8, 0.3, n), np.exp(rng.normal(0.3, 0.2, n))
+    full = lb[:, None] + rho[:, None] * p.kle.field(th)
+    truth = full[0] + 0.1
+    fs = D.logK_summaries(lb, rho, th, p.kle, truth, cells_per_chunk=37)
+    assert np.allclose(fs["mean"], full.mean(0)) and np.allclose(fs["sd"], full.std(0))
+    lo, hi = np.percentile(full, [5, 95], axis=0)
+    assert np.allclose(fs["lo"], lo) and np.allclose(fs["hi"], hi)
+    assert fs["coverage"] == D.pointwise_coverage(full, truth)
+    assert np.allclose(lb + rho * p.kle.spatial_mean(th), full.mean(1))

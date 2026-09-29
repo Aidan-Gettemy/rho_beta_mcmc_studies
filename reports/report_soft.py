@@ -87,8 +87,9 @@ def main(argv=None):
     n_ch = ch["tr_rho"].shape[0]
     rho_s, beta_s = ch["kept_rho"].ravel(), ch["kept_beta"].ravel()
     th_s = ch["kept_theta"].reshape(-1, r)
-    logK_s = np.log(beta_s)[:, None] + rho_s[:, None] * kle.field(th_s)
-    level_s = logK_s.mean(1)
+    # level = spatial mean of log K, exactly; the full fields are summarized
+    # a block of cells at a time below (the sample x cell matrix is GBs)
+    level_s = np.log(beta_s) + rho_s * kle.spatial_mean(th_s)
     floor = prob.noise_floor()
     Ks = syn.keff_obs
 
@@ -163,9 +164,8 @@ def main(argv=None):
     P.save(fig, exp, "fig_e5_traces")
 
     # ---------------------------------------------------------- field
-    m_lk, sd_lk = logK_s.mean(0), logK_s.std(0)
-    lo_lk, hi_lk = np.percentile(logK_s, [5, 95], axis=0)
-    cov90 = D.pointwise_coverage(logK_s, syn.logK_true)
+    fs = D.logK_summaries(np.log(beta_s), rho_s, th_s, kle, syn.logK_true)
+    m_lk, sd_lk, lo_lk, hi_lk, cov90 = fs["mean"], fs["sd"], fs["lo"], fs["hi"], fs["coverage"]
     fig, ax = plt.subplots(1, 4, figsize=(17, 3.9))
     v0 = min(syn.logK_true.min(), m_lk.min()); v1 = max(syn.logK_true.max(), m_lk.max())
     P.field(ax[0], syn.logK_true, n, r"true $\log K$", vmin=v0, vmax=v1)

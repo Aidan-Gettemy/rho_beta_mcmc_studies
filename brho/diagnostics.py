@@ -85,3 +85,23 @@ def pointwise_coverage(samples, truth, prob=(5, 95)):
     """Fraction of cells whose truth lies in the pointwise interval."""
     lo, hi = np.percentile(samples, prob, axis=0)
     return float(np.mean((truth >= lo) & (truth <= hi)))
+
+
+def logK_summaries(logbeta, rho, theta, kle, truth=None, prob=(5, 95), cells_per_chunk=48):
+    """Pointwise posterior summaries of log K = log beta + rho * T theta over
+    samples, without forming the (n_samples x N) matrix (which is GBs for
+    long runs): exact, a block of cells at a time.  Returns mean, sd, lo, hi
+    (N,) and, with truth, the pointwise coverage of the [lo, hi] band."""
+    lb = np.asarray(logbeta, float)[:, None]
+    rh = np.asarray(rho, float)[:, None]
+    th = np.asarray(theta, float)
+    N = kle.T.shape[0]
+    out = {k: np.empty(N) for k in ("mean", "sd", "lo", "hi")}
+    for a in range(0, N, cells_per_chunk):
+        b = min(N, a + cells_per_chunk)
+        blk = lb + rh * (th @ kle.T[a:b].T)                 # (n_samples, b - a)
+        out["mean"][a:b], out["sd"][a:b] = blk.mean(0), blk.std(0)
+        out["lo"][a:b], out["hi"][a:b] = np.percentile(blk, prob, axis=0)
+    if truth is not None:
+        out["coverage"] = float(np.mean((truth >= out["lo"]) & (truth <= out["hi"])))
+    return out
