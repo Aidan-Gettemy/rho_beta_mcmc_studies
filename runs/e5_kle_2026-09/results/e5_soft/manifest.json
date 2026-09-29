@@ -46,7 +46,7 @@
   },
   "SoftSamplerConfig": {
    "n_chains": 64,
-   "n_total": 150000,
+   "n_total": 400000,
    "n_burn": 30000,
    "thin": 100,
    "chunk": 5000,
@@ -133,5 +133,14 @@
   "G_std": 0.9721347776021572,
   "noise_rel": 0.020328708107106217
  },
- "status": "set up"
+ "status": "extending to 400000",
+ "extensions": [
+  {
+   "key": "SoftSamplerConfig.n_total",
+   "old": 150000,
+   "new": 400000,
+   "note": "theta MPSRF at equal work (1.2M solves)",
+   "time": "2026-09-28 16:41:29"
+  }
+ ]
 }

@@ -47,7 +47,7 @@
   },
   "NaiveConfig": {
    "move": "blocked",
-   "n_iter": 200000,
+   "n_iter": 600000,
    "n_burn": 20000,
    "thin": 200,
    "s0": 0.1,
@@ -114,5 +114,14 @@
   "noise_rel": 0.020328708107106217
  },
  "status": "complete",
- "minutes": 33.893776047229764
+ "minutes": 43.87230883836746,
+ "extensions": [
+  {
+   "key": "NaiveConfig.n_iter",
+   "old": 200000,
+   "new": 600000,
+   "note": "theta MPSRF at equal work (1.2M solves)",
+   "time": "2026-09-28 16:41:51"
+  }
+ ]
 }
