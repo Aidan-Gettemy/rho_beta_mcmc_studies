@@ -78,10 +78,12 @@ def load_kept(exp, n_chains=None):
         lb = np.log(np.stack([z["kept_beta"][:L] for z in zs]))
         its = sc["n_burn"] + sc["thin"] * np.arange(L)
         full = np.concatenate([theta, lb[..., None], lr[..., None]], axis=2)
+        innov = sc.get("theta_innovation", "global")
+        lab = "E5 soft-curve sampler (β free)" if innov == "global" else \
+            f"E7 soft-curve sampler, {innov.replace('ms_', 'multiscale ')} θ"
         return dict(sets=dict(theta=theta, all=full),
                     extra=dict(theta=[], all=["logβ", "logρ"]),
-                    its=its, m=len(paths), solves=3,
-                    label="E5 soft-curve sampler (β free)")
+                    its=its, m=len(paths), solves=3, label=lab)
     sc = cfgs["SamplerConfig"]
     its = sc["n_burn"] + sc["thin"] * np.arange(L)
     return dict(sets=dict(theta=theta, all=np.concatenate([theta, lr[..., None]], axis=2)),
@@ -223,7 +225,8 @@ def run(exp, n_chains=None, skip=2, step=15, iter_burn=10, level=1.2, at=4900,
 
 
 COLORS = {"e1_blocked": "#c0392b", "e1_global": "#e67e22", "e4_sampler": "#1f5fa8",
-          "e5_soft": "#2e8b57"}
+          "e5_soft": "#2e8b57",
+          "e5_soft_ms_white": "#7b3fa0", "e5_soft_ms_raw": "#999999"}
 
 
 def compare(results, level=1.2):
@@ -291,7 +294,8 @@ def main(argv=None):
                     help="also report the values at this iteration")
     a = ap.parse_args(argv)
     exps = [a.exp] if a.exp else [
-        e for e in (io.exp_e1("blocked"), io.exp_e1("global"), io.EXP_SAMPLER, io.EXP_SOFT)
+        e for e in (io.exp_e1("blocked"), io.exp_e1("global"), io.EXP_SAMPLER, io.EXP_SOFT,
+                    io.exp_soft(False, "ms_white"), io.exp_soft(False, "ms_raw"))
         if io.chain_files(io.results_dir(e))]
     results = {}
     for e in exps:

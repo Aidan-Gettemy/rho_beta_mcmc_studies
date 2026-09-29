@@ -18,30 +18,39 @@
 # Submit from the repo root, study folder via BRHO_ROOT, e.g.
 #   BRHO_ROOT=$PWD/runs/cluster_kle PRIOR_TEST=1 sbatch cluster/slurm/node_e5_soft.sbatch
 #   BRHO_ROOT=$PWD/runs/cluster_kle sbatch cluster/slurm/node_e5_soft.sbatch
-# Time limit: chains checkpoint every `chunk` iterations; resubmit with RESUME=1.
+# Multiscale theta innovation (E7, brho/multiscale.py): INNOV=ms_raw | ms_white
+# (default global); each gets its own run folder, e.g.
+#   BRHO_ROOT=$PWD/runs/cluster_kle PRIOR_TEST=1 INNOV=ms_raw   sbatch cluster/slurm/node_e5_soft.sbatch
+#   BRHO_ROOT=$PWD/runs/cluster_kle PRIOR_TEST=1 INNOV=ms_white sbatch cluster/slurm/node_e5_soft.sbatch
+#   BRHO_ROOT=$PWD/runs/cluster_kle              INNOV=ms_white sbatch cluster/slurm/node_e5_soft.sbatch
+# Time limit: chains checkpoint every `chunk` iterations; resubmit with RESUME=1
+# (and the same PRIOR_TEST / INNOV).
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
 source cluster/env.sh
 export NUMBA_CACHE_DIR=/tmp/numba_cache_$SLURM_JOB_ID
 PT="${PRIOR_TEST:-0}"
+INNOV="${INNOV:-global}"
+SEL="--prior-test $PT --theta-innovation $INNOV"
 NCH="${E5_CHAINS:-$SLURM_NTASKS}"
-echo "BRHO_ROOT=$BRHO_ROOT  tasks=$SLURM_NTASKS  chains=$NCH  prior_test=$PT"
+echo "BRHO_ROOT=$BRHO_ROOT  tasks=$SLURM_NTASKS  chains=$NCH  prior_test=$PT  innovation=$INNOV"
 
 if [[ "${RESUME:-0}" != 1 ]]; then
     OMP_NUM_THREADS=$SLURM_NTASKS MKL_NUM_THREADS=$SLURM_NTASKS OPENBLAS_NUM_THREADS=$SLURM_NTASKS \
         python experiments/run_soft_sampler.py --setup-only --n-chains "$NCH" \
-        --prior-test "$PT" $PROBLEM_ARGS ${E5_ARGS:---n-total 150000 --n-burn 30000 --thin 100}
+        $SEL $PROBLEM_ARGS ${E5_ARGS:---n-total 150000 --n-burn 30000 --thin 100}
 else    # resuming: keep the run, only compile numba into this job's cache
-    python experiments/run_soft_sampler.py --warmup-only --prior-test "$PT"
+    python experiments/run_soft_sampler.py --warmup-only $SEL
 fi
 
 srun --ntasks="$SLURM_NTASKS" --cpu-bind=cores --output="logs/brho-e5-%j-rank%t.out" \
-    python experiments/run_soft_sampler.py --chain-id env --prior-test "$PT"
+    python experiments/run_soft_sampler.py --chain-id env $SEL
 # mpirun --bind-to core --map-by core -np "$SLURM_NTASKS" \
 #     python experiments/run_soft_sampler.py --chain-id env --prior-test "$PT"
 
-python experiments/run_soft_sampler.py --status --prior-test "$PT" || true
-if [[ "$PT" == 1 ]]; then python reports/report_soft_prior_test.py
-else python reports/report_soft.py
+python experiments/run_soft_sampler.py --status $SEL || true
+EXP=$(python -c "from brho import io; print(io.exp_soft($PT == 1, '$INNOV'))")
+if [[ "$PT" == 1 ]]; then python reports/report_soft_prior_test.py --exp "$EXP"
+else python reports/report_soft.py --exp "$EXP"
      python reports/report_mpsrf.py        # MPSRF/PSRF, MATLAB style, all runs in this study
 fi

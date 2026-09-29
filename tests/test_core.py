@@ -331,3 +331,60 @@ def test_chain_files_skips_checkpoints_being_written():
             open(os.path.join(d, name), "w").close()
         got = [os.path.basename(p) for p in io.chain_files(d)]
         assert got == ["chain2.npz", "chain10.npz", "chain45.npz"], got
+
+
+def test_multiscale_whitening_is_exact():
+    """brho/multiscale.py: W Sigma_ms W^T + V0 V0^T = I to machine precision;
+    whitened draws have covariance I, raw draws do not (Pereira, Sec. 2)."""
+    from brho.multiscale import from_problem
+    p = prob()
+    ms = from_problem(p, blocks=2, local_energy=0.95)
+    assert ms.operator_check < 1e-12
+    rng = np.random.default_rng(4)
+    X = np.array([ms.draw("ms_white", rng) for _ in range(20000)])
+    R = np.array([ms.draw("ms_raw", rng) for _ in range(20000)])
+    ref = np.linalg.norm(np.cov(rng.standard_normal((20000, p.r)).T) - np.eye(p.r)) / np.sqrt(p.r)
+    err_w = np.linalg.norm(np.cov(X.T) - np.eye(p.r)) / np.sqrt(p.r)
+    err_r = np.linalg.norm(np.cov(R.T) - np.eye(p.r)) / np.sqrt(p.r)
+    assert err_w < 2 * ref + 0.01, (err_w, ref)
+    assert err_r > 5 * ref, (err_r, ref)
+    assert np.allclose(ms.draw("global", np.random.default_rng(0)),
+                       np.random.default_rng(0).standard_normal(p.r))
+
+
+def test_soft_sampler_multiscale_prior_test():
+    """E7: the full E5 sampler (moves A-D) with Phi = 0 and the multiscale
+    theta innovation: whitened reproduces theta ~ N(0, I); raw does not."""
+    from brho.samplers import SoftCurveSampler
+    p = prob()
+    frob = {}
+    for innov in ("ms_white", "ms_raw"):
+        cfg = replace(C.SoftSamplerConfig(), prior_test=True, theta_innovation=innov,
+                      s_init=(0.5, 0.3, 0.12, 0.6))
+        s = SoftCurveSampler(p, _soft_curve(), cfg)
+        rng = np.random.default_rng(2)
+        st = s.init_state(rng)
+        ad = StepAdapter(cfg.s_init, targets=cfg.targets, every=10 ** 9)
+        th = []
+        for it in range(30000):
+            s.step(st, ad, rng)
+            if it > 2000 and it % 5 == 0:
+                th.append(st["theta"].copy())
+        th = np.array(th)
+        frob[innov] = np.linalg.norm(np.cov(th.T) - np.eye(p.r)) / np.sqrt(p.r)
+    assert frob["ms_white"] < 0.2, frob
+    assert frob["ms_raw"] > 0.3, frob
+
+
+def test_soft_sampler_global_innovation_unchanged():
+    """The default ("global") theta move must be bit-identical to the code
+    that produced the E5 runs, so those runs extend exactly."""
+    from brho.samplers import SoftCurveSampler, pcn
+    p = prob()
+    cfg = replace(C.SoftSamplerConfig(), prior_test=True)
+    s = SoftCurveSampler(p, _soft_curve(), cfg)
+    assert s.ms is None
+    th = np.random.default_rng(1).standard_normal(p.r)
+    a = pcn(th, 0.3, np.random.default_rng(7))
+    b = np.sqrt(1 - 0.09) * th + 0.3 * np.random.default_rng(7).standard_normal(p.r)
+    assert np.array_equal(a, b)

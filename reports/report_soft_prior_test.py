@@ -9,9 +9,21 @@ likelihood off they must reproduce the prior exactly.
                            (b) QQ of w vs truncated N(0,1)
                            (c) QQ of xi_b vs N(0,1)
                            (d) rho histogram vs truncated lognormal prior
-    tables/e5_prior_test/prior_test.{md,json}
+                           (e) law of the spatial mean of G = T theta
+                           (f) law of the empirical variance of G
+                           [(e)-(f): the multiscale prior test of Pereira,
+                           "Variance control in distribution", Sec. 3]
+    tables/<exp>/prior_test.{md,json}
+
+    python reports/report_soft_prior_test.py [--exp e5_prior_test_ms_white]
+
+KS p-values assume independent samples; chain samples are autocorrelated,
+so they are indicative only (small p is expected even for a correct chain
+of modest length).  The decisive checks are the cov(theta) error against
+direct draws of the same size and the field-law summaries.
 """
 import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
+import argparse
 import os
 
 import numpy as np
@@ -23,15 +35,18 @@ from report_soft import load
 from brho import plotting as P
 from brho.samplers import trace_burn_index
 
-EXP = io.EXP_SOFT_PRIOR
-
-
-def main():
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--exp", default=io.EXP_SOFT_PRIOR,
+                    help="e5_prior_test (global), e5_prior_test_ms_raw, e5_prior_test_ms_white")
+    EXP = ap.parse_args(argv).exp
     if not have(EXP):
-        print("E5 prior test: no results"); return
+        print(f"{EXP}: no results"); return
     prob, man, ch, curve, scfg = load(EXP)
     if ch is None:
-        print("E5 prior test: set up, no chains yet"); return
+        print(f"{EXP}: set up, no chains yet"); return
+    innov = getattr(scfg, "theta_innovation", "global")
     r = prob.r
     ib = trace_burn_index(scfg.n_burn, scfg.trace_every)
     th = ch["kept_theta"].reshape(-1, r)
@@ -46,7 +61,14 @@ def main():
     frob_c = np.linalg.norm(cov_c - np.eye(r)) / np.sqrt(r)
     frob_r = np.linalg.norm(cov_r - np.eye(r)) / np.sqrt(r)
 
-    fig, ax = plt.subplots(1, 4, figsize=(18, 4.0))
+    # field laws (Pereira's prior test): G = T theta, chain vs direct draws
+    G_c, G_r = prob.kle.field(th), prob.kle.field(ref)
+    mean_c, mean_r = G_c.mean(1), G_r.mean(1)
+    var_c, var_r = G_c.var(1), G_r.var(1)
+
+    fig, axs = plt.subplots(2, 3, figsize=(16, 8.4))
+    ax = [axs[0, 0], axs[0, 1], axs[0, 2], axs[1, 0], axs[1, 1], axs[1, 2]]
+    fig.suptitle(f"{EXP}: prior test (likelihood off), theta innovation = {innov}")
     ax[0].plot(np.sort(np.diag(cov_r))[::-1], "k-", lw=2, label="direct draws")
     ax[0].plot(np.sort(np.diag(cov_c))[::-1], lw=1.5, label="chain")
     ax[0].axhline(1, color="0.5", ls=":")
@@ -63,6 +85,20 @@ def main():
     ax[3].plot(xx, P.lognormal_pdf(xx, scfg.mu_rho, scfg.s_rho) / tn.cdf(w_max) * 1.0,
                "k--", lw=1.2, label="prior (truncated)")
     ax[3].set_title(r"$\rho$"); ax[3].legend()
+    lo, hi = np.quantile(np.r_[mean_r, mean_c], [0.001, 0.999])
+    bins = np.linspace(lo, hi, 50)
+    ax[4].hist(mean_r, bins, density=True, histtype="step", color="k", lw=2, label="direct draws")
+    ax[4].hist(mean_c, bins, density=True, histtype="step", lw=1.8, label="chain")
+    ax[4].set_title(f"spatial mean of G: sd {mean_c.std():.3f} (direct {mean_r.std():.3f})")
+    ax[4].legend()
+    lo, hi = np.quantile(np.r_[var_r, var_c], [0.001, 0.999])
+    bins = np.linspace(lo, hi, 50)
+    ax[5].hist(var_r, bins, density=True, histtype="step", color="k", lw=2, label="direct draws")
+    ax[5].hist(var_c, bins, density=True, histtype="step", lw=1.8, label="chain")
+    ax[5].set_title(f"empirical variance of G: {var_c.mean():.3f}±{var_c.std():.3f} "
+                    f"(direct {var_r.mean():.3f}±{var_r.std():.3f})", fontsize=10)
+    ax[5].legend()
+    fig.tight_layout()
     P.save(fig, EXP, "fig_e5_prior_test")
 
     acc = ch["acc_tot"].sum(0) / (scfg.n_total * ch["acc_tot"].shape[0])
@@ -74,7 +110,16 @@ def main():
                theta_norm2_over_r=float((th ** 2).sum(1).mean() / r),
                ks_w_p=float(stats.kstest(w, tn.cdf).pvalue),
                ks_xi_p=float(stats.kstest(xi, "norm").pvalue),
-               acc=dict(zip("ABCD", map(float, acc))))
+               acc=dict(zip("ABCD", map(float, acc))),
+               theta_innovation=innov,
+               theta_var_sorted_max_min=[float(np.diag(cov_c).max()),
+                                         float(np.diag(cov_c).min())],
+               spatial_mean_sd=float(mean_c.std()),
+               spatial_mean_sd_reference=float(mean_r.std()),
+               field_var_mean_sd=[float(var_c.mean()), float(var_c.std())],
+               field_var_mean_sd_reference=[float(var_r.mean()), float(var_r.std())],
+               ks_spatial_mean_p=float(stats.ks_2samp(mean_c, mean_r).pvalue),
+               ks_field_var_p=float(stats.ks_2samp(var_c, var_r).pvalue))
     io.save_json(os.path.join(io.tables_dir(EXP), "prior_test.json"), out)
     with open(os.path.join(io.tables_dir(EXP), "prior_test.md"), "w") as f:
         f.write("| check | chain | target |\n|---|---|---|\n")
@@ -85,9 +130,13 @@ def main():
         f.write(f"| theta_norm2 / r | {out['theta_norm2_over_r']:.3f} | 1 |\n")
         f.write(f"| cov(theta) error (Frobenius / sqrt r) | {frob_c:.3f} | "
                 f"{frob_r:.3f} (direct draws) |\n")
+        f.write(f"| spatial mean of G: sd | {out['spatial_mean_sd']:.3f} | "
+                f"{out['spatial_mean_sd_reference']:.3f} (direct draws) |\n")
+        f.write(f"| empirical variance of G: mean / sd | {var_c.mean():.3f} / "
+                f"{var_c.std():.3f} | {var_r.mean():.3f} / {var_r.std():.3f} (direct draws) |\n")
         f.write(f"| acceptance A-D | " + "/".join(f"{v:.2f}" for v in acc) + " | "
                 + "/".join(f"{t:.2f}" for t in scfg.targets) + " (targets) |\n")
-    print("E5 prior test:", {k: (round(v, 3) if isinstance(v, float) else v)
+    print(f"{EXP}:", {k: (round(v, 3) if isinstance(v, float) else v)
                              for k, v in out.items()})
 
 

@@ -31,6 +31,13 @@ EXP_SAMPLER = "e4_sampler"
 EXP_PRIOR = "e4_prior_test"
 EXP_SOFT = "e5_soft"             # E5: soft curve prior, beta free
 EXP_SOFT_PRIOR = "e5_prior_test"
+
+
+def exp_soft(prior_test=False, innovation="global"):
+    """E5 run folder; a non-default theta innovation gets its own folder
+    (e5_soft_ms_white, e5_prior_test_ms_raw, ...)."""
+    base = EXP_SOFT_PRIOR if prior_test else EXP_SOFT
+    return base if innovation in (None, "global") else f"{base}_{innovation}"
 EXP_SETUP = "setup"
 
 

@@ -152,7 +152,15 @@ class SoftSamplerConfig:
          beta fixed -> log K unchanged                      0 solves
       D  level swap: log beta' = log beta + delta,
          theta' = theta - (delta / rho) c, c = KLE coords
-         of the constant field -> log K nearly unchanged    1 solve"""
+         of the constant field -> log K nearly unchanged    1 solve
+    theta_innovation (move A's pCN innovation, brho/multiscale.py):
+      "global"    N(0, I_r)                              plain pCN (default)
+      "ms_raw"    local-KLE assemble-and-project, B eta  law N(0, Sigma_ms):
+                  WRONG (fails the prior test by design)
+      "ms_white"  the same, whitened: W B eta + V0 zeta  law N(0, I_r) exactly
+      with ms_blocks x ms_blocks subdomains, local KLEs at ms_local_energy.
+      "ms_white" has the same transition kernel as "global" (a correctness
+      device, not a speed-up)."""
     n_chains: int = 64
     n_total: int = 150000          # same budget as the E4 run (3 solves / it)
     n_burn: int = 30000
@@ -171,6 +179,9 @@ class SoftSamplerConfig:
     n_workers: int = 4
     prior_test: bool = False
     trace_every: int = 1
+    theta_innovation: str = "global"
+    ms_blocks: int = 2
+    ms_local_energy: float = 0.95
 
 
 # ------------------------------------ E1: naive global pCN on (theta, beta, rho)

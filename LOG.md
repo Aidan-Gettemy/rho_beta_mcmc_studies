@@ -358,3 +358,42 @@ Dirichlet-Dirichlet slab with a flat prior would make E1's posterior
 improper (never converges).
 Next: extend E5 to 400k and E1 to 600k iterations (1.2M solves each) at
 sigma_rel 2e-3; goal theta MPSRF < 1.2 in E5, not in E1.
+
+## 2026-09-29: E5 results at 1.2M solves; plan to convergence; E7 (multiscale) code
+Extension to 1.2M PDE solves per chain (runs/e5_kle_2026-09, PR #36):
+- E5: theta MPSRF 1.207 (not yet < 1.2); worst single-theta PSRF 1.104, every
+  theta below 1.2 from 603k solves; log beta 1.003, rho 1.014, level 1.088
+  (ESS 1293); posterior unchanged (beta 2.15 [1.42, 3.21], rho 1.47 [1.23,
+  1.79], sd log beta 0.248).
+- E1: theta MPSRF 1.339, worst PSRF 1.289 (theta1), theta5 1.238, log beta
+  1.318: still the beta ridge.  Trend fits: E5 MPSRF 1.2 at ~1.23M solves,
+  E1 at ~1.8M.  Both converge in principle; report the crossing cost of
+  each rather than one cut-off.
+Decided (Aidan): run BOTH to convergence (E5 -> 667k it., E1 -> 1M it.,
+2.0M solves each), then the report.
+Next (Aidan): the multiscale (local-KLE) theta innovation of Pereira,
+"Variance control in distribution" (July 2026), and Sec. 6 of "Two
+parametrization degeneracies" (Sept. 2026), on the 2D problem:
+  1. prior test, naive (raw) multiscale innovation -> must fail;
+  2. prior test, whitened innovation -> must pass;
+  3. E7 = E5 (soft curve prior, moves A-D, same truth and sigma_rel) with
+     the whitened multiscale innovation in move A.
+  Possibly 3D afterwards (advisor's call).
+Code (brho/multiscale.py; SoftSamplerConfig.theta_innovation = global |
+ms_raw | ms_white, ms_blocks = 2, ms_local_energy = 0.95; run folders
+e5_prior_test_ms_raw / _ms_white, e5_soft_ms_white; INNOV=... in
+node_e5_soft.sbatch; experiments/run_ms_prior_test.py = the 2D replica of
+Pereira's pure-pCN prior test).  2D operator: 2x2 subdomains, 17 local
+modes each (p = 68), Sigma_ms eigenvalues 0.31-1.99, full rank (r_plus =
+57), whitening check 2.4e-15.  Local checks (not the study runs):
+  pure pCN, 16 x 40k it.: cov error raw 0.338 / whitened 0.026 / direct
+  0.019; spatial-mean sd 0.212 / 0.231 / 0.230; per-sample normalized
+  collapses both field laws to points.
+  full E5 sampler, 4 x 20k it., likelihood off: cov error ms_raw 0.347,
+  ms_white 0.089 = direct draws 0.089.
+Expectation for step 3 (Sec. 6 of the degeneracies notes): the whitened
+innovation is exactly N(0, I_r), so move A has the SAME transition kernel
+as global pCN.  E7 must reproduce E5 within Monte Carlo error (posterior,
+step size, MPSRF); it demonstrates correctness of the multiscale
+machinery, not a speed-up.  The global path is unchanged bit for bit
+(tested), so the running E5 extension is unaffected.
