@@ -47,7 +47,7 @@
   },
   "NaiveConfig": {
    "move": "blocked",
-   "n_iter": 600000,
+   "n_iter": 1000000,
    "n_burn": 20000,
    "thin": 200,
    "s0": 0.1,
@@ -114,7 +114,7 @@
   "noise_rel": 0.020328708107106217
  },
  "status": "complete",
- "minutes": 43.87230883836746,
+ "minutes": 15.220023028055827,
  "extensions": [
   {
    "key": "NaiveConfig.n_iter",
@@ -122,6 +122,13 @@
    "new": 600000,
    "note": "theta MPSRF at equal work (1.2M solves)",
    "time": "2026-09-28 16:41:51"
+  },
+  {
+   "key": "NaiveConfig.n_iter",
+   "old": 600000,
+   "new": 1000000,
+   "note": "run both to theta MPSRF crossing (2.0M solves)",
+   "time": "2026-09-29 10:43:29"
   }
  ]
 }
