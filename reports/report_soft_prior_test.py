@@ -13,6 +13,12 @@ likelihood off they must reproduce the prior exactly.
                            (f) law of the empirical variance of G
                            [(e)-(f): the multiscale prior test of Pereira,
                            "Variance control in distribution", Sec. 3]
+    fig_e5_prior_fields.png  pointwise check of G = T theta, rows direct
+                           draws / chain: three thinned sample fields (last
+                           kept sample of different chains), pointwise mean,
+                           pointwise variance, and variance / target with
+                           target = diag(T T^T); subdomain interfaces dashed
+                           for a multiscale innovation
     tables/<exp>/prior_test.{md,json}
 
     python reports/report_soft_prior_test.py [--exp e5_prior_test_ms_white]
@@ -33,6 +39,7 @@ from scipy import stats
 from _common import have, io
 from report_soft import load
 from brho import plotting as P
+from brho import diagnostics as D
 from brho.samplers import trace_burn_index
 
 def main(argv=None):
@@ -101,6 +108,22 @@ def main(argv=None):
     fig.tight_layout()
     P.save(fig, EXP, "fig_e5_prior_test")
 
+    # pointwise fields: direct draws vs chain (exact moments from theta)
+    target = (prob.kle.T ** 2).sum(1)
+    kth = np.asarray(ch["kept_theta"])               # (chains, kept, r)
+    show_c = kth[:3, -1] if kth.shape[0] >= 3 else kth[0, -3:]
+    pm_r, pv_r = D.pointwise_moments(ref, prob.kle.T)
+    pm_c, pv_c = D.pointwise_moments(th, prob.kle.T)
+    blocks = getattr(scfg, "ms_blocks", None) if innov != "global" else None
+    figf = P.prior_fields([("direct draws", prob.kle.field(ref[:3]), pm_r, pv_r),
+                           (f"chain ({innov})", prob.kle.field(show_c), pm_c, pv_c)],
+                          target, prob.pc.n, blocks,
+                          f"{EXP}: pointwise fields of G after prior sampling "
+                          "(likelihood off)" + (f", {blocks}x{blocks} subdomains (dashed)."
+                                                if blocks else "."))
+    ratio_c = figf.ratios[f"chain ({innov})"]
+    P.save(figf, EXP, "fig_e5_prior_fields")
+
     acc = ch["acc_tot"].sum(0) / (scfg.n_total * ch["acc_tot"].shape[0])
     out = dict(n_samples=int(th.shape[0]), frob_chain=float(frob_c),
                frob_reference=float(frob_r), w_mean=float(w.mean()), w_sd=float(w.std()),
@@ -119,7 +142,11 @@ def main(argv=None):
                field_var_mean_sd=[float(var_c.mean()), float(var_c.std())],
                field_var_mean_sd_reference=[float(var_r.mean()), float(var_r.std())],
                ks_spatial_mean_p=float(stats.ks_2samp(mean_c, mean_r).pvalue),
-               ks_field_var_p=float(stats.ks_2samp(var_c, var_r).pvalue))
+               ks_field_var_p=float(stats.ks_2samp(var_c, var_r).pvalue),
+               pointwise_var_ratio_min=float(ratio_c.min()),
+               pointwise_var_ratio_max=float(ratio_c.max()),
+               pointwise_mean_max_abs=float(np.abs(pm_c).max()),
+               pointwise_mean_max_abs_reference=float(np.abs(pm_r).max()))
     io.save_json(os.path.join(io.tables_dir(EXP), "prior_test.json"), out)
     with open(os.path.join(io.tables_dir(EXP), "prior_test.md"), "w") as f:
         f.write("| check | chain | target |\n|---|---|---|\n")
@@ -134,6 +161,10 @@ def main(argv=None):
                 f"{out['spatial_mean_sd_reference']:.3f} (direct draws) |\n")
         f.write(f"| empirical variance of G: mean / sd | {var_c.mean():.3f} / "
                 f"{var_c.std():.3f} | {var_r.mean():.3f} / {var_r.std():.3f} (direct draws) |\n")
+        f.write(f"| pointwise variance / target (min–max) | {ratio_c.min():.2f}–"
+                f"{ratio_c.max():.2f} | 1 |\n")
+        f.write(f"| max abs pointwise mean of G | {np.abs(pm_c).max():.3f} | "
+                f"{np.abs(pm_r).max():.3f} (direct draws) |\n")
         f.write(f"| acceptance A-D | " + "/".join(f"{v:.2f}" for v in acc) + " | "
                 + "/".join(f"{t:.2f}" for t in scfg.targets) + " (targets) |\n")
     print(f"{EXP}:", {k: (round(v, 3) if isinstance(v, float) else v)

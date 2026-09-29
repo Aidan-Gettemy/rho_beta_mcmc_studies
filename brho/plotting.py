@@ -56,3 +56,43 @@ def save(fig, exp, name):
 def lognormal_pdf(x, mu, s):
     x = np.asarray(x, float)
     return np.exp(-0.5 * ((np.log(x) - mu) / s) ** 2) / (x * s * np.sqrt(2 * np.pi))
+
+
+def prior_fields(rows, target, n, blocks=None, title="", vs=3.0):
+    """Pointwise check of prior sampling (likelihood off), one row per
+    strategy.  rows: list of (label, samples (k, N), pmean (N,), pvar (N,)).
+    Columns: the k sample fields (common scale +-vs), the pointwise mean, the
+    pointwise variance and its ratio to `target` (the exact prior pointwise
+    variance, diag(T T^T)); with `blocks`, the subdomain interfaces are drawn
+    on the ratio.  Returns the figure; the ratios are in fig.ratios."""
+    ns = max(len(r[1]) for r in rows)
+    fig, axs = plt.subplots(len(rows), ns + 3, figsize=(3.1 * (ns + 3), 2.9 * len(rows)),
+                            squeeze=False)
+    vm = max(float(np.abs(r[2]).max()) for r in rows)
+    vv = max(float(r[3].max()) for r in rows)
+    edges = [i / blocks for i in range(1, blocks)] if blocks else []
+    fig.ratios = {}
+    for i, (lab, smp, pm, pv) in enumerate(rows):
+        for j in range(ns):
+            if j < len(smp):
+                field(axs[i, j], smp[j], n, f"{lab}: sample {j + 1}", cmap="viridis",
+                      vmin=-vs, vmax=vs, cbar=(j == ns - 1))
+            else:
+                axs[i, j].axis("off")
+        field(axs[i, ns], pm, n, f"pointwise mean (max |.| {np.abs(pm).max():.3f})",
+              cmap="RdBu_r", vmin=-vm, vmax=vm)
+        field(axs[i, ns + 1], pv, n, f"pointwise variance ({pv.min():.2f}-{pv.max():.2f})",
+              cmap="magma", vmin=0, vmax=vv)
+        ratio = pv / target
+        fig.ratios[lab] = ratio
+        field(axs[i, ns + 2], ratio, n, f"variance / target ({ratio.min():.2f}-{ratio.max():.2f})",
+              cmap="RdBu_r", vmin=0.5, vmax=1.5)
+        for e in edges:
+            axs[i, ns + 2].axvline(e, color="k", lw=0.8, ls="--")
+            axs[i, ns + 2].axhline(e, color="k", lw=0.8, ls="--")
+    for ax in axs.ravel():
+        ax.set_xticks([]); ax.set_yticks([])
+        ax.title.set_fontsize(9)
+    fig.suptitle(title + (f"   target variance = diag(T T^T), mean {np.mean(target):.3f}"))
+    fig.tight_layout()
+    return fig
