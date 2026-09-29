@@ -255,6 +255,11 @@ class SoftCurveSampler:
         ones = np.ones(T.shape[0])
         self.c, *_ = np.linalg.lstsq(T, ones, rcond=None)
         self.c_resid = float(np.linalg.norm(T @ self.c - ones) / np.sqrt(len(ones)))
+        self.innovation = getattr(scfg, "theta_innovation", "global")
+        self.ms = None
+        if self.innovation != "global":
+            from .multiscale import from_problem
+            self.ms = from_problem(prob, scfg.ms_blocks, scfg.ms_local_energy)
 
     # ------------------------------------------------------------- model
     def rho(self, w):
@@ -316,8 +321,13 @@ class SoftCurveSampler:
         s_th, s_h, s_rg, s_lv = ad.s
         th, w, lb = st["theta"], st["w"], st["lb"]
         rho = self.rho(w)
-        # A: pCN on theta
-        th_p = pcn(th, s_th, rng)
+        # A: pCN on theta (global innovation: unchanged code path, so existing
+        #    runs resume bit-identically; multiscale: brho/multiscale.py)
+        if self.ms is None:
+            th_p = pcn(th, s_th, rng)
+        else:
+            th_p = (np.sqrt(1.0 - s_th * s_th) * th
+                    + s_th * self.ms.draw(self.innovation, rng))
         phi_p, pobs_p, keff_p = self.potential(th_p, w, lb)
         a = np.log(rng.random()) < st["phi"] - phi_p
         if a:

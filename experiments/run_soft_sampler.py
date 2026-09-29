@@ -41,8 +41,8 @@ from run_curve_sampler import check_curve_matches
 CFG = C.SoftSamplerConfig
 
 
-def exp_name(prior_test):
-    return io.EXP_SOFT_PRIOR if prior_test else io.EXP_SOFT
+def exp_name(prior_test, innovation="global"):
+    return io.exp_soft(prior_test, innovation)
 
 
 def chain_path(exp, cid):
@@ -96,11 +96,19 @@ def setup(pc, scfg, curve_field, curve_statistic, exp):
                                       rho_max=curve.rho_max),
                            soft_prior_at_truth=prior_at_truth,
                            constant_field_residual=smp.c_resid,
+                           multiscale=(smp.ms.summary() if smp.ms is not None else None),
                            truth=syn.summary(), status="set up"))
     print(f"E5{' PRIOR TEST' if scfg.prior_test else ''} (beta free, soft curve "
           f"prior, moves A-D): {scfg.n_chains} chains x {scfg.n_total} it "
           f"(burn {scfg.n_burn}, thin {scfg.thin}); r={prob.r}; truth={pc.truth_mode}; "
-          f"K*={syn.keff_obs:.3f}; curve={curve.statistic}")
+          f"K*={syn.keff_obs:.3f}; curve={curve.statistic}; "
+          f"theta innovation={scfg.theta_innovation} -> {exp}")
+    if smp.ms is not None:
+        ms = smp.ms.summary()
+        print(f"  multiscale: {ms['blocks']}x{ms['blocks']} subdomains, local modes "
+              f"{ms['r_k']} (p={ms['p']}), Sigma_ms eigenvalues "
+              f"[{ms['sigma_ms_eig_min']:.3f}, {ms['sigma_ms_eig_max']:.3f}], "
+              f"r_plus={ms['r_plus']}/{ms['r']}, whitening check {ms['operator_check']:.1e}")
     print(f"  soft prior at rho_true={rt}: beta_bar={prior_at_truth['beta_bar']:.3f}, "
           f"s={prior_at_truth['s']:.3f}; beta_true is {prior_at_truth['z_truth']:+.2f} s "
           f"from the curve; constant field outside the KLE span: "
@@ -131,7 +139,7 @@ def main():
     ap.add_argument("--fresh", action="store_true")
     args = ap.parse_args()
     prior_test = bool(args.prior_test) if args.prior_test is not None else False
-    exp = exp_name(prior_test)
+    exp = exp_name(prior_test, args.theta_innovation or "global")
 
     if args.status:
         sys.exit(0 if status(exp) else 1)
