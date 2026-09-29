@@ -42,7 +42,6 @@ Data (results/e1_<move>/pfield_samples.npz)
 """
 import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
 import argparse
-import glob
 import os
 
 import numpy as np
@@ -101,8 +100,7 @@ def report_move(EXP, a):
     cfg = C.from_dict(C.NaiveConfig, man["configs"]["NaiveConfig"])
     blocked = cfg.move == "blocked"
     ns = 2 if blocked else 1                           # PDE solves per iteration
-    paths = sorted(glob.glob(os.path.join(io.results_dir(EXP), "chain*.npz")),
-                   key=lambda p: int(os.path.basename(p)[5:-4]))
+    paths = io.chain_files(io.results_dir(EXP))
     if not paths:
         print(f"E1 [{cfg.move}]: set up, no chains yet"); return None
     ch = load_chains(paths)

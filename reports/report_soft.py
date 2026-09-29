@@ -19,7 +19,6 @@ The E5 prior test (likelihood off) is reports/report_soft_prior_test.py.
 """
 import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
 import argparse
-import glob
 import os
 
 import numpy as np
@@ -38,7 +37,7 @@ MOVES = ("A: θ", "B: w", "C: ridge", "D: β–θ swap")
 def load(exp):
     prob, man = load_problem(exp)
     d = io.results_dir(exp)
-    paths = sorted(glob.glob(os.path.join(d, "chain*.npz")))
+    paths = io.chain_files(d)
     if not paths:
         return prob, man, None, None, None
     ch = load_chains(paths)

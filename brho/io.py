@@ -55,6 +55,19 @@ def results_dir(exp):
     return _dir("results", exp)
 
 
+def chain_files(d):
+    """The chain checkpoints chain<N>.npz in folder d, sorted by N.  Only
+    finished files: a checkpoint being written (chain<N>.npz.tmp.npz, renamed
+    into place when complete) is skipped, so reports can run while a job is
+    still going."""
+    import glob
+    import re
+    pat = re.compile(r"chain(\d+)\.npz$")
+    found = [(int(m.group(1)), p) for p in glob.glob(os.path.join(d, "chain*.npz"))
+             if (m := pat.fullmatch(os.path.basename(p)))]
+    return [p for _, p in sorted(found)]
+
+
 def figures_dir(exp):
     return _dir("figures", exp)
 

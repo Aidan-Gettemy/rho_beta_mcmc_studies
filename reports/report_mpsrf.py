@@ -31,7 +31,6 @@ Writes, for each set, into figures/<exp>/ and tables/<exp>/:
 """
 import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
 import argparse
-import glob
 import os
 
 import numpy as np
@@ -42,8 +41,7 @@ from brho import mpsrf as M
 
 
 def _chain_paths(exp, n_chains=None):
-    paths = sorted(glob.glob(os.path.join(io.results_dir(exp), "chain*.npz")),
-                   key=lambda p: int(os.path.basename(p)[5:-4]))
+    paths = io.chain_files(io.results_dir(exp))
     if not paths:
         raise FileNotFoundError(f"no chain files in {io.results_dir(exp)}")
     return paths[:n_chains] if n_chains else paths
@@ -294,7 +292,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     exps = [a.exp] if a.exp else [
         e for e in (io.exp_e1("blocked"), io.exp_e1("global"), io.EXP_SAMPLER, io.EXP_SOFT)
-        if glob.glob(os.path.join(io.results_dir(e), "chain*.npz"))]
+        if io.chain_files(io.results_dir(e))]
     results = {}
     for e in exps:
         results[e] = run(e, a.chains, a.skip, a.step, a.iter_burn, a.level, a.at)

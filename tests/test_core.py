@@ -318,3 +318,16 @@ def test_soft_sampler_extension_is_exact():
             if k != "rng_state":
                 assert np.array_equal(za[k], zb[k]), k
         assert za["rng_state"] == zb["rng_state"]
+
+
+def test_chain_files_skips_checkpoints_being_written():
+    """A report run while a job saves a checkpoint must not trip over the
+    temporary file (chain45.npz.tmp.npz), and chains sort numerically."""
+    import tempfile
+    from brho import io
+    with tempfile.TemporaryDirectory() as d:
+        for name in ("chain10.npz", "chain2.npz", "chain45.npz.tmp.npz", "chain45.npz",
+                     "chainX.npz", "chains_summary.json"):
+            open(os.path.join(d, name), "w").close()
+        got = [os.path.basename(p) for p in io.chain_files(d)]
+        assert got == ["chain2.npz", "chain10.npz", "chain45.npz"], got

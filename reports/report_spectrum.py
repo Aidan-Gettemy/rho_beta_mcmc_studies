@@ -41,7 +41,6 @@ and with two runs figures/spectrum_compare/fig_spectrum_compare.png.
 """
 import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
 import argparse
-import glob
 import os
 
 import numpy as np
@@ -268,7 +267,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     exps = [a.exp] if a.exp else [
         e for e in (io.exp_e1("blocked"), io.EXP_SOFT)
-        if glob.glob(os.path.join(io.results_dir(e), "chain*.npz"))]
+        if io.chain_files(io.results_dir(e))]
     if not exps:
         raise SystemExit("no chain files found (is BRHO_ROOT set?)")
     results = {e: run(e, a.chains) for e in exps}

@@ -20,7 +20,6 @@ E4 figures and tables (3-step sampler with the beta_bar(rho) curve).
     tables/e4_sampler/e4_summary.json     coverage, mean Phi vs floor, MPSRF, ...
 """
 import _common  # noqa: F401  (first: caps BLAS threads before NumPy loads)
-import glob
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -38,7 +37,7 @@ EXP = io.EXP_SAMPLER
 def load(exp):
     prob, man = load_problem(exp)
     d = io.results_dir(exp)
-    paths = sorted(glob.glob(os.path.join(d, "chain*.npz")))
+    paths = io.chain_files(d)
     if not paths:
         return prob, man, None, None, None
     ch = load_chains(paths)
