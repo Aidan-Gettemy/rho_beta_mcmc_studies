@@ -5,7 +5,8 @@ E3 figures and tables (method report Fig. 1 + finite-size diagnostics).
                             5-95% bands of the beta_i sample, the two other
                             statistics as thin lines, truth star (log beta)
     fig_curve_f.png         f(rho) = ensemble Keff at beta=1 with standard error
-                            and one-realization scatter; Matheron 2D value 1;
+                            and one-realization scatter; infinite-medium reference
+                            (2D: 1; 3D: exp(rho^2/6));
                             KLE vs full-rank Cholesky overlay (consistency)
     fig_curve_scatter.png   relative scatter of Keff across realizations vs rho
     fig_curve_hist.png      histogram of beta_i at the grid rho nearest rho_true,
@@ -73,7 +74,17 @@ def main():
         bc = cho.band(Ks)
         ax.errorbar(cho.rhos, bc["f_mean"], yerr=bc["f_se"], fmt="s--", ms=3,
                     color="C1", label="full-rank Cholesky")
-    ax.axhline(1.0, color="k", lw=1, ls=":", label="Matheron 2D (geometric mean) = 1")
+    dim = getattr(prob.pc, "dim", 2)
+    if dim == 2:
+        ax.axhline(1.0, color="k", lw=1, ls=":", label="Matheron 2D (geometric mean) = 1")
+    else:
+        # infinite-medium Landau-Lifshitz-Matheron: f = exp((1/2 - 1/d) rho^2)
+        rr_ = np.linspace(0, cur.rhos.max(), 200)
+        f_llm = np.exp((0.5 - 1.0 / dim) * rr_ ** 2)
+        keep = f_llm <= 3 * np.percentile(k1, 95, 1).max()
+        ax.plot(rr_[keep], f_llm[keep], "k:", lw=1.2,
+                label=rf"infinite medium, {dim}D: $e^{{\rho^2/{2 * dim // (dim - 2)}}}$")
+        ax.axhline(1.0, color="0.6", lw=0.8, ls=":")
     ax.set_yscale("log"); ax.set_xlabel(r"$\rho$")
     ax.set_ylabel(r"$f(\rho)=\overline{K}_{eff}(\rho,\beta=1)$")
     ax.set_title("Ensemble effective permeability at $\\beta=1$")
