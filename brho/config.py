@@ -16,6 +16,9 @@ class ProblemConfig:
     """Physics, prior covariance and synthetic truth (shared by E2-E4)."""
     n: int = 32                    # cells per side (32x32 = 1024 cells; >= 3 per
                                    # correlation length: n * ell >= 3; July runs: 16)
+    dim: int = 2                   # 2: unit square (n x n); 3: unit cube (n x n x n).
+                                   # 3D study (2026-09-29): --dim 3 --n 16 --ell 0.2
+                                   # --kle-method nystrom_sep --kle-nq 40 (r = 78)
     ell: float = 0.1               # squared-exponential correlation length
     energy: float = 0.95           # KLE energy fraction  (-> r = 56 in 2D)
     kernel: str = "sqexp"          # covariance kernel (brho/kernels.py)

@@ -102,7 +102,7 @@ def main(argv=None):
     kle = prob.kle
     ms = from_problem(prob, a.blocks, a.local_energy)
     msum = ms.summary()
-    print(f"KLE from {a.from_exp}: {pc.n}x{pc.n}, ell={pc.ell}, r={kle.r}; multiscale "
+    print(f"KLE from {a.from_exp}: {'x'.join([str(pc.n)] * pc.dim)}, ell={pc.ell}, r={kle.r}; multiscale "
           f"{a.blocks}x{a.blocks} subdomains, local modes {msum['r_k']} (p={msum['p']}); "
           f"Sigma_ms eigenvalues [{msum['sigma_ms_eig_min']:.3f}, "
           f"{msum['sigma_ms_eig_max']:.3f}]; r_plus={msum['r_plus']}; "
@@ -147,7 +147,7 @@ def main(argv=None):
     ax[2].set_xlabel("empirical variance of the field G")
     ax[2].set_title("law of the empirical variance")
     ax[2].legend(fontsize=8)
-    fig.suptitle(f"Multiscale prior test, 2D ({pc.n}x{pc.n}, ell={pc.ell}, r={kle.r}): "
+    fig.suptitle(f"Multiscale prior test, {pc.dim}D ({'x'.join([str(pc.n)] * pc.dim)}, ell={pc.ell}, r={kle.r}): "
                  f"pCN s={a.s}, {a.chains} chains x {a.n_iter} it., likelihood off")
     fig.tight_layout()
     fdir = io.figures_dir(EXP)
@@ -160,7 +160,7 @@ def main(argv=None):
     fig = P.prior_fields([(k, res[k]["samples"], res[k]["pmean"], res[k]["pvar"])
                           for k in order], target, pc.n, a.blocks,
                          f"Pointwise fields after prior sampling (likelihood off), "
-                         f"{a.blocks}x{a.blocks} subdomains (dashed).")
+                         f"{'x'.join([str(a.blocks)] * pc.dim)} subdomains (dashed).")
     fig.savefig(os.path.join(fdir, "fig_ms_prior_fields.png"), dpi=130)
     plt.close(fig)
     for k in order:

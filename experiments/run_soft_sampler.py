@@ -105,7 +105,7 @@ def setup(pc, scfg, curve_field, curve_statistic, exp):
           f"theta innovation={scfg.theta_innovation} -> {exp}")
     if smp.ms is not None:
         ms = smp.ms.summary()
-        print(f"  multiscale: {ms['blocks']}x{ms['blocks']} subdomains, local modes "
+        print(f"  multiscale: {'x'.join([str(ms['blocks'])] * ms['dim'])} subdomains, local modes "
               f"{ms['r_k']} (p={ms['p']}), Sigma_ms eigenvalues "
               f"[{ms['sigma_ms_eig_min']:.3f}, {ms['sigma_ms_eig_max']:.3f}], "
               f"r_plus={ms['r_plus']}/{ms['r']}, whitening check {ms['operator_check']:.1e}")

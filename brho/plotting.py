@@ -19,12 +19,32 @@ plt.rcParams.update({"figure.dpi": 100, "savefig.dpi": 150,
                      "axes.titlesize": 10.5, "legend.fontsize": 8.5})
 
 
+def plane(v, n):
+    """2D view of a cell field: the field itself in 2D (n*n cells); in 3D
+    (n**3 cells) the horizontal mid-plane z = z_k, k = n // 2.  Returns
+    (array[ix, iy], note) with note '' in 2D, ', z=0.53' in 3D."""
+    a = np.asarray(v)
+    if a.size == n ** 3:
+        k = n // 2
+        return a.reshape(n, n, n)[:, :, k], f", z={(k + 0.5) / n:.2f}"
+    return a.reshape(n, n), ""
+
+
+def line(v, n, jr):
+    """Values along x at row jr (and, in 3D, on the mid-plane z = z_{n//2})."""
+    return plane(v, n)[0][:, jr]
+
+
 def field(ax, v, n, title="", cmap="viridis", vmin=None, vmax=None,
           obs_mask=None, cbar=True):
-    im = ax.imshow(np.asarray(v).reshape(n, n).T, origin="lower", extent=EXT,
+    """Image of a cell field (2D), or of its mid-plane z slice (3D)."""
+    img, note = plane(v, n)
+    if note and title:
+        title = f"{title}{note}"
+    im = ax.imshow(img.T, origin="lower", extent=EXT,
                    cmap=cmap, vmin=vmin, vmax=vmax)
     if obs_mask is not None:
-        xs, ys = np.where(np.asarray(obs_mask).reshape(n, n))
+        xs, ys = np.where(plane(obs_mask, n)[0])
         ax.scatter((xs + .5) / n, (ys + .5) / n, s=6, c="cyan", marker="s",
                    linewidths=0)
     ax.set_title(title)

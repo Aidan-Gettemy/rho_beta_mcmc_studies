@@ -64,5 +64,10 @@ export E4_ARGS="${E4_ARGS:---n-total 51000 --n-burn 15000 --thin 30}"
 # "--truth-mode kle" to PROBLEM_ARGS for EVERY step of that study (E3 first):
 #   export BRHO_ROOT=$PWD/runs/cluster_kle
 #   export PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3"
+# 3D study (2026-09-29, settings confirmed): unit cube 16^3, ell = 0.2 (3.2 cells
+# per ell, as in 2D), separable Nystrom KLE (r = 78), same truth, noise and
+# sigma_rel as the 2D main study; its own study folder:
+#   export BRHO_ROOT=$PWD/runs/cluster_3d
+#   export PROBLEM_ARGS="--dim 3 --n 16 --ell 0.2 --kle-method nystrom_sep --kle-nq 40 --truth-mode kle --sigma-rel 2e-3"
 export E5_CHAINS="${E5_CHAINS:-}"                  # empty: one chain per rank
 export E5_ARGS="${E5_ARGS:---n-total 150000 --n-burn 30000 --thin 100}"   # = E4 budget

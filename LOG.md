@@ -438,6 +438,29 @@ Housekeeping: these results were first exported to runs/results-ms-prior-full
 runs/e5_kle_2026-09 and the 74 duplicates removed.  export_results.sh now
 warns when the name looks like a branch name (results-...).
 
+## 2026-09-29: 3D study -- settings (confirmed by Aidan) and code
+Mirror of the 2D main study, only the dimension changes: unit cube 16^3
+(4,096 cells), ell = 0.2 (3.2 cells per ell as in 2D), sq-exp, separable
+Nystrom KLE nq = 40, 95% energy -> r = 78 (2D: 57); unit influx at x = 0,
+p = 0 at x = 1, no flow on the side faces (the data see the level, Lemma 2);
+3D chessboard sensors, 2,048 (half the cells); truth kle, beta 2.3, rho 1.5,
+noise 1% of the pressure range, sigma_e 0.05, relative likelihood
+sigma_rel = 2e-3; priors as in 2D.  Level ridge: |c| = 4.44, honest sd of
+log beta rho/|c| = 0.34 (2D 0.32); sd(Gbar) = 0.274 (2D 0.231).  Solve ~10
+ms, so 2.0M solves per chain ~5.5 h.  Study folder runs/cluster_3d, export
+runs/e5_3d_2026-09.  Expected 3D-specific result: E3's curve bends
+differently (Matheron f(rho) = exp(rho^2/6) grows in 3D; damped on a finite
+plug).  Local tiny-budget check: K* = 2.846 (2D 2.036); multiscale 2x2x2,
+16 local modes each (p = 128), Sigma_ms eigenvalues 0.13-3.44, whitening
+3.5e-15; pure-pCN prior test (16 x 4k it.): raw spatial-mean sd 0.202 vs
+0.273 (Pereira's 3D plug: 0.204 vs 0.276), pointwise ratio 0.17-1.29;
+whitened 0.274, 0.93-1.06; normalized collapses.
+Code: ProblemConfig.dim (2 | 3; 2D store keys unchanged, tested);
+Problem builds Permeameter((n,)*3) for dim 3; plotting.field / line show the
+mid-plane z = 0.53 in 3D; multiscale is dimension-generic (2x2x2 blocks).
+Tests: 3D problem (flux scaling p(cK) = p(K)/c, truth in the KLE), E5 steps
+with the likelihood on and the ms_white prior test in 3D, 2x2x2 whitening
+exact, slice plotting.
 ## 2026-09-29: E7 (E5 + whitened multiscale theta innovation), 2.0M solves (PR #49)
 64 chains x 667k it., same study, seeds and settings as E5; only move A's
 innovation differs (ms_white, 2x2 subdomains, p = 68, whitening check 2.6e-15).

@@ -171,11 +171,11 @@ def main(argv=None):
     P.field(ax[0], syn.logK_true, n, r"true $\log K$", vmin=v0, vmax=v1)
     P.field(ax[1], m_lk, n, r"posterior mean $\log K$", vmin=v0, vmax=v1)
     P.field(ax[2], sd_lk, n, r"posterior sd $\log K$", cmap="magma")
-    jr = P.slice_row(n); xs = prob.phys.xc; g = prob.phys.grid
-    ax[3].fill_between(xs, g(lo_lk)[:, jr], g(hi_lk)[:, jr], color=P.C_BAND,
+    jr = P.slice_row(n); xs = prob.phys.xc
+    ax[3].fill_between(xs, P.line(lo_lk, n, jr), P.line(hi_lk, n, jr), color=P.C_BAND,
                        alpha=0.5, label="5–95%")
-    ax[3].plot(xs, g(m_lk)[:, jr], "b-", label="posterior mean")
-    ax[3].plot(xs, g(syn.logK_true)[:, jr], "k-", lw=2, label="truth")
+    ax[3].plot(xs, P.line(m_lk, n, jr), "b-", label="posterior mean")
+    ax[3].plot(xs, P.line(syn.logK_true, n, jr), "k-", lw=2, label="truth")
     ax[3].set_xlabel(f"x (y = {xs[jr]:.2f})")
     ax[3].set_title(f"slice; pointwise 90% coverage {cov90:.0%}")
     ax[3].legend()

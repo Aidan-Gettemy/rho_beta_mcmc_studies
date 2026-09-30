@@ -416,3 +416,88 @@ def test_pointwise_moments_exact():
     pm, pv = D.pointwise_moments(th, p.kle.T)
     G = p.kle.field(th.reshape(-1, p.r))
     assert np.allclose(pm, G.mean(0)) and np.allclose(pv, G.var(0))
+
+
+_P3 = {}
+
+
+def prob3():
+    """A small 3D permeameter: 8^3 cells, ell = 0.4 (3.2 cells per ell, the
+    study's ratio), truth in the KLE (as in the 3D study)."""
+    if "p" not in _P3:
+        _P3["p"] = Problem(C.ProblemConfig(dim=3, n=8, ell=0.4, truth_mode="kle",
+                                           kle_method="nystrom_sep", kle_nq=24,
+                                           sigma_rel=2e-3))
+    return _P3["p"]
+
+
+def test_3d_problem_builds_and_solves():
+    """--dim 3: unit cube, unit influx at x = 0, p = 0 at x = 1, no flow on
+    the side faces; chessboard sensors (half the cells); truth in the KLE.
+    The flux boundary condition makes the pressures scale as 1/K (Lemma 2)."""
+    p = prob3()
+    assert p.phys.dim == 3 and p.phys.N == 512
+    assert p.syn.n_obs == 256 and p.kle.T.shape[0] == 512
+    assert abs(p.kle.energy - 0.95) < 0.03
+    K = p.syn.K_true
+    p1 = p.phys.solve(K)
+    assert np.allclose(p.phys.solve(3.0 * K), p1 / 3.0, rtol=1e-8, atol=1e-12)
+    th = p.kle.project(p.syn.G_true)
+    assert np.allclose(p.kle.field(th), p.syn.G_true, atol=1e-8)   # truth lies in the KLE
+    phi, pobs, keff = p.potential(K)
+    assert np.isfinite(phi) and pobs.shape == (256,) and keff > 0
+
+
+def test_2d_store_keys_unchanged_by_dim():
+    """Adding ProblemConfig.dim must not change the keys of existing 2D
+    stores (runs/cluster_kle, the July runs)."""
+    from brho.problem import kle_key, truth_key
+    pc = C.ProblemConfig(truth_mode="kle")
+    assert kle_key(pc, 1024)["grid"] == [32, 32]
+    assert truth_key(pc)["grid"] == [32, 32]
+    assert kle_key(C.ProblemConfig(dim=3, n=16), 4096)["grid"] == [16, 16, 16]
+
+
+def test_3d_soft_sampler_and_multiscale():
+    """E5 steps run in 3D with the likelihood on; the 2x2x2 multiscale
+    whitening is exact; the E5 prior test with ms_white keeps theta ~ N(0, I)."""
+    from brho.samplers import SoftCurveSampler
+    from brho.multiscale import from_problem
+    p = prob3()
+    ms = from_problem(p, blocks=2)
+    assert ms.dim == 3 and len(ms.r_k) == 8 and ms.operator_check < 1e-12
+    cfg = replace(C.SoftSamplerConfig(), theta_innovation="ms_white")
+    s = SoftCurveSampler(p, _soft_curve(), cfg)
+    rng = np.random.default_rng(3)
+    st = s.init_state(rng)
+    ad = StepAdapter(cfg.s_init, targets=cfg.targets, every=10 ** 9)
+    for _ in range(20):
+        s.step(st, ad, rng)
+    assert np.isfinite(st["phi"])
+    cfg0 = replace(cfg, prior_test=True, s_init=(0.5, 0.3, 0.12, 0.6))
+    s0 = SoftCurveSampler(p, _soft_curve(), cfg0)
+    st = s0.init_state(rng)
+    ad = StepAdapter(cfg0.s_init, targets=cfg0.targets, every=10 ** 9)   # its own steps
+    th = []
+    for it in range(12000):
+        s0.step(st, ad, rng)
+        if it > 1000 and it % 5 == 0:
+            th.append(st["theta"].copy())
+    th = np.array(th)
+    frob = np.linalg.norm(np.cov(th.T) - np.eye(p.r)) / np.sqrt(p.r)
+    ref = np.linalg.norm(np.cov(rng.standard_normal(th.shape).T) - np.eye(p.r)) / np.sqrt(p.r)
+    assert frob < 2.5 * ref, (frob, ref)
+
+
+def test_3d_plots_show_the_mid_plane():
+    from brho import plotting as P
+    import matplotlib.pyplot as plt
+    p = prob3()
+    img, note = P.plane(p.syn.logK_true, 8)
+    assert img.shape == (8, 8) and "z=" in note
+    assert np.allclose(img, p.syn.logK_true.reshape(8, 8, 8)[:, :, 4])
+    assert P.line(p.syn.logK_true, 8, 3).shape == (8,)
+    fig, ax = plt.subplots()
+    P.field(ax, p.syn.p_true, 8, "p", obs_mask=p.syn.obs_mask)
+    assert "z=" in ax.get_title()
+    plt.close(fig)
