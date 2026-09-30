@@ -437,3 +437,26 @@ Housekeeping: these results were first exported to runs/results-ms-prior-full
 (PR #46; a full copy of the study); the 16 new files were moved into
 runs/e5_kle_2026-09 and the 74 duplicates removed.  export_results.sh now
 warns when the name looks like a branch name (results-...).
+
+## 2026-09-29: E7 (E5 + whitened multiscale theta innovation), 2.0M solves (PR #49)
+64 chains x 667k it., same study, seeds and settings as E5; only move A's
+innovation differs (ms_white, 2x2 subdomains, p = 68, whitening check 2.6e-15).
+                          E5 (global pCN)        E7 (multiscale, whitened)
+theta MPSRF crosses 1.2   1.26M solves           1.20M solves
+worst theta PSRF < 1.2    0.60M                  0.70M
+final MPSRF / PSRF        1.122 / 1.059          1.107 / 1.062
+theta step (move A)       0.0124, acc 0.253      0.0124, acc 0.248
+rho                       1.473 [1.23, 1.79]     1.473 [1.23, 1.79], PSRF 1.013, ESS 7,452
+beta                      2.144 [1.43, 3.21]     2.144 [1.43, 3.21], PSRF 1.002
+sd log beta               0.247                  0.247 (ESS 42,070 vs 36,000)
+level                     0.865, ESS 1,807       0.865, ESS 1,751
+log K 90% coverage        95.8%                  95.7%;  mean Phi 69.57 / 69.59
+Differences go both ways and are Monte Carlo size: as predicted (Sec. 6 of
+the degeneracies notes), the whitened innovation is exactly N(0, I_r), so
+move A has the same kernel as global pCN; E7 reproduces E5.  The adapted
+steps agree to 4 digits because the adaptation moves on the grid
+s_init * 1.12^k and both land on the same point.
+Conclusion: the multiscale machinery is correct in the full sampler (prior
+tests: raw fails, whitened passes; posterior: whitened = global).  It gives
+no speed-up in its whitened single-innovation form; a speed-up would need
+block (per-subdomain) updates, which is outside this study.
