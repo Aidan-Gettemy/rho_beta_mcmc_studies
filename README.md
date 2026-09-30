@@ -8,6 +8,16 @@ This code runs the experiments on the 2D permeameter problem: by default a
 observations and r = 57 KLE modes. The July studies used 16×16 with 128
 observations (`--n 16`); their runs and tests stay reproducible.
 
+**The story so far.** The field log K = log β + ρ G(θ) has two parametrization
+degeneracies: the pressures fix the level log β + ρḠ but not its split between
+β and the field mean, and they fix the product ρθ but not its split. The naive
+sampler (E1) gets stuck on the β ridge. One extra datum, the measured effective
+permeability K_eff, gives a soft prior tying β to ρ through the offline curve
+β̄(ρ) (E3), and two moves walk the two ridges exactly (E5). At equal cost the
+corrected sampler converges and the naive one does not (below). E7 checks the
+multiscale (local-KLE) θ proposal inside the corrected sampler. Decisions,
+results and dead ends are logged in `LOG.md`.
+
 | Short report | Experiment | Runner | Report |
 |---|---|---|---|
 | E1 | naive joint (θ, β, ρ) model, pressure data only, one chain per MPI rank; blocked pCN (θ block, (ξ_β, ξ_ρ) block; default) or one global pCN move: the data pin log K but not β | `experiments/run_e1_naive.py` | `reports/report_e1.py` |
@@ -15,10 +25,21 @@ observations (`--n 16`); their runs and tests stay reproducible.
 | E3 | offline β̄(ρ) curve from global-KLE Monte Carlo | `experiments/run_beta_curve.py` | `reports/report_curve.py` |
 | E4 | 3-step sampler (A pCN θ, B pCN w, C ridge) with β = β̄(ρ) | `experiments/run_curve_sampler.py` | `reports/report_sampler.py` |
 | E4 check | the same sampler with the likelihood off (prior test) | `run_curve_sampler.py --prior-test 1` | `reports/report_prior_test.py` |
+| E5 | **the corrected sampler**: β free with the soft curve prior log β \| ρ ~ N(log β̄(ρ), s(ρ)²) from K_eff; moves A pCN θ, B pCN w (β fixed), C ridge ρθ (no solve), D level swap (β, θ along the constant field) | `experiments/run_soft_sampler.py` | `reports/report_soft.py` |
+| E5 check | the same sampler with the likelihood off | `run_soft_sampler.py --prior-test 1` | `reports/report_soft_prior_test.py` |
+| E7 check 1 | multiscale prior test, pure pCN, no PDE: raw / whitened / per-sample-normalized local-KLE innovation vs direct draws, including pointwise field maps | `experiments/run_ms_prior_test.py` | (writes its own figures and tables) |
+| E7 check 2 | E5 prior test with the multiscale θ innovation (`--theta-innovation ms_raw` or `ms_white`) | `run_soft_sampler.py --prior-test 1 --theta-innovation ...` | `report_soft_prior_test.py --exp e5_prior_test_ms_white` |
+| E7 | E5 with the whitened multiscale θ innovation in move A | `run_soft_sampler.py --theta-innovation ms_white` | `report_soft.py --exp e5_soft_ms_white` |
+| convergence | MPSRF / PSRF curves in the group's MATLAB convention (`getMSPRF`, `computeMPSRFcurve`: skip 2, step 15, first 10 points dropped, threshold 1.2), per run and all runs at equal PDE solves | – | `reports/report_mpsrf.py` |
+| diagnostic | spectrum of the θ posterior (marginal and given (β, ρ)) and PSRF per principal direction | – | `reports/report_spectrum.py` |
 | all | E2 + E3 + E4 on one (β, ρ) plane, plus SUMMARY.md | – | `reports/report_combined.py` |
 
+A finished run can be continued exactly from its checkpoints with
+`experiments/extend_run.py --exp <run> --to <iterations>` (the extension is
+recorded in the manifest) followed by the run's launcher with `RESUME=1`.
+
 ```
-make test                 # 22 checks (see tests/)
+make test                 # 42 checks (see tests/)
 make quick                # whole pipeline with tiny budgets -> runs/quick/
 make all                  # production: test, e2, e3, prior, e4, reports
 make e2 ROOT=runs/july_raw ARGS="--truth-mode raw --seed-scheme legacy"   # July data and seeds
@@ -35,11 +56,38 @@ Every config field can be overridden from the command line, for example
 `--n-real 256 --n-rho 40` or `--n-total 80000`. The settings live in
 `brho/config.py`.
 
+### Main study (September 2026): E1 vs E5 at equal cost
+
+Settings: 32×32, ℓ = 0.1, r = 57 (95.2% energy), relative likelihood with
+σ_rel = 2×10⁻³, truth drawn in the samplers' own KLE (`--truth-mode kle`: the
+standardized field projected on the 57 modes; the deliberate inverse crime is
+stated, and the full-rank runs are the robustness check). β† = 2.3, ρ† = 1.5.
+64 chains each, 2.0M PDE solves per chain (E5: 667k iterations × 3 solves;
+E1: 1M × 2). Study folder on the cluster: `runs/cluster_kle`; exported results:
+`runs/e5_kle_2026-09/`.
+
+| | E5 (soft curve prior + moves C, D) | E1 (naive blocked pCN) |
+|---|---|---|
+| MPSRF of all θ crosses 1.2 | 1.26M solves | not by 2.0M (1.212) |
+| worst single-θ PSRF crosses 1.2 | 0.60M solves | 1.60M solves |
+| PSRF / ESS of log β | 1.002 / 36,000 | 1.207 / 467 |
+| ρ | 1.47 [1.23, 1.79], PSRF 1.006 | PSRF 1.031 |
+| β | 2.14 [1.43, 3.21], sd(log β) 0.247 (predicted 0.244) | – |
+
+E1 converges in principle (proper priors), but its cost is set by the level
+ridge and grows as the data sharpen. The multiscale prior tests (E7 checks 1–2)
+pass for the whitened innovation and fail for the raw one (its pointwise
+variance collapses to 0.36 of the target along the subdomain interfaces);
+per-sample normalization collapses the laws of the field's spatial mean and
+variance to points. E7 itself is expected to reproduce E5: a whitened
+innovation is exactly N(0, I), so move A has the same kernel as plain pCN.
+
 ### Layout
 
 ```
 brho/                     library (no experiment logic)
-  config.py               ProblemConfig, GridStudyConfig, CurveConfig, SamplerConfig, QUICK
+  config.py               ProblemConfig, NaiveConfig (E1), GridStudyConfig, CurveConfig,
+                          SamplerConfig (E4), SoftSamplerConfig (E5/E7), QUICK
   fv.py                   Permeameter (2D/3D): numba CSR fill (NumPy fallback), splu / CG solvers, keff, obs mask
   physics2d.py            Darcy2D = Permeameter((n, n)), kept for compatibility
   kle.py                  KLE (synthesis matrix T, G = T theta): discrete dense/kron, Gauss-Legendre Nystrom
@@ -50,15 +98,22 @@ brho/                     library (no experiment logic)
   truth.py                make_synthetic -> Synthetic (G, K, p, d_p, sigma_p, K*_true, K*_obs, level)
   problem.py              Problem = physics + KLE + data; potential(K); frozen runs (kle.npz, truth.npz)
   curve.py                sweep() and BetaCurve: beta_bar(rho, K*) = K*/f(rho), band(), save/load
-  samplers.py             pcn_fixed_pair (E2); ThreeStepSampler + run_chunk/load_chains (E4)
-  diagnostics.py          psrf, split_rhat, mpsrf, ess, window_curve, summarize, pointwise_coverage
+  naive.py                E1: naive (theta, beta, rho) model, blocked / global pCN, checkpointed chains
+  samplers.py             pcn_fixed_pair (E2); ThreeStepSampler (E4); SoftCurveSampler (E5/E7);
+                          run_chunk/load_chains (checkpointed, exact resume and extension)
+  multiscale.py           local-KLE assemble-and-project innovation, Sigma_ms = B B^T, whitening
+                          (Pereira, "Variance control in distribution")
+  mpsrf.py                MPSRF / PSRF curves, port of the group's MATLAB getMSPRF / computeMPSRFcurve
+  diagnostics.py          psrf, split_rhat, mpsrf, ess, window_curve, summarize, pointwise_coverage,
+                          logK_summaries (field summaries in blocks of cells), pointwise_moments
   io.py                   results/ figures/ tables/ under BRHO_ROOT; manifest; write_table
-  plotting.py             shared figure helpers
+  plotting.py             shared figure helpers (incl. prior_fields: pointwise prior-test maps)
 experiments/              runners: write results/<exp>/*.npz + manifest.json only
 reports/                  read results, write figures/<exp>/*.png and tables/<exp>/*.{md,csv,json}
 tests/                    python tests/run_tests.py (pytest-compatible)
 benchmarks/               bench_solver.py: timings by grid size, backend and solver
-cluster/                  env.sh, SLURM templates, submit_pipeline.sh, README
+cluster/                  env.sh, SLURM templates, submit_pipeline.sh, export_results.sh, README
+runs/                     exported results (figures, tables, manifests, frozen KLE/truth; no chains)
 ```
 
 The runners only compute, and the reports only read. Each run records its full
@@ -67,9 +122,11 @@ that file, so a figure can never be paired with the wrong settings. The setup st
 also saves the run's KLE basis and synthetic data (`kle.npz`, `truth.npz`), and every
 chain and report loads them. This matters because the eigenvectors inside repeated
 eigenvalues depend on rounding, so they differ across machines and thread counts
-(`cluster/README.md`). E4 chains are checkpointed every `chunk` iterations and resume
-when you rerun the same command. A rerun that requests different settings stops and
-asks for `--fresh`.
+(`cluster/README.md`). E1, E4, E5 and E7 chains are checkpointed and resume
+when you rerun the same command (on the cluster: resubmit with `RESUME=1`); a
+rerun that requests different settings stops and asks for `--fresh`. Reports
+read only finished checkpoints (`chain<N>.npz`), so they can run while a job is
+still writing.
 
 ### The KLE: discrete or Nyström
 
@@ -162,12 +219,37 @@ mean Φ against the n_obs/2 floor, and the relative sd of ρ against 1/√(2r).
 **Prior test:** `fig_prior_test` compares cov(θ), the law of Ḡ, ρ against the
 truncated lognormal, and a QQ plot of w.
 
+**E5 / E7** (`e5_soft/`, `e5_soft_ms_white/`): `fig_e5_posteriors` (ρ, β against the
+soft prior, level), `fig_e5_joint` (samples in the soft curve band), `fig_e5_traces`,
+`fig_e5_field` (true / mean / sd of log K and a slice with the 90% band),
+`fig_e5_moves` (acceptance per move and step adaptation). `e5_stats` gives median,
+90% interval, truth, coverage, PSRF, split-R̂ and ESS; `e5_summary.json` adds the
+pointwise coverage of log K and the moves' steps.
+
+**E5 / E7 prior tests** (`e5_prior_test*/`): `fig_e5_prior_test` (sorted diag cov(θ),
+QQ of w and of ξ_β, ρ histogram, laws of the spatial mean and empirical variance of G,
+all against direct prior draws) and `fig_e5_prior_fields` (pointwise maps: thinned
+sample fields, pointwise mean, pointwise variance and its ratio to diag(TTᵀ), with
+the subdomain interfaces for a multiscale innovation).
+
+**Multiscale prior test** (`ms_prior_test/`): `fig_ms_prior_test` (diag cov(θ), laws of
+the spatial mean and empirical variance) and `fig_ms_prior_fields` (the pointwise maps),
+rows reference / raw / whitened / normalized; the table gives the cov(θ) error, θ
+variance range, spatial-mean sd, field variance, pointwise variance ratio range.
+
+**Convergence** (`<run>/fig_mpsrf_*`, `fig_psrf_*`, and `mpsrf_compare/`): MPSRF and
+worst-component PSRF of θ and of (θ, log β, log ρ) against iteration, the final PSRF
+per component, and all runs on one axis against PDE solves per chain, with the
+crossing of 1.2 marked. **Spectrum** (`<run>/fig_spectrum`, `spectrum_compare/`).
+
 **Combined:** `fig_argument` (panel (a) E2, panel (b) E3 band + E4 cloud) and `SUMMARY.md`.
 
 ### Modelling decisions (all switchable)
 
 - **Truth** (`--truth-mode`): the default `standardized` follows the short report
   (G centered and scaled, so β = 2.3 and ρ = 1.5 are exactly what the data see).
+  `kle` (the September main study) projects that field on the samplers' KLE, so
+  there is no truncation floor; `kle_raw` projects the raw draw.
   `raw` reproduces the July data bit for bit (σp = 3.61e-3, K\*_obs = 3.19, Ḡ = 0.286).
 - **Curve statistic** (`--statistic`, or `--curve-statistic` in E4): the default
   `ratio_of_mean` gives β̄ = K\*/mean Keff (short report). `mean_of_ratio` is
@@ -181,6 +263,15 @@ truncated lognormal, and a QQ plot of w.
 - **Step C costs a solve here.** The ridge move preserves ρθ, but β̄(ρ′) ≠ β̄(ρ),
   so Φ is re-evaluated (method report eq. 11). In the hierarchical (m, σ) model
   this step is free. Each E4 iteration therefore costs three solves.
+- **β in E5/E7:** free, with the soft curve prior log β | ρ ~ N(log β̄(ρ), s(ρ)²),
+  s² = (E3 realization scatter of log Keff)² + σ_e² (report.pdf, Remark 3); the
+  pressures are the only likelihood term, so K\* is used once. E4's hard
+  β = β̄(ρ) gave β an sd of 0.05 around a value 5% off the truth.
+- **θ proposal:** plain pCN in every sampler (the group's standard; nothing
+  posterior-informed, so E1 and E5 are compared on equal terms).
+  `--theta-innovation` (E5 only) swaps in the multiscale innovation, `ms_white`
+  (correct, law N(0, I)) or `ms_raw` (wrong law, kept for the prior test), with
+  `--ms-blocks` (default 2) and `--ms-local-energy` (0.95).
 - **Likelihood:** pressure only, as in the method report (`--use-keff-term 1`
   adds the log-Keff datum to E4). The default is the **relative** form,
   Φ = ‖d − G‖²/(2σ_rel²‖d‖²) = relerr²/(2σ_rel²), using the global normalized L2
@@ -193,5 +284,18 @@ truncated lognormal, and a QQ plot of w.
 
 ### Runs in this repo
 
+Each folder holds figures, tables, manifests and the frozen KLE basis and truth,
+but no chains (those stay on the cluster). Export a study with
+`bash cluster/export_results.sh $BRHO_ROOT <study folder name>`; the second
+argument is the folder under `runs/`, not the git branch.
+
+- `runs/e5_kle_2026-09/`: **the main study** (truth `kle`, σ_rel = 2e-3): E3 curve, E1
+  and E5 at 2.0M solves, their MPSRF comparison, the θ spectra, the E5 prior test, and
+  the multiscale prior tests (standalone, `ms_raw`, `ms_white`).
+- `runs/e3_kle_2026-09/`, `runs/e5_prior_test_kle_2026-09/`: the E3 curve and E5 prior
+  test of the main study as first exported.
+- `runs/e1_blocked_2026-09/`, `runs/e2_grid_2026-09/`, `runs/e3_curve_2026-09/`,
+  `runs/e4_sampler_2026-09/`, `runs/e4_prior_test_2026-09/`: the full-rank-truth
+  (`standardized`) study, 32×32: E1, E2, E3, E4 (the robustness check).
 - `runs/july_raw/`: E2 on the July data (see `LOG.md`). Its figures, tables, small results and frozen KLE basis are committed, so the reports redraw without a rerun (`BRHO_ROOT=runs/july_raw python3 reports/report_all.py`).
 - `runs/quick/` is for smoke tests and is git-ignored.
