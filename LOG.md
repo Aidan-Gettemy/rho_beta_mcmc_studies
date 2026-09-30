@@ -418,3 +418,22 @@ machinery, not a speed-up.  The global path is unchanged bit for bit
 - Progress report (LaTeX, 29 Sept) written from these runs.  Next: E7
   multiscale prior tests (ms_raw, ms_white) and E7 = E5 + whitened
   multiscale theta innovation (PR #37).
+
+## 2026-09-29: multiscale prior tests (study runs) -- raw fails, whitened passes
+Standalone pure-pCN test (experiments/run_ms_prior_test.py, 16 x 40k it.,
+runs/e5_kle_2026-09/tables/ms_prior_test): cov(theta) error / spatial-mean sd
+/ pointwise variance-to-target: direct 0.019 / 0.230 / 0.99-1.01; raw 0.340 /
+0.212 / 0.34-1.13 (collapse along the subdomain interfaces, lowest at the
+centre cross); whitened 0.026 / 0.231 / 0.99-1.02; per-sample normalized 0.225
+/ 0.000 / 1.01-1.18 (spatial mean and field variance forced to points).
+Full E5 sampler, likelihood off, 64 x 150k it. (e5_prior_test_ms_raw /
+_ms_white): cov error 0.333 / 0.028 (direct 0.028); spatial-mean sd 0.216 /
+0.232 (0.231); field variance 0.836 / 0.899 (0.899); pointwise ratio 0.36-1.13
+/ 0.99-1.01.  ms_raw also shifts the hyperparameters slightly (w mean -0.061
+vs -0.041, xi_b sd 0.979 vs 1; ms_white -0.040 / 1.000): the wrong theta law
+leaks into rho and beta, plausibly through the ridge move (theta norm <->
+rho).  Next: E7 = E5 with ms_white, 667k it. (2.0M solves).
+Housekeeping: these results were first exported to runs/results-ms-prior-full
+(PR #46; a full copy of the study); the 16 new files were moved into
+runs/e5_kle_2026-09 and the 74 duplicates removed.  export_results.sh now
+warns when the name looks like a branch name (results-...).
