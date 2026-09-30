@@ -30,5 +30,21 @@
    "final_solves": 2001000.0,
    "dim": 57
   }
+ },
+ "e5_soft_ms_white": {
+  "mpsrf": {
+   "convergence_iteration": 399862.0,
+   "convergence_solves": 1199586.0,
+   "final": 1.1067171581500603,
+   "final_solves": 2001000.0,
+   "dim": 57
+  },
+  "psrf": {
+   "convergence_iteration": 231916.0,
+   "convergence_solves": 695748.0,
+   "final": 1.06202552225466,
+   "final_solves": 2001000.0,
+   "dim": 57
+  }
  }
 }
