@@ -29,6 +29,7 @@ not counted as independent evidence n_obs times.  sigma_rel = eps / sqrt(n_eff)
 import os
 import numpy as np
 from .physics2d import Darcy2D
+from .fv import Permeameter
 from .kle import KLE, FullRankGaussian, build_kle, resolve_method
 from .truth import make_synthetic, Synthetic
 from . import store as ST
@@ -40,9 +41,13 @@ def kernel_params(pc):
     return dict(ell=pc.ell, sigma2=1.0)
 
 
+def _grid(pc):
+    return [pc.n] * getattr(pc, "dim", 2)      # [n, n] in 2D: keys of existing stores unchanged
+
+
 def kle_key(pc, N):
     method = resolve_method(pc.kle_method, N, pc.kernel)
-    key = dict(v=KEY_VERSION, grid=[pc.n, pc.n], kernel=pc.kernel, ell=pc.ell,
+    key = dict(v=KEY_VERSION, grid=_grid(pc), kernel=pc.kernel, ell=pc.ell,
                energy=pc.energy, method=method)
     if method.startswith("nystrom"):
         key.update(nq=pc.kle_nq, quadrature=pc.kle_quadrature)
@@ -50,7 +55,7 @@ def kle_key(pc, N):
 
 
 def truth_key(pc, N=None):
-    key = dict(v=KEY_VERSION, grid=[pc.n, pc.n], kernel=pc.kernel, ell=pc.ell,
+    key = dict(v=KEY_VERSION, grid=_grid(pc), kernel=pc.kernel, ell=pc.ell,
                q_in=pc.q_in, beta_true=pc.beta_true, rho_true=pc.rho_true,
                truth_mode=pc.truth_mode, truth_seed=pc.truth_seed,
                noise_rel=pc.noise_rel, sigma_e=pc.sigma_e)
@@ -65,11 +70,19 @@ class Problem:
     def __init__(self, pc, frozen=None, store=None, log=print):
         self.pc = pc
         if pc.n * pc.ell < self.MIN_CELLS_PER_ELL:
-            log(f"WARNING: {pc.n}x{pc.n} grid resolves ell={pc.ell} with only "
+            log(f"WARNING: {'x'.join(map(str, _grid(pc)))} grid resolves ell={pc.ell} with only "
                 f"{pc.n * pc.ell:.1f} cells per correlation length (< "
                 f"{self.MIN_CELLS_PER_ELL}); use --n >= "
                 f"{int(np.ceil(self.MIN_CELLS_PER_ELL / pc.ell))}")
-        self.phys = Darcy2D(pc.n, pc.q_in, solver=pc.solver, backend=pc.backend)
+        dim = getattr(pc, "dim", 2)
+        if dim == 2:
+            self.phys = Darcy2D(pc.n, pc.q_in, solver=pc.solver, backend=pc.backend)
+        elif dim == 3:
+            self.phys = Permeameter((pc.n,) * 3, q_in=pc.q_in, solver=pc.solver,
+                                    backend=pc.backend)
+            self.phys.n = pc.n
+        else:
+            raise ValueError(f"dim must be 2 or 3, not {dim}")
         self.full = FullRankGaussian(self.phys.points, self.phys.axes,
                                      pc.kernel, kernel_params(pc))
         if frozen:

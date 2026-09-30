@@ -64,12 +64,12 @@ def main():
     jr = P.slice_row(n)
     xs = prob.phys.xc
     fig, ax = plt.subplots(figsize=(7.0, 4.6))
-    ax.plot(xs, prob.phys.grid(syn.logK_true)[:, jr], "k-", lw=2.5, label="truth")
+    ax.plot(xs, P.line(syn.logK_true, n, jr), "k-", lw=2.5, label="truth")
     for b_, r_ in PICKS:
         i = np.where(np.isclose(beta, b_) & np.isclose(rho, r_))[0]
         if len(i):
             lk = np.log(b_) + r_ * z["mean_G"][i[0]]
-            ax.plot(xs, prob.phys.grid(lk)[:, jr], "--", lw=1.7,
+            ax.plot(xs, P.line(lk, n, jr), "--", lw=1.7,
                     label=rf"$\beta={b_},\ \rho={r_}$")
     ax.set_xlabel(f"x (slice y = {xs[jr]:.2f})"); ax.set_ylabel(r"posterior mean $\log K$")
     ax.set_title(r"Different $(\beta,\rho)$, same recovered $\log K$ level")

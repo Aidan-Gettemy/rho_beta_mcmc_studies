@@ -54,6 +54,7 @@ class MSInnovation:
         cov = KN.get(kernel)["cov"]
         self.r = kle.r
         self.blocks, self.local_energy = int(blocks), float(local_energy)
+        self.dim = int(np.asarray(points).shape[1])
         bidx = block_index(points, self.blocks)
         cols, rk = [], []
         for k in range(bidx.max() + 1):
@@ -94,7 +95,7 @@ class MSInnovation:
         raise ValueError(f"unknown innovation {kind!r}; have {INNOVATIONS}")
 
     def summary(self):
-        return dict(blocks=self.blocks, local_energy=self.local_energy,
+        return dict(blocks=self.blocks, dim=self.dim, local_energy=self.local_energy,
                     r=self.r, p=self.p, r_k=self.r_k, r_plus=self.r_plus,
                     sigma_ms_eig_max=float(self.d[0]),
                     sigma_ms_eig_min=float(self.d[-1]),

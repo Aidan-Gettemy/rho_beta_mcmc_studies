@@ -174,3 +174,39 @@ grid, + 13k for the sampler).
 Commit the study's `runs/<study>/` folder (figures, tables, npz; small) on a
 branch and push. Everything the reports need is inside it, including the
 frozen basis, so the figures can be redrawn anywhere without rerunning.
+
+
+## 3D study (2026-09-29)
+
+Same pipeline as the 2D main study, in its own study folder, with the problem
+switched to the unit cube (`--dim 3`). Settings (confirmed): 16³ cells,
+ℓ = 0.2 (3.2 cells per ℓ, as in 2D), separable Nyström KLE with nq = 40
+(r = 78 at 95% energy), the same boundary conditions (unit influx at x = 0,
+p = 0 at x = 1, no flow on the side faces), a 3D chessboard of 2,048 sensors,
+truth `kle` with β = 2.3, ρ = 1.5, 1% pressure noise, σ_e = 0.05,
+σ_rel = 2e-3. One forward solve is about 10 ms, so 2.0M solves per chain is
+about 5.5 h; the launchers checkpoint, so resubmit with `RESUME=1` after a
+time limit.
+
+```bash
+export BRHO_ROOT=$PWD/runs/cluster_3d
+export PROBLEM_ARGS="--dim 3 --n 16 --ell 0.2 --kle-method nystrom_sep --kle-nq 40 --truth-mode kle --sigma-rel 2e-3"
+python benchmarks/bench_solver.py --dims 3 --sizes 16          # 0. timing on this machine
+sbatch cluster/slurm/node_e3_curve.sbatch                        # 1. E3 curve (also the setup/truth)
+PRIOR_TEST=1 sbatch cluster/slurm/node_e5_soft.sbatch            # 2. E5 prior test
+E1_ARGS_BLOCKED="--n-iter 1000000 --n-burn 20000 --thin 200 --checkpoint-every 10000 --log-every 20000" \
+    sbatch cluster/slurm/mpi_e1_naive.sbatch                     # 3. E1 at 2.0M solves
+E5_ARGS="--n-total 667000 --n-burn 30000 --thin 100" \
+    sbatch cluster/slurm/node_e5_soft.sbatch                     # 3. E5 at 2.0M solves
+python experiments/run_ms_prior_test.py                          # 4. multiscale prior test (2x2x2)
+PRIOR_TEST=1 INNOV=ms_raw   sbatch cluster/slurm/node_e5_soft.sbatch
+PRIOR_TEST=1 INNOV=ms_white sbatch cluster/slurm/node_e5_soft.sbatch
+INNOV=ms_white E5_ARGS="--n-total 667000 --n-burn 30000 --thin 100" \
+    sbatch cluster/slurm/node_e5_soft.sbatch                     # 5. E7
+bash cluster/export_results.sh $BRHO_ROOT e5_3d_2026-09           # export (study folder name)
+```
+
+Field figures show the horizontal mid-plane z = 0.53 of the cube (noted in
+each panel title). With 2×2×2 subdomains that plane lies next to the
+z = 0.5 interface, so the raw multiscale strategy is deficient across the
+whole plotted plane, not only along a cross.
