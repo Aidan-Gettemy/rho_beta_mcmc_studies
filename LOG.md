@@ -483,3 +483,19 @@ Conclusion: the multiscale machinery is correct in the full sampler (prior
 tests: raw fails, whitened passes; posterior: whitened = global).  It gives
 no speed-up in its whitened single-innovation form; a speed-up would need
 block (per-subdomain) updates, which is outside this study.
+
+## 2026-09-30: 3D E3 curve (runs/e5_3d_2026-09, PR #52)
+1024 realizations x 40 rho in [0.05, 5], r = 78, 4.9 min.  K* = 2.846 (2D
+2.036).  f(rho) = ensemble Keff at beta = 1: rises to ~1.14 at rho ~1.6-2.1,
+back to 1 at rho ~3, 0.70 at rho = 4.6; the infinite-medium 3D value
+exp(rho^2/6) is followed only up to rho ~1 (1.18 at rho = 1; 1.45 at 1.5,
+observed 1.14): the finite 16^3 plug (L/ell = 5) strongly damps the 3D
+enhancement and then reverses it, as the degeneracies notes anticipated.
+beta_bar(rho) therefore dips below K* (2.50 at rho = 1.5-2.1) before rising.
+At rho_true: beta_bar = 2.507 vs beta_true 2.3 (+9%; 2D +5%), realization
+band 5-95% [1.38, 5.57]; Cholesky vs KLE at the truth 3.6%.
+Note for E5: this truth has |theta|^2 / r = 0.72 (2D: 1.27); through the
+shell argument that pulls rho's posterior down somewhat -- watch rho's
+coverage.
+report_curve: the f(rho) reference is now dimension-aware (2D: 1; 3D:
+exp(rho^2/6)); it previously read "Matheron 2D" for the 3D curve too.
