@@ -499,3 +499,33 @@ shell argument that pulls rho's posterior down somewhat -- watch rho's
 coverage.
 report_curve: the f(rho) reference is now dimension-aware (2D: 1; 3D:
 exp(rho^2/6)); it previously read "Matheron 2D" for the 3D curve too.
+
+## 2026-10-01: 3D study, E5 prior test, E1 and E5 at 2.0M solves (runs/e5_3d_2026-10, PRs #54, #55)
+Settings as confirmed (16^3, ell 0.2, r = 78, 2,048 sensors, truth kle,
+sigma_rel 2e-3); 64 chains each; E5 667k it. x 3 solves, E1 1M x 2.
+- E5 prior test (likelihood off): every check equals direct draws (cov(theta)
+  error 0.032 vs 0.032; spatial-mean sd 0.274 vs 0.275; pointwise variance
+  ratio 0.99-1.02; w -0.042/0.955; xi_b 0.001/0.999).
+- theta MPSRF crosses 1.2: E5 1.14M solves, E1 1.69M (1.5x).  Worst
+  single-theta PSRF: E5 0.75M, E1 1.44M (1.9x).  Final MPSRF 1.104 / 1.159.
+  In 3D both converge within the budget; E1's slowest components are again
+  log beta (1.136), theta1 (1.127), theta10 (1.118).
+- log beta: E5 PSRF 1.005, ESS 16,090; E1 PSRF 1.139, ESS 562 (29x).
+  rho ESS 10,250 vs 1,971; level 1,938 vs 2,612 (theta-limited in both).
+- E5 posterior: beta 2.50 [1.69, 3.66] covers 2.3; level 0.845 [0.74, 0.93]
+  covers 0.833; log K pointwise 90% band covers 100% of cells.
+  rho 1.26 [1.08, 1.48] does NOT cover 1.5 (z = -1.9).  E1 gives the same
+  rho (mean of chain means 1.28), so this is the posterior, not the sampler.
+  Cause: the amplitude is identified only by the prior's typicality of
+  |theta|^2.  This truth has |theta|^2/r = 0.72 (about 1.75 sd below the
+  chi^2_78 mean); the posterior keeps |theta|^2/r at 1.005, and since the
+  data fix rho*theta, rho shrinks: 1.5 * sqrt(0.72) = 1.27.  By mode, the
+  3D truth is rich in the leading (data-informed) modes (1.54 per mode in the
+  first 10) and poor in the tail (0.54 beyond mode 40).  The 2D truth
+  (|theta|^2/r = 1.28) carried its excess in the tail (2.32 per mode beyond
+  40), which the posterior replaces with prior draws, so 2D rho was unbiased
+  (1.47).  This is the "information floor" of the degeneracies notes: rho is
+  only as good as the realization is prior-typical.
+- Housekeeping: runs/e5_3d_2026-09 (E3 and the prior check, 21 files) was
+  byte-identical to the copies in runs/e5_3d_2026-10 and is removed; the 3D
+  study's export folder is e5_3d_2026-10.

@@ -203,7 +203,7 @@ PRIOR_TEST=1 INNOV=ms_raw   sbatch cluster/slurm/node_e5_soft.sbatch
 PRIOR_TEST=1 INNOV=ms_white sbatch cluster/slurm/node_e5_soft.sbatch
 INNOV=ms_white E5_ARGS="--n-total 667000 --n-burn 30000 --thin 100" \
     sbatch cluster/slurm/node_e5_soft.sbatch                     # 5. E7
-bash cluster/export_results.sh $BRHO_ROOT e5_3d_2026-09           # export (study folder name)
+bash cluster/export_results.sh $BRHO_ROOT e5_3d_2026-10           # export (study folder name)
 ```
 
 Field figures show the horizontal mid-plane z = 0.53 of the cube (noted in
