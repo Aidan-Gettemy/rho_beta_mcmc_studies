@@ -21,7 +21,8 @@ With two or more runs present, figures/mpsrf_compare/ adds
     fig_mpsrf_compare_theta.png   MPSRF of all theta, every run on one axis
     fig_psrf_compare_theta.png    worst-component PSRF of theta, same
 with x = PDE solves per chain (E1 blocked 2 per iteration, global 1, E4 3,
-E5 3: A, B, D; C is free), so equal x means equal work; tables/mpsrf_compare/mpsrf_compare.json.
+E5 / E7 3: A, B, D; C is free; E8 from the manifest's solves_per_iteration,
+e.g. 16 for the 2D block sweep), so equal x means equal work; tables/mpsrf_compare/mpsrf_compare.json.
 Writes, for each set, into figures/<exp>/ and tables/<exp>/:
     fig_mpsrf_<set>.png   MPSRF vs iteration: y = 1, y = 1.2, crossing marked
     fig_psrf_<set>.png    max-over-components PSRF vs iteration, and the final
@@ -79,11 +80,18 @@ def load_kept(exp, n_chains=None):
         its = sc["n_burn"] + sc["thin"] * np.arange(L)
         full = np.concatenate([theta, lb[..., None], lr[..., None]], axis=2)
         innov = sc.get("theta_innovation", "global")
-        lab = "E5 soft-curve sampler (β free)" if innov == "global" else \
-            f"E7 soft-curve sampler, {innov.replace('ms_', 'multiscale ')} θ"
+        man = io.read_manifest(exp)
+        if innov.startswith("block"):
+            lab = ("E8 soft-curve sampler, block pCN θ"
+                   + (" (random block)" if innov == "block_random" else " (sweep)"))
+        elif innov == "global":
+            lab = "E5 soft-curve sampler (β free)"
+        else:
+            lab = f"E7 soft-curve sampler, {innov.replace('ms_', 'multiscale ')} θ"
         return dict(sets=dict(theta=theta, all=full),
                     extra=dict(theta=[], all=["logβ", "logρ"]),
-                    its=its, m=len(paths), solves=3, label=lab)
+                    its=its, m=len(paths), solves=man.get("solves_per_iteration", 3),
+                    label=lab)
     sc = cfgs["SamplerConfig"]
     its = sc["n_burn"] + sc["thin"] * np.arange(L)
     return dict(sets=dict(theta=theta, all=np.concatenate([theta, lr[..., None]], axis=2)),
@@ -226,7 +234,8 @@ def run(exp, n_chains=None, skip=2, step=15, iter_burn=10, level=1.2, at=4900,
 
 COLORS = {"e1_blocked": "#c0392b", "e1_global": "#e67e22", "e4_sampler": "#1f5fa8",
           "e5_soft": "#2e8b57",
-          "e5_soft_ms_white": "#7b3fa0", "e5_soft_ms_raw": "#999999"}
+          "e5_soft_ms_white": "#7b3fa0", "e5_soft_ms_raw": "#999999",
+          "e5_soft_block": "#138d75", "e5_soft_block_random": "#76d7c4"}
 
 
 def compare(results, level=1.2):
@@ -295,7 +304,8 @@ def main(argv=None):
     a = ap.parse_args(argv)
     exps = [a.exp] if a.exp else [
         e for e in (io.exp_e1("blocked"), io.exp_e1("global"), io.EXP_SAMPLER, io.EXP_SOFT,
-                    io.exp_soft(False, "ms_white"), io.exp_soft(False, "ms_raw"))
+                    io.exp_soft(False, "ms_white"), io.exp_soft(False, "ms_raw"),
+                    io.exp_soft(False, "block"), io.exp_soft(False, "block_random"))
         if io.chain_files(io.results_dir(e))]
     results = {}
     for e in exps:

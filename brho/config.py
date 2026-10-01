@@ -163,7 +163,22 @@ class SoftSamplerConfig:
       "ms_white"  the same, whitened: W B eta + V0 zeta  law N(0, I_r) exactly
       with ms_blocks x ms_blocks subdomains, local KLEs at ms_local_energy.
       "ms_white" has the same transition kernel as "global" (a correctness
-      device, not a speed-up)."""
+      device, not a speed-up).
+      "block"     E8 (brho/blockpcn.py): move A becomes Metropolis-within-
+                  Gibbs over theta subspaces -- a coarse move, then one pCN
+                  move per local block of a block_n^dim primal decomposition
+                  and (block_dual) of the (block_n+1)^dim dual one shifted
+                  by half a block.  Local subspace = theta-directions with at
+                  least block_energy of their field energy inside the block
+                  (widened by block_halo); coarse = complement of the primal
+                  locals.  Each move preserves N(0, I_r) exactly; one solve
+                  each.  All blocks every iteration (2D, 2x2: 1 + 4 + 9 = 14
+                  theta solves).
+      "block_random"  the same moves, but each iteration proposes the coarse
+                  move and ONE local block chosen uniformly (2 theta solves,
+                  4 per iteration in all; equal-cost comparisons).  Every
+                  block adapts its own step (init block_s0, target
+                  block_target; <= 0 means: use s_init[0] / targets[0])."""
     n_chains: int = 64
     n_total: int = 150000          # same budget as the E4 run (3 solves / it)
     n_burn: int = 30000
@@ -185,6 +200,12 @@ class SoftSamplerConfig:
     theta_innovation: str = "global"
     ms_blocks: int = 2
     ms_local_energy: float = 0.95
+    block_n: int = 2
+    block_energy: float = 0.9
+    block_dual: bool = True
+    block_halo: float = 0.0
+    block_s0: float = 0.0
+    block_target: float = 0.0
 
 
 # ------------------------------------ E1: naive global pCN on (theta, beta, rho)

@@ -6,6 +6,10 @@ E2  pcn_fixed_pair      pCN on theta with (beta, rho) held fixed
 
 E5  SoftCurveSampler    beta free with the soft curve prior; moves A-D
                         (see the class docstring and config.SoftSamplerConfig)
+E7  ... theta_innovation="ms_white": whitened multiscale innovation in A
+E8  ... theta_innovation="block": A = block (subdomain) pCN sweep, coarse +
+                        primal + dual local subspaces (brho/blockpcn.py), one
+                        adapted step per block
 
 E4  ThreeStepSampler    unknowns (theta, w), log rho = mu_rho + s_rho w,
                         beta eliminated by the offline curve beta_bar(rho):
@@ -39,7 +43,11 @@ def trace_burn_index(n_burn, trace_every):
 
 # ---------------------------------------------------------------- adaptation
 class StepAdapter:
-    """Multiplicative step-size adaptation toward acceptance targets."""
+    """Multiplicative step-size adaptation toward acceptance targets.
+    Acceptance rates are per PROPOSAL of each move (a move not proposed in a
+    window, e.g. a block skipped by the random block schedule, is left
+    alone).  When every move is proposed once per iteration -- all samplers
+    before E8 -- this is exactly the old rate acc / iterations."""
 
     def __init__(self, sizes, targets=None, band=None, every=100,
                  factor=1.12, s_min=1e-3, s_max=0.95):
@@ -48,18 +56,22 @@ class StepAdapter:
         self.every, self.factor = every, factor
         self.s_min, self.s_max = s_min, s_max
         self.acc = np.zeros(len(self.s))
+        self.n = np.zeros(len(self.s))
         self.win = 0
 
     def record(self, j, accepted):
         self.acc[j] += bool(accepted)
+        self.n[j] += 1
 
     def tick(self, it, n_burn):
         self.win += 1
         if self.win < self.every:
             return
         if it < n_burn:
-            rate = self.acc / self.win
+            rate = self.acc / np.maximum(self.n, 1)
             for j in range(len(self.s)):
+                if self.n[j] == 0:
+                    continue
                 if self.band is not None:           # stay inside [lo, hi]
                     lo, hi = self.band
                     if rate[j] > hi:
@@ -71,6 +83,7 @@ class StepAdapter:
                                  else self.s[j] / self.factor)
             self.s = np.clip(self.s, self.s_min, self.s_max)
         self.acc[:] = 0
+        self.n[:] = 0
         self.win = 0
 
 
@@ -256,10 +269,33 @@ class SoftCurveSampler:
         self.c, *_ = np.linalg.lstsq(T, ones, rcond=None)
         self.c_resid = float(np.linalg.norm(T @ self.c - ones) / np.sqrt(len(ones)))
         self.innovation = getattr(scfg, "theta_innovation", "global")
-        self.ms = None
-        if self.innovation != "global":
+        self.ms = self.bp = None
+        self.s_init, self.targets = tuple(scfg.s_init), tuple(scfg.targets)
+        self.move_names = ("A", "B", "C", "D")
+        self.solves_per_iteration = 3
+        if self.innovation in ("block", "block_random"):
+            # E8: move A becomes block (subdomain) pCN, brho/blockpcn.py.  Step
+            # sizes: index 0 = coarse move (A's slot), 1-3 = B, C, D, then one
+            # per local block (primal P1.., dual Q1..), each adapted on its own.
+            from .blockpcn import from_problem as block_from_problem
+            self.bp = block_from_problem(prob, scfg.block_n, scfg.block_energy,
+                                         scfg.block_dual, scfg.block_halo)
+            self.schedule = "random" if self.innovation == "block_random" else "sweep"
+            nl = self.bp.n_local
+            s_loc = scfg.block_s0 if scfg.block_s0 > 0 else scfg.s_init[0]
+            t_loc = scfg.block_target if scfg.block_target > 0 else scfg.targets[0]
+            self.s_init += (s_loc,) * nl
+            self.targets += (t_loc,) * nl
+            self.move_names = ("A0 coarse", "B", "C", "D") + tuple(
+                mv["name"] for mv in self.bp.moves[1:])
+            self.solves_per_iteration = self.bp.solves(self.schedule) + 2
+        elif self.innovation != "global":
             from .multiscale import from_problem
             self.ms = from_problem(prob, scfg.ms_blocks, scfg.ms_local_energy)
+
+    def move_index(self, j):
+        """Step / acceptance slot of block move j (0 = coarse)."""
+        return 0 if j == 0 else 3 + j
 
     # ------------------------------------------------------------- model
     def rho(self, w):
@@ -318,21 +354,34 @@ class SoftCurveSampler:
 
     # ------------------------------------------------------------ one sweep
     def step(self, st, ad, rng):
-        s_th, s_h, s_rg, s_lv = ad.s
+        s_th, s_h, s_rg, s_lv = ad.s[:4]
         th, w, lb = st["theta"], st["w"], st["lb"]
         rho = self.rho(w)
         # A: pCN on theta (global innovation: unchanged code path, so existing
         #    runs resume bit-identically; multiscale: brho/multiscale.py)
-        if self.ms is None:
-            th_p = pcn(th, s_th, rng)
+        if self.bp is not None:
+            # E8: coarse + local blocks, Metropolis-within-Gibbs (blockpcn.py)
+            for j in self.bp.order(self.schedule, rng):
+                k = self.move_index(j)
+                th_p = self.bp.propose(st["theta"], j, ad.s[k], rng)
+                if th_p is None:
+                    continue
+                phi_p, pobs_p, keff_p = self.potential(th_p, w, lb)
+                a = np.log(rng.random()) < st["phi"] - phi_p
+                if a:
+                    st.update(theta=th_p, phi=phi_p, pobs=pobs_p, keff=keff_p)
+                ad.record(k, a)
         else:
-            th_p = (np.sqrt(1.0 - s_th * s_th) * th
-                    + s_th * self.ms.draw(self.innovation, rng))
-        phi_p, pobs_p, keff_p = self.potential(th_p, w, lb)
-        a = np.log(rng.random()) < st["phi"] - phi_p
-        if a:
-            st.update(theta=th_p, phi=phi_p, pobs=pobs_p, keff=keff_p)
-        ad.record(0, a)
+            if self.ms is None:
+                th_p = pcn(th, s_th, rng)
+            else:
+                th_p = (np.sqrt(1.0 - s_th * s_th) * th
+                        + s_th * self.ms.draw(self.innovation, rng))
+            phi_p, pobs_p, keff_p = self.potential(th_p, w, lb)
+            a = np.log(rng.random()) < st["phi"] - phi_p
+            if a:
+                st.update(theta=th_p, phi=phi_p, pobs=pobs_p, keff=keff_p)
+            ad.record(0, a)
         # B: pCN on w with beta fixed (the level barely moves: beta mixes
         #    through D, rho through B and C).  pCN preserves N(0,1) for w;
         #    the curve prior of lb enters the ratio.
@@ -389,7 +438,9 @@ def run_chunk(sampler, chain_id, ckpt_path):
     level_st(), rho(), extra_traces() -- ThreeStepSampler (E4) and
     SoftCurveSampler (E5)."""
     cfg = sampler.cfg
-    n_moves = len(cfg.s_init)
+    s_init = getattr(sampler, "s_init", cfg.s_init)
+    targets = getattr(sampler, "targets", cfg.targets)
+    n_moves = len(s_init)
     extra_keys = tuple(sampler.extra_traces(None))
     trace_keys = TRACE_KEYS + extra_keys
     if os.path.exists(ckpt_path):
@@ -405,6 +456,9 @@ def run_chunk(sampler, chain_id, ckpt_path):
         st["phi"], st["pobs"], st["keff"] = sampler.potential_st(st)
         s = ck["s"]
         acc_tot = ck["acc_tot"]
+        # proposals per move (E8's random block schedule skips moves); runs
+        # before E8 proposed every move once per iteration
+        prop_tot = ck["acc_tot_prop"] if "acc_tot_prop" in ck else np.full(n_moves, float(it0))
         traces = {k: list(ck["tr_" + k]) for k in trace_keys}
         traces["theta_lead"] = list(ck["tr_theta_lead"])
         kept = {k: list(ck["kept_" + k]) for k in KEPT_KEYS}
@@ -414,21 +468,23 @@ def run_chunk(sampler, chain_id, ckpt_path):
         rng = np.random.default_rng(chain_seed(cfg.seed0, chain_id,
                                                cfg.seed_scheme, 13))
         st = sampler.init_state(rng)
-        s = np.array(cfg.s_init, float)
+        s = np.array(s_init, float)
         acc_tot = np.zeros(n_moves)
+        prop_tot = np.zeros(n_moves)
         traces = {k: [] for k in trace_keys}
         traces["theta_lead"] = []
         kept = {k: [] for k in KEPT_KEYS}
         s_hist = []
-    ad = StepAdapter(s, targets=cfg.targets, every=cfg.adapt_every,
+    ad = StepAdapter(s, targets=targets, every=cfg.adapt_every,
                      factor=cfg.adapt_factor)
     n_steps = min(cfg.chunk, cfg.n_total - it0)
     k = sampler.N_TRACK
     for loc in range(n_steps):
         it = it0 + loc
-        before = ad.acc.copy()
+        before, before_n = ad.acc.copy(), ad.n.copy()
         sampler.step(st, ad, rng)
         acc_tot += ad.acc - before
+        prop_tot += ad.n - before_n
         ad.tick(it, cfg.n_burn)
         if it < cfg.n_burn and (it + 1) % cfg.adapt_every == 0:
             s_hist.append(ad.s.copy())
@@ -452,7 +508,8 @@ def run_chunk(sampler, chain_id, ckpt_path):
                                 else np.full(sampler.prob.syn.n_obs, np.nan))
             kept["keff"].append(st["keff"])
     it_new = it0 + n_steps
-    out = dict(it=it_new, s=ad.s, acc_tot=acc_tot, theta_cur=st["theta"],
+    out = dict(it=it_new, s=ad.s, acc_tot=acc_tot, acc_tot_prop=prop_tot,
+               theta_cur=st["theta"],
                rng_state=json.dumps(rng.bit_generator.state),
                s_hist=np.array(s_hist).reshape(-1, n_moves))
     for key in sampler.STATE:

@@ -501,3 +501,119 @@ def test_3d_plots_show_the_mid_plane():
     P.field(ax, p.syn.p_true, 8, "p", obs_mask=p.syn.obs_mask)
     assert "z=" in ax.get_title()
     plt.close(fig)
+
+
+# ------------------------------------------------------------ E8: block pCN
+def test_block_subspaces_geometry():
+    """Local subspaces: orthonormal, every direction keeps >= energy of its
+    field inside its block, independent of the eigensolver basis (only the
+    projector matters); coarse + primal locals span R^r; 2x2 -> 3x3 dual."""
+    from brho.blockpcn import from_problem, local_subspace
+    p = prob()
+    bp = from_problem(p, blocks=2, energy=0.9)
+    s = bp.summary()
+    assert s["spans"] and len(s["primal_dims"]) == 4 and len(s["dual_dims"]) == 9
+    assert bp.n_local == 13 and bp.solves("sweep") == 14 and bp.solves("random") == 2
+    T = p.kle.T
+    for mv in bp.moves[1:]:
+        V = mv["V"]
+        assert np.allclose(V.T @ V, np.eye(V.shape[1]), atol=1e-10)
+        F = T @ V
+        inside = (F[mv["mask"]] ** 2).sum(0) / (F ** 2).sum(0)
+        assert inside.min() >= 0.9 - 1e-9, (mv["name"], inside.min())
+    V0 = bp.moves[0]["V"]
+    for mv in bp.moves[1:5]:                       # coarse is orthogonal to primal
+        assert np.abs(V0.T @ mv["V"]).max() < 1e-10
+    # symmetric 2x2 blocks have equal local dimensions
+    assert len(set(s["primal_dims"])) == 1
+    # a rotated copy of the Gram matrix gives the same projector
+    m = bp.moves[1]["mask"]
+    Q1, _ = local_subspace(T, m, 0.9)
+    R = np.linalg.qr(np.random.default_rng(0).standard_normal((p.r, p.r)))[0]
+    Q2, _ = local_subspace(T @ R, m, 0.9)
+    assert np.allclose(Q1 @ Q1.T, R @ Q2 @ Q2.T @ R.T, atol=1e-8)
+
+
+def test_block_moves_preserve_the_prior_exactly():
+    """Started at exact prior draws, any number of block sweeps (sweep or
+    random schedule) leaves theta ~ N(0, I): the law at the end matches
+    direct draws (no mixing needed for this check)."""
+    from brho.samplers import SoftCurveSampler
+    p = prob()
+    for innov in ("block", "block_random"):
+        cfg = replace(C.SoftSamplerConfig(), prior_test=True, theta_innovation=innov,
+                      s_init=(0.5, 0.3, 0.12, 0.6), block_s0=0.6)
+        s = SoftCurveSampler(p, _soft_curve(), cfg)
+        rng = np.random.default_rng(5)
+        out = []
+        for c in range(1500):
+            st = s.init_state(rng)
+            ad = StepAdapter(s.s_init, targets=s.targets, every=10 ** 9)
+            for _ in range(15):
+                s.step(st, ad, rng)
+            out.append(st["theta"])
+        th = np.array(out)
+        frob = np.linalg.norm(np.cov(th.T) - np.eye(p.r)) / np.sqrt(p.r)
+        ref = np.linalg.norm(np.cov(rng.standard_normal(th.shape).T) - np.eye(p.r)) / np.sqrt(p.r)
+        assert frob < 1.3 * ref, (innov, frob, ref)
+        assert np.abs(th.mean(0)).max() < 5 / np.sqrt(len(th)), innov
+
+
+def test_block_sampler_moves_and_adaptation():
+    """E8 bookkeeping: one step slot per block after A-D, solves per
+    iteration, per-proposal adaptation (a move not proposed in a window
+    keeps its step), likelihood-on steps run and adapt."""
+    from brho.samplers import SoftCurveSampler
+    p = prob()
+    cfg = replace(C.SoftSamplerConfig(), theta_innovation="block_random")
+    s = SoftCurveSampler(p, _soft_curve(), cfg)
+    assert len(s.s_init) == 4 + 13 and s.solves_per_iteration == 4
+    assert s.move_names[:4] == ("A0 coarse", "B", "C", "D") and s.move_names[4] == "P1"
+    ad = StepAdapter(s.s_init, targets=s.targets, every=5)
+    rng = np.random.default_rng(1)
+    st = s.init_state(rng)
+    for it in range(5):
+        s.step(st, ad, rng)
+        ad.tick(it, 10 ** 6)
+    assert np.isfinite(st["phi"])
+    moved = ad.s != np.array(s.s_init)
+    assert moved[:4].all()                         # coarse, B, C, D adapted every window
+    assert 1 <= moved[4:].sum() <= 5               # only the blocks that were proposed
+    # old samplers: one proposal per move per iteration -> old rate acc / win
+    ad2 = StepAdapter([0.1, 0.1], targets=[0.25, 0.25], every=4)
+    for it, acc in enumerate([1, 1, 0, 1]):
+        ad2.record(0, acc); ad2.record(1, 0)
+        ad2.tick(it, 10)
+    assert np.allclose(ad2.s, [0.112, 0.1 / 1.12])
+
+
+def test_block_run_chunk_checkpoints_block_steps():
+    """run_chunk with E8: the step vector has one entry per move, proposals
+    are counted, and a resumed chunk continues the same chain."""
+    import tempfile
+    from brho.samplers import SoftCurveSampler, run_chunk
+    p = prob()
+    cfg = replace(C.SoftSamplerConfig(), prior_test=True, theta_innovation="block",
+                  n_total=40, n_burn=20, thin=5, chunk=20, adapt_every=10)
+    s = SoftCurveSampler(p, _soft_curve(), cfg)
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "chain0.npz")
+        assert run_chunk(s, 0, path) == 20
+        assert run_chunk(s, 0, path) == 40
+        z = np.load(path)
+        assert z["s"].shape == (17,) and z["acc_tot_prop"].shape == (17,)
+        assert np.all(z["acc_tot_prop"] == 40)
+        assert z["kept_theta"].shape == (4, p.r)
+
+
+def test_3d_block_subspaces():
+    """3D: 2x2x2 primal and 3x3x3 dual blocks, coarse + primal span R^r."""
+    from brho.blockpcn import from_problem
+    p = prob3()
+    bp = from_problem(p, blocks=2, energy=0.9)
+    s = bp.summary()
+    assert s["dim"] == 3 and len(s["primal_dims"]) == 8 and len(s["dual_dims"]) == 27
+    assert s["spans"]
+    # small 3D dual blocks can be empty at energy 0.9: no move, no solve
+    assert all(mv["dim"] > 0 for mv in bp.moves[1:])
+    assert bp.n_local == 35 - s["empty_blocks"] and bp.solves("sweep") == bp.n_local + 1

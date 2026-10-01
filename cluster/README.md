@@ -112,6 +112,31 @@ Numba: each node job compiles once in its setup step into a node-local cache
 (`NUMBA_CACHE_DIR=/tmp/numba_cache_$SLURM_JOB_ID`). The ranks then load the
 compiled kernel instead of compiling 64 times at once.
 
+### E8: block (subdomain) pCN for theta (2026-10-01)
+
+E5 with move A replaced by Metropolis-within-Gibbs over local subspaces of θ
+(`brho/blockpcn.py`): a coarse move, one move per 2×2 primal block and one per
+3×3 dual block (interfaces at 0.25 / 0.75), each with its own adapted step.
+Same study folder as E5 (`runs/cluster_kle`), so the curve, KLE and truth are
+shared. In 2D one iteration costs 16 solves (coarse + 4 + 9, plus B and D), so
+2.0M solves per chain (equal to E5 and E1) is 125k iterations.
+
+```bash
+export BRHO_ROOT=$PWD/runs/cluster_kle
+export PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3"
+python experiments/run_block_prior_test.py                         # 1. geometry + likelihood-off check (seconds)
+PRIOR_TEST=1 INNOV=block sbatch cluster/slurm/node_e5_soft.sbatch    # 2. full-sampler prior test
+INNOV=block E5_ARGS="--n-total 125000 --n-burn 10000 --thin 25" \
+    sbatch cluster/slurm/node_e5_soft.sbatch                         # 3. E8 at 2.0M solves
+INNOV=block_random E5_ARGS="--n-total 500000 --n-burn 30000 --thin 100" \
+    sbatch cluster/slurm/node_e5_soft.sbatch                         # 4. optional: one random block per iteration (4 solves / it)
+```
+`report_mpsrf.py` reads the solves per iteration from each run's manifest, so
+E5, E7 and E8 share the PDE-solve axis. Block settings: `--block-n` (2),
+`--block-energy` (0.9; 3D needs about 0.8, at 0.9 most 3D dual blocks are
+empty), `--block-dual` (1), `--block-halo` (0), `--block-s0` / `--block-target`
+(0 = use move A's).
+
 ## Bringing results back
 
 Keep the raw run on scratch and commit only what is shareable:

@@ -23,6 +23,11 @@
 #   BRHO_ROOT=$PWD/runs/cluster_kle PRIOR_TEST=1 INNOV=ms_raw   sbatch cluster/slurm/node_e5_soft.sbatch
 #   BRHO_ROOT=$PWD/runs/cluster_kle PRIOR_TEST=1 INNOV=ms_white sbatch cluster/slurm/node_e5_soft.sbatch
 #   BRHO_ROOT=$PWD/runs/cluster_kle              INNOV=ms_white sbatch cluster/slurm/node_e5_soft.sbatch
+# Block (subdomain) pCN for theta (E8, brho/blockpcn.py): INNOV=block (sweep,
+# 16 solves / iteration in 2D) or INNOV=block_random, e.g.
+#   BRHO_ROOT=$PWD/runs/cluster_kle PRIOR_TEST=1 INNOV=block sbatch cluster/slurm/node_e5_soft.sbatch
+#   BRHO_ROOT=$PWD/runs/cluster_kle INNOV=block E5_ARGS="--n-total 125000 --n-burn 10000 --thin 25" \
+#       sbatch cluster/slurm/node_e5_soft.sbatch
 # Time limit: chains checkpoint every `chunk` iterations; resubmit with RESUME=1
 # (and the same PRIOR_TEST / INNOV).
 set -euo pipefail
