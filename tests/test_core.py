@@ -501,3 +501,55 @@ def test_3d_plots_show_the_mid_plane():
     P.field(ax, p.syn.p_true, 8, "p", obs_mask=p.syn.obs_mask)
     assert "z=" in ax.get_title()
     plt.close(fig)
+
+
+def test_multiscale_operator_independent_of_eigh_basis():
+    """Local spectra on square/cube subdomains have exact ties; Sigma_ms must
+    not depend on which basis eigh returns inside a tied eigenspace (it varies
+    with machine and threads).  At the 3D study size (16^3, ell = 0.2, 2x2x2)
+    the 95% energy cut falls inside a tied group: rebuilding with the
+    eigenvectors randomly rotated inside every tied group must leave Sigma_ms
+    unchanged with the tie-closed rule, and does change it with the plain
+    energy cut (the rule used before 2026-10-01)."""
+    from brho import multiscale as MSmod
+    from brho.fv import Permeameter
+    from brho.kle import build_kle
+    ph = Permeameter((16, 16, 16))
+    kp = dict(ell=0.2, sigma2=1.0)
+    kle = build_kle(ph.points, ph.axes, "sqexp", kp, 0.95, "nystrom_sep", 40)
+    orig_eigh, orig_trunc = np.linalg.eigh, MSmod.local_truncation
+
+    def rotated_eigh(A, *a, **k):
+        w, v = orig_eigh(A, *a, **k)
+        v = v.copy()
+        rng = np.random.default_rng(int(1e6 * abs(w).sum()) % 2 ** 32)
+        i = 0
+        while i < len(w):
+            j = i + 1
+            while j < len(w) and abs(w[j] - w[i]) <= 1e-9 * abs(w[i]):
+                j += 1
+            if j - i > 1:
+                Q, _ = np.linalg.qr(rng.standard_normal((j - i, j - i)))
+                v[:, i:j] = v[:, i:j] @ Q
+            i = j
+        return w, v
+
+    def plain(mu, energy, rtol=None):
+        return int(np.searchsorted(np.cumsum(mu) / mu.sum(), energy) + 1)
+
+    def build(rotate, rule):
+        MSmod.local_truncation = rule
+        if rotate:
+            MSmod.np.linalg.eigh = rotated_eigh
+        try:
+            return MSmod.MSInnovation(kle, ph.points, "sqexp", kp, 2, 0.95)
+        finally:
+            MSmod.np.linalg.eigh = orig_eigh
+            MSmod.local_truncation = orig_trunc
+
+    a, b = build(False, orig_trunc), build(True, orig_trunc)
+    assert a.r_k == [17] * 8 and a.operator_check < 1e-12
+    assert np.allclose(a.Sigma, b.Sigma, atol=1e-10), np.abs(a.Sigma - b.Sigma).max()
+    c, d = build(False, plain), build(True, plain)
+    assert c.r_k == [16] * 8
+    assert np.abs(c.Sigma - d.Sigma).max() > 1e-3      # the old rule is basis-dependent

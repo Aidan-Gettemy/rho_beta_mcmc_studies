@@ -103,7 +103,7 @@ def main(argv=None):
     ms = from_problem(prob, a.blocks, a.local_energy)
     msum = ms.summary()
     print(f"KLE from {a.from_exp}: {'x'.join([str(pc.n)] * pc.dim)}, ell={pc.ell}, r={kle.r}; multiscale "
-          f"{a.blocks}x{a.blocks} subdomains, local modes {msum['r_k']} (p={msum['p']}); "
+          f"{'x'.join([str(a.blocks)] * pc.dim)} subdomains, local modes {msum['r_k']} (p={msum['p']}); "
           f"Sigma_ms eigenvalues [{msum['sigma_ms_eig_min']:.3f}, "
           f"{msum['sigma_ms_eig_max']:.3f}]; r_plus={msum['r_plus']}; "
           f"whitening check {msum['operator_check']:.1e}")
