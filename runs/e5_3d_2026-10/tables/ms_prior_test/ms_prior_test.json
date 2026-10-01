@@ -1,0 +1,88 @@
+{
+ "settings": {
+  "from_exp": "e5_soft",
+  "blocks": 2,
+  "local_energy": 0.95,
+  "chains": 16,
+  "n_iter": 40000,
+  "thin": 4,
+  "s": 0.5,
+  "seed": 31
+ },
+ "multiscale": {
+  "blocks": 2,
+  "dim": 3,
+  "local_energy": 0.95,
+  "r": 78,
+  "p": 128,
+  "r_k": [
+   16,
+   16,
+   16,
+   16,
+   16,
+   16,
+   16,
+   16
+  ],
+  "r_plus": 78,
+  "sigma_ms_eig_max": 3.4384681912961854,
+  "sigma_ms_eig_min": 0.1299895914582306,
+  "sigma_ms_trace_over_r": 1.0622817786377987,
+  "operator_check": 3.1347180252314894e-15
+ },
+ "results": {
+  "reference": {
+   "frob": 0.02190699623697486,
+   "spatial_mean_sd": 0.27402325240047176,
+   "field_var_mean": 0.8788627439270146,
+   "field_var_sd": 0.221945615578779,
+   "theta_var_max": 1.007286082294038,
+   "theta_var_min": 0.9925434061477285,
+   "worst_psrf": null,
+   "pointwise_mean_max_abs": 0.008268850493357512,
+   "pointwise_var_ratio_min": 0.9896265179622388,
+   "pointwise_var_ratio_max": 1.008918903849684,
+   "pointwise_var_ratio_mean": 0.9999545417473654
+  },
+  "raw": {
+   "frob": 0.6400289307302304,
+   "spatial_mean_sd": 0.2012901559447025,
+   "field_var_mean": 0.7374957014510927,
+   "field_var_sd": 0.1781300388177732,
+   "theta_var_max": 2.647039128754723,
+   "theta_var_min": 0.4319405767870779,
+   "worst_psrf": 1.0003401094036692,
+   "pointwise_mean_max_abs": 0.011241620886273621,
+   "pointwise_var_ratio_min": 0.1753215813349725,
+   "pointwise_var_ratio_max": 1.2860742278603852,
+   "pointwise_var_ratio_mean": 0.8168424927634723
+  },
+  "whitened": {
+   "frob": 0.030902149419727326,
+   "spatial_mean_sd": 0.27509922444742757,
+   "field_var_mean": 0.8794774344150368,
+   "field_var_sd": 0.22192675214307211,
+   "theta_var_max": 1.0090524784967632,
+   "theta_var_min": 0.9894764752039331,
+   "worst_psrf": 1.0003188722164378,
+   "pointwise_mean_max_abs": 0.01045691911742814,
+   "pointwise_var_ratio_min": 0.9871460589243835,
+   "pointwise_var_ratio_max": 1.0146434687282517,
+   "pointwise_var_ratio_mean": 1.0011939281440214
+  },
+  "normalized": {
+   "frob": 0.26537895574467396,
+   "spatial_mean_sd": 0.00015231772334762617,
+   "field_var_mean": 0.9999785219708898,
+   "field_var_sd": 3.078849559386485e-05,
+   "theta_var_max": 1.3346318341233492,
+   "theta_var_min": 0.0871341142165716,
+   "worst_psrf": 1.0005697428468288,
+   "pointwise_mean_max_abs": 0.019550447963412182,
+   "pointwise_var_ratio_min": 0.9242218624557034,
+   "pointwise_var_ratio_max": 1.2398817407000866,
+   "pointwise_var_ratio_mean": 1.049523805396408
+  }
+ }
+}

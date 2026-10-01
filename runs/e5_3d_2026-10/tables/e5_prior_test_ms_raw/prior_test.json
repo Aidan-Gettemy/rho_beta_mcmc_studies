@@ -1,0 +1,42 @@
+{
+ "n_samples": 76800,
+ "frob_chain": 0.6158204198230234,
+ "frob_reference": 0.031826345966262444,
+ "w_mean": -0.06423989923058974,
+ "w_sd": 0.950674773591106,
+ "w_mean_target": -0.04054468066749765,
+ "w_sd_target": 0.9546468460035353,
+ "xi_mean": -0.005735649202911995,
+ "xi_sd": 0.9387863632368674,
+ "corr_w_xi": 0.0009394312580936067,
+ "theta_norm2_over_r": 1.040476385271575,
+ "ks_w_p": 0.0,
+ "ks_xi_p": 0.0,
+ "acc": {
+  "A": 1.0,
+  "B": 0.6826305208333333,
+  "C": 0.4506171875,
+  "D": 0.4605003125
+ },
+ "theta_innovation": "ms_raw",
+ "theta_var_sorted_max_min": [
+  2.55703503705911,
+  0.48205316666275966
+ ],
+ "spatial_mean_sd": 0.215834769214095,
+ "spatial_mean_sd_reference": 0.2749415097997937,
+ "field_var_mean_sd": [
+  0.72308966658814,
+  0.17650591388408543
+ ],
+ "field_var_mean_sd_reference": [
+  0.8797397847597631,
+  0.22154665947058125
+ ],
+ "ks_spatial_mean_p": 2.010594595566355e-126,
+ "ks_field_var_p": 0.0,
+ "pointwise_var_ratio_min": 0.18505311230065183,
+ "pointwise_var_ratio_max": 1.263857298485522,
+ "pointwise_mean_max_abs": 0.011273899684511646,
+ "pointwise_mean_max_abs_reference": 0.012757852587042501
+}
