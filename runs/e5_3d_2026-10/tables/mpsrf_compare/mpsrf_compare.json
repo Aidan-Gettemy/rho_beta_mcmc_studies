@@ -1,0 +1,34 @@
+{
+ "e1_blocked": {
+  "mpsrf": {
+   "convergence_iteration": 845184.0,
+   "convergence_solves": 1690368.0,
+   "final": 1.158539803486097,
+   "final_solves": 1996000.0,
+   "dim": 78
+  },
+  "psrf": {
+   "convergence_iteration": 721271.0,
+   "convergence_solves": 1442542.0,
+   "final": 1.1266400213182208,
+   "final_solves": 1996000.0,
+   "dim": 78
+  }
+ },
+ "e5_soft": {
+  "mpsrf": {
+   "convergence_iteration": 379483.0,
+   "convergence_solves": 1138449.0,
+   "final": 1.1042354453020835,
+   "final_solves": 2001000.0,
+   "dim": 78
+  },
+  "psrf": {
+   "convergence_iteration": 250110.0,
+   "convergence_solves": 750330.0,
+   "final": 1.0711412142139176,
+   "final_solves": 2001000.0,
+   "dim": 78
+  }
+ }
+}
