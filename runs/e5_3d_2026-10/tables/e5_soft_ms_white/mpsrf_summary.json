@@ -1,0 +1,79 @@
+{
+ "exp": "e5_soft_ms_white",
+ "label": "E7 soft-curve sampler, multiscale white \u03b8",
+ "n_chains": 64,
+ "n_samples": 6370,
+ "thinning": 100,
+ "first_kept_iteration": 30000,
+ "solves_per_iteration": 3,
+ "skip": 2,
+ "step": 15,
+ "iter_burn": 10,
+ "level": 1.2,
+ "theta": {
+  "dim": 78,
+  "mpsrf_convergence_iteration": 359035.0,
+  "psrf_convergence_iteration": 216738.0,
+  "at_iteration": 32500.0,
+  "mpsrf_at": 11.254704986866107,
+  "psrf_max_at": 6.977857466187622,
+  "mpsrf_final": 1.1082693784184017,
+  "psrf_max_final": 1.0587788641695863,
+  "n_components_above_level_final": 0,
+  "worst_components_final": [
+   [
+    "theta64",
+    1.059
+   ],
+   [
+    "theta74",
+    1.052
+   ],
+   [
+    "theta57",
+    1.05
+   ],
+   [
+    "theta70",
+    1.049
+   ],
+   [
+    "theta61",
+    1.047
+   ]
+  ]
+ },
+ "all": {
+  "dim": 80,
+  "mpsrf_convergence_iteration": 359215.0,
+  "psrf_convergence_iteration": 216738.0,
+  "at_iteration": 32500.0,
+  "mpsrf_at": 11.471331318949717,
+  "psrf_max_at": 6.977857466187622,
+  "mpsrf_final": 1.1083130117242077,
+  "psrf_max_final": 1.0587788641695863,
+  "n_components_above_level_final": 0,
+  "worst_components_final": [
+   [
+    "\u03b864",
+    1.059
+   ],
+   [
+    "\u03b874",
+    1.052
+   ],
+   [
+    "\u03b857",
+    1.05
+   ],
+   [
+    "\u03b870",
+    1.049
+   ],
+   [
+    "\u03b861",
+    1.047
+   ]
+  ]
+ }
+}
