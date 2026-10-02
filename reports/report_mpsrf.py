@@ -286,7 +286,9 @@ def compare(results, level=1.2):
         ax.set_xlabel("PDE solves per chain")
         ax.set_ylabel(ylab)
         ax.set_title(f"{title}: all runs at equal work")
-        ax.legend(fontsize=15, loc="upper right")
+        ax.legend(fontsize=11 if len(results) > 3 or any(len(r["label"]) > 45
+                                                           for r in results.values()) else 15,
+                  loc="upper right")
         style(ax)
         f.tight_layout()
         path = os.path.join(fdir, f"fig_{key}_compare_theta.png")
