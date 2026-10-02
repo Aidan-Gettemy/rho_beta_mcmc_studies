@@ -597,3 +597,24 @@ Local check of the corrected 3D standalone test: raw 0.646 / 0.201 /
 0.18-1.31, whitened passes -- same conclusions.  Recommended: rerun the cheap
 3D prior tests (standalone + ms_raw + ms_white) for reproducible numbers in
 the paper; E7 need not be rerun (its kernel is global pCN in law).
+
+## 2026-10-01: E8 block pCN at 2.0M solves (runs/e5_kle_2026-09/e5_soft_block, PRs #61, #62)
+64 chains x 125k iterations x 16 solves (coarse + 4 primal + 9 dual block
+moves, B, D); burn-in 10k, thin 25.  Prior tests passed first (full sampler:
+cov(theta) error 0.027 vs 0.028 direct; pointwise variance 0.99-1.01).
+- theta MPSRF crosses 1.2 at 0.94M solves (E5 1.26M, E7 1.20M): 1.33x.
+  Not a lucky crossing: at equal solves E8's MPSRF is lower all along
+  (0.75M 1.278 vs 1.345; 1.0M 1.185 vs 1.241; 1.5M 1.111 vs 1.167; 2.0M
+  1.075 vs 1.123).  Worst single-theta PSRF crosses at the same cost
+  (0.60M vs 0.60M): the slowest single mode does not gain.
+- ESS at equal solves (E8 vs E5): log beta 102,500 vs 36,000 (2.8x); rho
+  12,410 vs 7,095 (1.7x); level 2,903 vs 1,807 (1.6x; PSRF 1.010 vs 1.045);
+  Phi 9,663 vs 4,573 (2.1x).
+- Posterior identical to E5 to the reported digits: rho 1.472 [1.23, 1.79],
+  beta 2.145 [1.43, 3.21], sd log beta 0.247; log K 90% coverage 96%.
+- Adapted steps: coarse 0.025, primal 0.031-0.095, dual 0.048-0.30 (global
+  pCN in E5: 0.0124); every move at its 25% target.  Per-block tuning is
+  what buys the gain: information is uneven across the domain.
+- Caveat: one run per sampler; E5 vs E7 (same kernel) differ by ~5% in the
+  crossing, so the 1.33x is well outside run-to-run noise, but a replicate
+  would firm it up.
