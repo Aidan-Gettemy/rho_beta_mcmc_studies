@@ -152,6 +152,22 @@ E5, E7 and E8 (and its variants) share the PDE-solve axis. Block settings: `--bl
 empty), `--block-dual` (1), `--block-halo` (0), `--block-s0` / `--block-target`
 (0 = use move A's).
 
+### Control for E8: E5 with move A repeated (2026-10-02)
+
+Is E8's gain the block moves, or just spending more of the solves on theta?
+E5 spends 1 of 3 solves per iteration on theta, E8 2x2 14 of 16.  E5 with move A
+repeated k times per iteration (`--theta-repeat k`, 2 + k solves) separates the
+two; k = 14 has exactly E8 2x2's theta share.  Main 2D study, 2.0M solves each,
+burn-in about 160k solves, thin about every 400 solves:
+```bash
+export BRHO_ROOT=$PWD/runs/cluster_kle
+export PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3"
+TAG=a14 E5_ARGS="--n-total 125000 --n-burn 10000 --thin 25 --theta-repeat 14" sbatch cluster/slurm/node_e5_soft.sbatch
+TAG=a7  E5_ARGS="--n-total 222300 --n-burn 18000 --thin 45 --theta-repeat 7"  sbatch cluster/slurm/node_e5_soft.sbatch
+TAG=a4  E5_ARGS="--n-total 333400 --n-burn 27000 --thin 67 --theta-repeat 4"  sbatch cluster/slurm/node_e5_soft.sbatch
+```
+Run folders e5_soft_a14 / a7 / a4; `report_mpsrf.py` puts them on the E5 / E8 axis.
+
 ### Scaling study: 64x64, ell = 0.05, r = 208 (2026-10-01)
 
 Does the block-pCN gain grow with the number of subdomains when r is large?

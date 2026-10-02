@@ -679,3 +679,24 @@ Block prior tests (likelihood off) pass for both layouts (pointwise variance
 - report_mpsrf: smaller legend when the labels are long (the E8 labels now name
   the block layout and ran off the figure).
 
+## 2026-10-02: questions on the r = 208 study, answered with the linearized posterior
+Gaussian approximation at the truth (finite-difference Jacobian, 2r + 1 solves).
+- Higher misfit (Phi 108 vs floor 49): each data-informed direction adds ~1/2
+  to the posterior mean of Phi.  Effective number of informed directions 46
+  (r = 57) vs 97 (r = 208).  Linear prediction of the posterior mean Phi: 70.1
+  vs MCMC 69.5 (r = 57), 106.7 vs 108.3 (r = 208).  Not a worse fit.
+- rho miss: rho is pinned by the prior's typicality in the DATA-INFORMED
+  directions (eigenvectors of the Gauss-Newton Hessian, not the leading KLE
+  modes).  The truth's energy there is 0.96 (r = 57) and 0.66 (r = 208), the
+  0.3rd prior percentile.  Prediction rho = 1.5 sqrt(energy): 1.468 / 1.216
+  against MCMC medians 1.473 / 1.204.  The posterior is right; the truth is a
+  1-in-300 draw.
+- Block layouts on the Gaussian surrogate (beta, rho fixed; 24 chains x 200k
+  theta-solves; tuned steps match the cluster's): median IACT per theta-solve
+  global 13.6k (13.6k with another seed), 2x2 13.0k, 3x3 12.4k, 3x3 with
+  visits weighted ~1/s^2 12.3k.  Per theta-solve the layouts are equivalent and
+  weighted visiting adds nothing.  Hypothesis: E8's gain is the budget split
+  (theta share 33% in E5, 88% in E8 2x2, 93% in 3x3); 3x3 updates beta / rho /
+  level too rarely.  The earlier explanation (per-block steps exploit uneven
+  information) is NOT supported.  Control: E5 with --theta-repeat k (this PR).
+

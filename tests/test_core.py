@@ -708,3 +708,45 @@ def test_block_without_coarse_move():
     from brho import io
     assert io.exp_soft(False, "block", "nocoarse") == "e5_soft_block_nocoarse"
     assert io.exp_soft(True, "block") == "e5_prior_test_block"
+
+
+def test_theta_repeat_control():
+    """theta_repeat = k: move A k times per iteration, 2 + k solves; k = 1 is
+    the original path (same random stream); prior preserved for k > 1."""
+    from brho.samplers import SoftCurveSampler
+    p = prob()
+    base = replace(C.SoftSamplerConfig(), prior_test=True, s_init=(0.5, 0.3, 0.12, 0.6))
+    s1 = SoftCurveSampler(p, _soft_curve(), base)
+    assert s1.theta_repeat == 1 and s1.solves_per_iteration == 3
+    sk = SoftCurveSampler(p, _soft_curve(), replace(base, theta_repeat=4))
+    assert sk.solves_per_iteration == 6
+    # k = 1 reproduces the pre-option sampler exactly (same draws, same order)
+    ra, rb = np.random.default_rng(4), np.random.default_rng(4)
+    sa, sb = s1.init_state(ra), s1.init_state(rb)
+    ad_a = StepAdapter(base.s_init, targets=base.targets, every=10 ** 9)
+    ad_b = StepAdapter(base.s_init, targets=base.targets, every=10 ** 9)
+    s1b = SoftCurveSampler(p, _soft_curve(), replace(base, theta_repeat=1))
+    for _ in range(50):
+        s1.step(sa, ad_a, ra); s1b.step(sb, ad_b, rb)
+    assert np.array_equal(sa["theta"], sb["theta"]) and sa["w"] == sb["w"]
+    # k = 4: 4 proposals of move A per iteration, prior preserved
+    rng = np.random.default_rng(6)
+    out = []
+    for c in range(1200):
+        st = sk.init_state(rng)
+        ad = StepAdapter(sk.s_init, targets=sk.targets, every=10 ** 9)
+        for _ in range(5):
+            sk.step(st, ad, rng)
+        assert ad.n[0] == 20 and ad.n[1] == 5
+        out.append(st["theta"])
+    th = np.array(out)
+    frob = np.linalg.norm(np.cov(th.T) - np.eye(p.r)) / np.sqrt(p.r)
+    ref = np.linalg.norm(np.cov(rng.standard_normal(th.shape).T) - np.eye(p.r)) / np.sqrt(p.r)
+    assert frob < 1.3 * ref, (frob, ref)
+    try:
+        SoftCurveSampler(p, _soft_curve(), replace(base, theta_innovation="block", theta_repeat=2))
+        raise AssertionError("block + theta_repeat should be refused")
+    except ValueError:
+        pass
+    from brho import io
+    assert io.exp_soft(False, "global", "a14") == "e5_soft_a14"
