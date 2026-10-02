@@ -634,3 +634,36 @@ cov(theta) error 0.027 vs 0.028 direct; pointwise variance 0.99-1.01).
   for a separate run folder.  Runs: E8a (no coarse) and E8b (no coarse + dual
   halo 0.0625), 133,400 iterations x 15 solves = 2.0M.
 
+
+## 2026-10-02: scaling study, 64x64, ell = 0.05, r = 208 (runs/cluster_l005, PR #65)
+E3, then E5, E8 2x2 (2x2 primal + 3x3 dual) and E8 3x3 (3x3 primal + 4x4
+dual), 64 chains each at 2.0M solves (3 / 16 / 28 solves per iteration).
+Block prior tests (likelihood off) pass for both layouts (pointwise variance
+0.93-1.06 at 4000 sweeps; cov error 0.15-0.19 vs 0.08 direct, autocorrelation).
+- theta MPSRF first below 1.2: E5 1.14M, E8 2x2 0.67M (1.69x), E8 3x3 1.03M
+  (1.11x).  Below 1.15: 1.44M / 0.91M (1.58x) / 1.29M.  Below 1.10: E5 never
+  (final 1.108), 2x2 1.26M, 3x3 1.78M.  At equal solves (E5 / 2x2 / 3x3):
+  0.75M 1.315 / 1.177 / 1.291; 1.0M 1.231 / 1.129 / 1.208; 2.0M 1.108 /
+  1.063 / 1.089.  Worst single-theta PSRF below 1.2: 0.39M / 0.36M / 0.49M.
+- ESS at equal solves (E5 / 2x2 / 3x3): log beta 39,360 / 106,700 / 116,500;
+  rho 9,715 / 14,120 / 11,650; level 3,760 / 8,205 / 9,079.
+- Same posterior in all three: beta 2.25 [1.87, 2.70] (truth 2.3), level
+  0.833 [0.76, 0.90] (truth 0.832), log K 90% coverage 90%.
+- Gain of 2x2 over E5 grew from 1.33x (r = 57) to about 1.6-1.7x (r = 208).
+  3x3 is better than E5 but worse than 2x2: more blocks did NOT help.  Its
+  coarse move holds 63 of 208 directions (29% of the prior variance) at a
+  small step (0.039), and several small dual blocks adapted to very large
+  steps (up to the 0.95 cap: nearly prior-like, so each of those solves buys
+  little).  28 solves per iteration spent evenly on blocks of very different
+  value.
+- rho = 1.204 [1.05, 1.38] misses 1.5 (z = -2.9) in all three samplers, so it
+  is the posterior, not the sampling.  Not the 3D explanation: this truth has
+  |theta|^2/r = 0.96 (predicts rho ~ 1.47).  The soft curve prior is not the
+  cause either (truth at z = +0.41; the curve rises with rho, so it would push
+  rho up).  The posterior mean Phi is 108 against a noise floor of 49 (2D
+  main study: 69.5 vs 51.7), which points to tension between the data and the
+  prior for this realization.  Open; needs a per-mode check of the posterior
+  rho*theta against 1.5*theta_true (chains on the cluster).  Another case for
+  the pinned multi-truth / SBC study.
+- report_mpsrf: crossing marks now take the curve's colour, E8 labels name the
+  block layout, distinct colours for E5 / E8 2x2 / E8 3x3 (rerun the report).
