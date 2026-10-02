@@ -186,6 +186,18 @@ git-ignored chains stay. Right after the first commit of such a study run
 `git sparse-checkout add runs/cluster_l005`. If the files have already
 vanished, the same command brings them back (they are identical copies).
 
+**Representative truth (2026-10-02).** The original truth (seed 2026) has the
+lowest informed energy of 101 seeds screened (0.3rd prior percentile), which is
+why rho was missed.  `reports/linearized/screen.py` ranks seeds; seed 2074 sits
+at the 49.5th percentile.  Full study on it, plus short stubs on an atypical-low
+(2063, 9.8th) and an atypical-high (2086, 93.4th) truth to show rho recovery:
+```bash
+P="--n 64 --ell 0.05 --truth-mode kle --sigma-rel 2e-3"
+BRHO_ROOT=$PWD/runs/cluster_l005_s2074 PROBLEM_ARGS="$P --truth-seed 2074" bash cluster/overnight_scaling.sh
+BRHO_ROOT=$PWD/runs/cluster_l005_s2063 PROBLEM_ARGS="$P --truth-seed 2063" RUNS=e5 SOLVES=500000 TIME=04:00:00 bash cluster/overnight_scaling.sh
+BRHO_ROOT=$PWD/runs/cluster_l005_s2086 PROBLEM_ARGS="$P --truth-seed 2086" RUNS=e5 SOLVES=500000 TIME=04:00:00 bash cluster/overnight_scaling.sh
+```
+
 To continue a node job after a time limit, resubmit it the same way, e.g.
 `BRHO_ROOT=$PWD/runs/cluster_l005 RESUME=1 INNOV=block TAG=3x3 sbatch --partition=cpu-preempt cluster/slurm/node_e5_soft.sbatch`.
 

@@ -699,4 +699,10 @@ Gaussian approximation at the truth (finite-difference Jacobian, 2r + 1 solves).
   (theta share 33% in E5, 88% in E8 2x2, 93% in 3x3); 3x3 updates beta / rho /
   level too rarely.  The earlier explanation (per-block steps exploit uneven
   information) is NOT supported.  Control: E5 with --theta-repeat k (this PR).
+- Truth screening (reports/linearized/screen.py, seeds 2000-2099): at r = 208
+  the original seed 2026 is the most atypical of 101 (informed energy 0.66,
+  0.3rd percentile).  Representative: 2074 (0.99, 49.5th; predicted rho 1.49).
+  Stubs: 2063 (0.82, 9.8th), 2086 (1.22, 93.4th).  At r = 57 seed 2026 is
+  already typical (45th percentile).  The analysis scripts are in
+  reports/linearized/ (lin.py, sim.py, visit.py, screen.py).
 

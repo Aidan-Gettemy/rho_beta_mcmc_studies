@@ -14,3 +14,6 @@ logs/*
 # raw sampler output stays on the cluster; commit figures/ tables/ manifests
 **/results/**/chain*.npz
 **/results/**/pairs/
+reports/linearized/*.npz
+reports/linearized/*.npy
+reports/linearized/out_*.txt
