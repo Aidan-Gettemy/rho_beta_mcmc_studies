@@ -162,6 +162,14 @@ RESUME=1, so preemption or a time limit only pauses them):
 python benchmarks/bench_solver.py --dims 2 --sizes 64     # solve time on this machine first
 PART=cpu-preempt TIME=12:00:00 bash cluster/overnight_scaling.sh
 ```
+**Sparse clone warning.** This study runs inside the repo folder
+(`runs/cluster_l005`). Once its exported files (manifests, `kle.npz`, figures)
+are committed, a sparse clone removes them from the working tree on the next
+checkout or pull, because the folder is outside the sparse set; only the
+git-ignored chains stay. Right after the first commit of such a study run
+`git sparse-checkout add runs/cluster_l005`. If the files have already
+vanished, the same command brings them back (they are identical copies).
+
 To continue a node job after a time limit, resubmit it the same way, e.g.
 `BRHO_ROOT=$PWD/runs/cluster_l005 RESUME=1 INNOV=block TAG=3x3 sbatch --partition=cpu-preempt cluster/slurm/node_e5_soft.sbatch`.
 

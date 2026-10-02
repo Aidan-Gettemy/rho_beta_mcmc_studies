@@ -307,6 +307,11 @@ argument is the folder under `runs/`, not the git branch.
   the multiscale prior tests (standalone, `ms_raw`, `ms_white`).
 - `runs/e5_3d_2026-10/`: **the 3D study** (unit cube 16³, ℓ = 0.2, r = 78, truth `kle`,
   σ_rel = 2e-3): E3 curve, E5 prior test, E1 and E5 at 2.0M solves, MPSRF comparison.
+- `runs/cluster_l005/`: **the scaling study** (64×64, ℓ = 0.05, r = 208, truth `kle`,
+  σ_rel = 2e-3): E3 curve, block prior tests (2×2, 3×3), E5, E8 2×2 and E8 3×3 at
+  2.0M solves, MPSRF comparison. Unlike the other studies it ran *inside* the repo
+  folder on the cluster, so this folder is both the live study (chains, git-ignored)
+  and its export.
 - `runs/e3_kle_2026-09/`, `runs/e5_prior_test_kle_2026-09/`: the E3 curve and E5 prior
   test of the main study as first exported.
 - `runs/e1_blocked_2026-09/`, `runs/e2_grid_2026-09/`, `runs/e3_curve_2026-09/`,

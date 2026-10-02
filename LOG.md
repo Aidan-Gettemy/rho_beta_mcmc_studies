@@ -667,3 +667,15 @@ Block prior tests (likelihood off) pass for both layouts (pointwise variance
   the pinned multi-truth / SBC study.
 - report_mpsrf: crossing marks now take the curve's colour, E8 labels name the
   block layout, distinct colours for E5 / E8 2x2 / E8 3x3 (rerun the report).
+
+## 2026-10-02: housekeeping (scaling study)
+- runs/cluster_1005 (a typo of cluster_l005, PR #67) was a byte-identical copy
+  of runs/cluster_l005 apart from the redrawn comparison figure (PR #68);
+  removed.  The scaling study lives in runs/cluster_l005 only.
+- On the cluster the sparse clone had removed the study's committed files
+  (manifests, frozen kle/truth/curve, figures) after the results commit, leaving
+  only the git-ignored chains; `git sparse-checkout add runs/cluster_l005`
+  restored them.  Warning added to cluster/README.md.
+- report_mpsrf: smaller legend when the labels are long (the E8 labels now name
+  the block layout and ran off the figure).
+
