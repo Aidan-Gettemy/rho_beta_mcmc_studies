@@ -7,7 +7,9 @@ Sec. 6 of "Two parametrization degeneracies ..." (Sept. 2026).
 Offline, no PDE solves (pure Gaussian linear algebra):
   1. partition the grid into blocks x blocks subdomains Omega_k;
   2. local KLE of the unit-variance kernel C1 restricted to Omega_k,
-     truncated at `local_energy` (r_k modes);
+     truncated at `local_energy` (r_k modes; modes tied with the last kept
+     one are kept too, so the result does not depend on eigh's basis inside
+     degenerate eigenspaces);
   3. assemble-and-project matrix B (r x p), column (k, j) =
          proj( E_k sqrt(mu_j^k) psi_j^k ),   proj = the global-KLE L2 projection
      (E_k extends by zero outside Omega_k);
@@ -32,6 +34,7 @@ within Monte Carlo error.
 import numpy as np
 
 from . import kernels as KN
+from .kle import TIE_RTOL
 
 INNOVATIONS = ("global", "ms_raw", "ms_white")
 
@@ -45,6 +48,24 @@ def block_index(points, blocks):
     for a in range(P.shape[1]):
         idx = idx * blocks + ij[:, a]
     return idx
+
+
+def local_truncation(mu, energy, rtol=TIE_RTOL):
+    """Number of local modes kept: the smallest n reaching `energy`, extended
+    to include every mode tied with the last kept one (|mu_n - mu_{n-1}| <=
+    rtol mu_{n-1}).  A subdomain is a square or cube with a symmetric kernel,
+    so its spectrum has exact ties (permutations of the axes); cutting inside
+    a tied group would keep an arbitrary part of that eigenspace (eigh's
+    choice, which depends on machine and threads), and Sigma_ms = B B^T would
+    change from run to run.  With whole groups kept, the kept subspace is
+    unique and Sigma_ms is the same everywhere (B changes only by a rotation
+    inside the subspace, which B B^T does not see).  Same rule as the global
+    KLE (brho/kle.py)."""
+    mu = np.asarray(mu, float)
+    n = int(np.searchsorted(np.cumsum(mu) / mu.sum(), energy) + 1)
+    while n < len(mu) and abs(mu[n] - mu[n - 1]) <= rtol * mu[n - 1]:
+        n += 1
+    return n
 
 
 class MSInnovation:
@@ -62,7 +83,7 @@ class MSInnovation:
             Pk = np.asarray(points)[idx]
             mu, psi = np.linalg.eigh(cov(Pk, Pk, kp))
             mu, psi = np.clip(mu[::-1], 0.0, None), psi[:, ::-1]
-            n_k = int(np.searchsorted(np.cumsum(mu) / mu.sum(), self.local_energy) + 1)
+            n_k = local_truncation(mu, self.local_energy)
             rk.append(n_k)
             E = np.zeros((kle.N, n_k))
             E[idx] = psi[:, :n_k] * np.sqrt(mu[:n_k])                # zero-extended

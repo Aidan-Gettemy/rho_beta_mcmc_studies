@@ -562,3 +562,38 @@ random choice (block_random) of block moves; every move has its own step.
   Whether this beats E5 per PDE solve is the cluster run (125k it. x 16
   solves = 2.0M).
 
+## 2026-10-01: 3D multiscale -- prior tests and E7 (runs/e5_3d_2026-10, PRs #57, #58); local-KLE tie fix
+Pinned (Aidan): the multi-truth / simulation-based-calibration study of rho's
+coverage (see the 3D entry above); revisit later.
+Standalone pure-pCN test (16 x 40k it.), raw / whitened / normalized vs direct:
+cov(theta) error 0.640 / 0.031 / 0.265 (0.022); theta variances 2.65-0.43 /
+1.01-0.99 / 1.33-0.09; spatial-mean sd 0.201 / 0.275 / 0.000 (0.274;
+Pereira's 3D plug 0.204 vs 0.276); field variance 0.737 / 0.879 / 1.000
+(0.879); pointwise variance ratio 0.18-1.29 / 0.99-1.01 / 0.92-1.24.  Raw
+fails about twice as badly as in 2D (8 subdomains, more interfaces).
+Full E5 sampler, likelihood off, 64 x 150k: ms_raw cov error 0.616 (direct
+0.032), spatial-mean sd 0.216 (0.275), pointwise 0.19-1.26, and it leaks into
+the hyperparameters more than in 2D (xi_b sd 0.939, w mean -0.064);
+ms_white equals direct draws on every check (0.032, 0.275, 0.98-1.01).
+E7 (ms_white, 667k it.) vs E5: theta MPSRF < 1.2 at 1.08M vs 1.14M solves;
+worst PSRF 0.65M vs 0.75M; rho 1.261 [1.08, 1.48] in both (the same
+realization-driven miss); beta 2.49 [1.69, 3.64] vs 2.50 [1.69, 3.66]; level
+0.846 vs 0.845; theta step 0.014 vs 0.0124 (one 1.12x adaptation step
+apart).  E7 reproduces E5 in 3D, as in 2D.
+Found: the local KLE truncation (95% energy) cut through a tied group of local
+eigenvalues in 3D (each 8^3 subdomain is a cube; positions 12-16 tied, the
+cut at 16), so which modes were kept depended on eigh's basis (machine,
+threads), and Sigma_ms differed between runs that used the same global KLE:
+0.130-3.44 (standalone test) vs 0.156-3.48 (sampler runs).  The whitened
+innovation is exactly N(0, I) for whichever operator a run builds, so the
+verdicts above (and E7) stand; only the raw operator's exact numbers were not
+reproducible.  2D was not affected (its cut falls between distinct values).
+Fix: multiscale.local_truncation keeps every mode tied with the last kept one
+(the global KLE's rule), so the kept subspace and Sigma_ms are unique.  3D
+now 17 modes per subdomain (p = 136, 96.5% local energy), Sigma_ms
+0.157-3.48; 2D unchanged (17 each).  Test: rotating eigh's vectors inside
+tied groups leaves Sigma_ms unchanged, and changes it under the old rule.
+Local check of the corrected 3D standalone test: raw 0.646 / 0.201 /
+0.18-1.31, whitened passes -- same conclusions.  Recommended: rerun the cheap
+3D prior tests (standalone + ms_raw + ms_white) for reproducible numbers in
+the paper; E7 need not be rerun (its kernel is global pCN in law).
