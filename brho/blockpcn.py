@@ -19,7 +19,11 @@ Local subspace of block k (cells Omega_k, optional halo h):
     (1 - mu*) of its energy leaks outside the block.
 Coarse subspace: V_0 = orthogonal complement of the span of the PRIMAL local
     subspaces (the directions that straddle the primal interfaces); with it,
-    coarse + primal span all of R^r.
+    coarse + primal span all of R^r.  coarse=False drops it; then primal + dual
+    must span R^r (checked).  coverage() gives the per-sweep refresh weight of
+    every direction: in 2D at energy 0.9 without coarse, two directions are
+    barely reached (weight 0.002-0.008); a dual halo of 2 cells (dual_halo =
+    0.0625) lifts the minimum to 0.17.
 Dual decomposition: interfaces shifted by half a block (2 x 2 primal -> 3 x 3
     dual with interfaces at 0.25 and 0.75); its blocks sit on top of the
     primal interfaces, so cells there move under local moves too.
@@ -99,13 +103,17 @@ class BlockPCN:
     moves[0] is the coarse move; blocks with an empty local subspace get no
     move (summary()['primal_dims'] / ['dual_dims'] still list them, as 0)."""
 
-    def __init__(self, kle, points, blocks=2, energy=0.9, dual=True, halo=0.0):
+    def __init__(self, kle, points, blocks=2, energy=0.9, dual=True, halo=0.0,
+                 coarse=True, dual_energy=None, dual_halo=None):
         T = np.asarray(kle.T, float)
         self.T, self.r = T, T.shape[1]
         P = np.asarray(points, float)
         self.dim = P.shape[1]
         self.blocks, self.energy, self.dual, self.halo = int(blocks), float(energy), \
             bool(dual), float(halo)
+        self.coarse = bool(coarse)
+        self.dual_energy = self.energy if dual_energy is None else float(dual_energy)
+        self.dual_halo = self.halo if dual_halo is None else float(dual_halo)
         A = T.T @ T
         self.moves = []
         prim = []
@@ -117,8 +125,8 @@ class BlockPCN:
                                    mu=mu, mask=m))
         if self.dual:
             for k, (lo, hi) in enumerate(boxes(self.dim, self.blocks, True)):
-                m = box_mask(P, lo, hi, self.halo)
-                V, mu = local_subspace(T, m, self.energy, A)
+                m = box_mask(P, lo, hi, self.dual_halo)
+                V, mu = local_subspace(T, m, self.dual_energy, A)
                 self.moves.append(dict(name=f"Q{k + 1}", kind="dual", V=V, dim=V.shape[1],
                                        mu=mu, mask=m))
         # blocks with an empty local subspace (no direction keeps `energy` in
@@ -129,9 +137,22 @@ class BlockPCN:
         self.moves = [mv for mv in self.moves if mv["dim"] > 0]
         Vp = np.hstack(prim)
         V0 = SL.null_space(Vp.T) if Vp.shape[1] else np.eye(self.r)
+        self.coarse_dim_full = V0.shape[1]
+        if self.coarse:
+            self.span_rank = int(np.linalg.matrix_rank(np.hstack([V0, Vp])))
+        else:
+            # no coarse move: the local moves alone must reach every theta
+            V0 = np.zeros((self.r, 0))
+            self.span_rank = int(np.linalg.matrix_rank(
+                np.hstack([mv["V"] for mv in self.moves])))
+            if self.span_rank < self.r:
+                raise ValueError(
+                    f"without the coarse move the local subspaces span only "
+                    f"{self.span_rank} of {self.r} theta-directions: the chain would "
+                    "not be irreducible (keep the coarse move, lower the dual energy "
+                    "or add a dual halo)")
         self.moves.insert(0, dict(name="coarse", kind="coarse", V=V0, dim=V0.shape[1],
-                                  mu=None, mask=None))
-        self.span_rank = int(np.linalg.matrix_rank(np.hstack([V0, Vp])))
+                                  mu=None, mask=None))      # dim 0 when switched off
         self.n_local = len(self.moves) - 1
         self.target = (T ** 2).sum(1)                 # exact pointwise prior variance
 
@@ -155,7 +176,15 @@ class BlockPCN:
         raise ValueError(f"unknown block schedule {schedule!r}; have {SCHEDULES}")
 
     def solves(self, schedule):
-        return len(self.moves) if schedule == "sweep" else 2
+        c = int(self.moves[0]["dim"] > 0)
+        return c + self.n_local if schedule == "sweep" else c + 1
+
+    def coverage(self):
+        """Eigenvalues of sum_j V_j V_j^T over all moves (coarse included):
+        the per-sweep refresh weight of each theta-direction under equal
+        steps.  A tiny minimum flags a direction the moves barely reach."""
+        S = sum(mv["V"] @ mv["V"].T for mv in self.moves if mv["dim"])
+        return np.linalg.eigvalsh(S)
 
     # ----------------------------------------------------------- diagnostics
     def reach(self, kinds):
@@ -174,8 +203,11 @@ class BlockPCN:
 
     def summary(self):
         dims = self.all_dims
+        cov = self.coverage()
         return dict(blocks=self.blocks, dim=self.dim, energy=self.energy, dual=self.dual,
-                    halo=self.halo, r=self.r, coarse_dim=self.moves[0]["dim"],
+                    halo=self.halo, dual_energy=self.dual_energy, dual_halo=self.dual_halo,
+                    coarse=self.coarse, r=self.r, coarse_dim=self.moves[0]["dim"],
+                    coverage_min=float(cov.min()), coverage_median=float(np.median(cov)),
                     primal_dims=dims["primal"], dual_dims=dims["dual"],
                     primal_total=int(sum(dims["primal"])), dual_total=int(sum(dims["dual"])),
                     n_moves=len(self.moves),
@@ -184,5 +216,7 @@ class BlockPCN:
                     spans=self.span_rank == self.r)
 
 
-def from_problem(prob, blocks=2, energy=0.9, dual=True, halo=0.0):
-    return BlockPCN(prob.kle, prob.phys.points, blocks, energy, dual, halo)
+def from_problem(prob, blocks=2, energy=0.9, dual=True, halo=0.0, coarse=True,
+                 dual_energy=None, dual_halo=None):
+    return BlockPCN(prob.kle, prob.phys.points, blocks, energy, dual, halo, coarse,
+                    dual_energy, dual_halo)

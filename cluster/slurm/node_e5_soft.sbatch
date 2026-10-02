@@ -28,6 +28,10 @@
 #   BRHO_ROOT=$PWD/runs/cluster_kle PRIOR_TEST=1 INNOV=block sbatch cluster/slurm/node_e5_soft.sbatch
 #   BRHO_ROOT=$PWD/runs/cluster_kle INNOV=block E5_ARGS="--n-total 125000 --n-burn 10000 --thin 25" \
 #       sbatch cluster/slurm/node_e5_soft.sbatch
+# Variants of one innovation get their own folder with TAG (passed as --exp-tag),
+# e.g. block pCN without the coarse move (E8a) / with 2-cell dual halos (E8b):
+#   TAG=nocoarse INNOV=block E5_ARGS="... --block-coarse 0" sbatch ...
+#   TAG=nocoarse_dualhalo INNOV=block E5_ARGS="... --block-coarse 0 --block-dual-halo 0.0625" sbatch ...
 # Time limit: chains checkpoint every `chunk` iterations; resubmit with RESUME=1
 # (and the same PRIOR_TEST / INNOV).
 set -euo pipefail
@@ -36,9 +40,10 @@ source cluster/env.sh
 export NUMBA_CACHE_DIR=/tmp/numba_cache_$SLURM_JOB_ID
 PT="${PRIOR_TEST:-0}"
 INNOV="${INNOV:-global}"
-SEL="--prior-test $PT --theta-innovation $INNOV"
+TAG="${TAG:-}"                         # run-folder suffix for variants, e.g. TAG=nocoarse
+SEL="--prior-test $PT --theta-innovation $INNOV${TAG:+ --exp-tag $TAG}"
 NCH="${E5_CHAINS:-$SLURM_NTASKS}"
-echo "BRHO_ROOT=$BRHO_ROOT  tasks=$SLURM_NTASKS  chains=$NCH  prior_test=$PT  innovation=$INNOV"
+echo "BRHO_ROOT=$BRHO_ROOT  tasks=$SLURM_NTASKS  chains=$NCH  prior_test=$PT  innovation=$INNOV  tag=$TAG"
 
 if [[ "${RESUME:-0}" != 1 ]]; then
     OMP_NUM_THREADS=$SLURM_NTASKS MKL_NUM_THREADS=$SLURM_NTASKS OPENBLAS_NUM_THREADS=$SLURM_NTASKS \
@@ -54,7 +59,7 @@ srun --ntasks="$SLURM_NTASKS" --cpu-bind=cores --output="logs/brho-e5-%j-rank%t.
 #     python experiments/run_soft_sampler.py --chain-id env --prior-test "$PT"
 
 python experiments/run_soft_sampler.py --status $SEL || true
-EXP=$(python -c "from brho import io; print(io.exp_soft($PT == 1, '$INNOV'))")
+EXP=$(python -c "from brho import io; print(io.exp_soft($PT == 1, '$INNOV', '$TAG'))")
 if [[ "$PT" == 1 ]]; then python reports/report_soft_prior_test.py --exp "$EXP"
 else python reports/report_soft.py --exp "$EXP"
      python reports/report_mpsrf.py        # MPSRF/PSRF, MATLAB style, all runs in this study

@@ -618,3 +618,19 @@ cov(theta) error 0.027 vs 0.028 direct; pointwise variance 0.99-1.01).
 - Caveat: one run per sampler; E5 vs E7 (same kernel) differ by ~5% in the
   crossing, so the 1.33x is well outside run-to-run noise, but a replicate
   would firm it up.
+
+## 2026-10-01: E8 without the coarse move, setup (no runs yet)
+- Question (Aidan): does the coarse move cost more than it gives?  It takes
+  1 of 16 solves per iteration, adapted to a step of 0.025, and supplies about
+  2% of the per-iteration refresh of theta.
+- Without it, primal + dual still span R^57 in 2D (irreducible), so the
+  sampler stays exact.  But two theta-directions are barely reached: the
+  refresh weight (eigenvalues of sum_j V_j V_j^T) drops to 0.002-0.008 against
+  a median of 1.1.  A 2-cell halo on the dual blocks lifts the minimum to 0.17
+  (dual dims 3, 6, 3, 6, 13, ...); also loosening the dual energy to 0.8 lifts
+  it to 0.61.
+- New options: --block-coarse 0 (refused if the locals do not span R^r),
+  --block-dual-energy, --block-dual-halo, and --exp-tag (TAG in the sbatch)
+  for a separate run folder.  Runs: E8a (no coarse) and E8b (no coarse + dual
+  halo 0.0625), 133,400 iterations x 15 solves = 2.0M.
+
