@@ -152,6 +152,22 @@ E5, E7 and E8 (and its variants) share the PDE-solve axis. Block settings: `--bl
 empty), `--block-dual` (1), `--block-halo` (0), `--block-s0` / `--block-target`
 (0 = use move A's).
 
+### Control for E8: E5 with move A repeated (2026-10-02)
+
+Is E8's gain the block moves, or just spending more of the solves on theta?
+E5 spends 1 of 3 solves per iteration on theta, E8 2x2 14 of 16.  E5 with move A
+repeated k times per iteration (`--theta-repeat k`, 2 + k solves) separates the
+two; k = 14 has exactly E8 2x2's theta share.  Main 2D study, 2.0M solves each,
+burn-in about 160k solves, thin about every 400 solves:
+```bash
+export BRHO_ROOT=$PWD/runs/cluster_kle
+export PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3"
+TAG=a14 E5_ARGS="--n-total 125000 --n-burn 10000 --thin 25 --theta-repeat 14" sbatch cluster/slurm/node_e5_soft.sbatch
+TAG=a7  E5_ARGS="--n-total 222300 --n-burn 18000 --thin 45 --theta-repeat 7"  sbatch cluster/slurm/node_e5_soft.sbatch
+TAG=a4  E5_ARGS="--n-total 333400 --n-burn 27000 --thin 67 --theta-repeat 4"  sbatch cluster/slurm/node_e5_soft.sbatch
+```
+Run folders e5_soft_a14 / a7 / a4; `report_mpsrf.py` puts them on the E5 / E8 axis.
+
 ### Scaling study: 64x64, ell = 0.05, r = 208 (2026-10-01)
 
 Does the block-pCN gain grow with the number of subdomains when r is large?
@@ -169,6 +185,18 @@ checkout or pull, because the folder is outside the sparse set; only the
 git-ignored chains stay. Right after the first commit of such a study run
 `git sparse-checkout add runs/cluster_l005`. If the files have already
 vanished, the same command brings them back (they are identical copies).
+
+**Representative truth (2026-10-02).** The original truth (seed 2026) has the
+lowest informed energy of 101 seeds screened (0.3rd prior percentile), which is
+why rho was missed.  `reports/linearized/screen.py` ranks seeds; seed 2074 sits
+at the 49.5th percentile.  Full study on it, plus short stubs on an atypical-low
+(2063, 9.8th) and an atypical-high (2086, 93.4th) truth to show rho recovery:
+```bash
+P="--n 64 --ell 0.05 --truth-mode kle --sigma-rel 2e-3"
+BRHO_ROOT=$PWD/runs/cluster_l005_s2074 PROBLEM_ARGS="$P --truth-seed 2074" bash cluster/overnight_scaling.sh
+BRHO_ROOT=$PWD/runs/cluster_l005_s2063 PROBLEM_ARGS="$P --truth-seed 2063" RUNS=e5 SOLVES=500000 TIME=04:00:00 bash cluster/overnight_scaling.sh
+BRHO_ROOT=$PWD/runs/cluster_l005_s2086 PROBLEM_ARGS="$P --truth-seed 2086" RUNS=e5 SOLVES=500000 TIME=04:00:00 bash cluster/overnight_scaling.sh
+```
 
 To continue a node job after a time limit, resubmit it the same way, e.g.
 `BRHO_ROOT=$PWD/runs/cluster_l005 RESUME=1 INNOV=block TAG=3x3 sbatch --partition=cpu-preempt cluster/slurm/node_e5_soft.sbatch`.

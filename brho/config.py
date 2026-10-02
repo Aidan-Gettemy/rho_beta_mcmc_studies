@@ -210,6 +210,9 @@ class SoftSamplerConfig:
     block_dual_energy: float = 0.0  # <= 0: same as block_energy
     block_dual_halo: float = -1.0   # < 0: same as block_halo
     exp_tag: str = ""               # suffix of the run folder (variants of one innovation)
+    theta_repeat: int = 1           # move A k times per iteration (global / ms only):
+                                    # 2 + k solves; the E8 control (same theta share,
+                                    # global moves).  E8 2x2 spends 14 of 16 on theta.
 
 
 # ------------------------------------ E1: naive global pCN on (theta, beta, rho)

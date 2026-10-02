@@ -92,7 +92,8 @@ def load_kept(exp, n_chains=None):
             if (b.get("dual_halo") or 0) > (b.get("halo") or 0):
                 lab += f", dual halo {b['dual_halo']:g}"
         elif innov == "global":
-            lab = "E5 soft-curve sampler (β free)"
+            k = sc.get("theta_repeat", 1)
+            lab = "E5 soft-curve sampler (β free)" + (f", {k} θ moves / it" if k > 1 else "")
         else:
             lab = f"E7 soft-curve sampler, {innov.replace('ms_', 'multiscale ')} θ"
         return dict(sets=dict(theta=theta, all=full),
@@ -244,6 +245,7 @@ COLORS = {"e1_blocked": "#c0392b", "e1_global": "#e67e22", "e4_sampler": "#1f5fa
           "e5_soft_ms_white": "#7b3fa0", "e5_soft_ms_raw": "#999999",
           "e5_soft_block": "#2a78d6", "e5_soft_block_random": "#76d7c4",
           "e5_soft_block_3x3": "#eda100",
+          "e5_soft_a4": "#e87ba4", "e5_soft_a7": "#d55181", "e5_soft_a14": "#4a3aa7",
           "e5_soft_block_nocoarse": "#e87ba4", "e5_soft_block_nocoarse_dualhalo": "#4a3aa7"}
 
 

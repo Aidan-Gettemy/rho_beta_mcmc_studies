@@ -272,7 +272,10 @@ class SoftCurveSampler:
         self.ms = self.bp = None
         self.s_init, self.targets = tuple(scfg.s_init), tuple(scfg.targets)
         self.move_names = ("A", "B", "C", "D")
-        self.solves_per_iteration = 3
+        self.theta_repeat = int(getattr(scfg, "theta_repeat", 1))
+        if self.theta_repeat < 1:
+            raise ValueError("theta_repeat must be >= 1")
+        self.solves_per_iteration = 2 + self.theta_repeat
         if self.innovation in ("block", "block_random"):
             # E8: move A becomes block (subdomain) pCN, brho/blockpcn.py.  Step
             # sizes: index 0 = coarse move (A's slot), 1-3 = B, C, D, then one
@@ -292,6 +295,9 @@ class SoftCurveSampler:
             self.move_names = ("A0 coarse" if self.bp.coarse else "A0 (off)",
                                "B", "C", "D") + tuple(
                 mv["name"] for mv in self.bp.moves[1:])
+            if self.theta_repeat != 1:
+                raise ValueError("theta_repeat applies to the global / multiscale move A, "
+                                 "not to block pCN (E8 already makes many theta moves)")
             self.solves_per_iteration = self.bp.solves(self.schedule) + 2
         elif self.innovation != "global":
             from .multiscale import from_problem
@@ -376,16 +382,21 @@ class SoftCurveSampler:
                     st.update(theta=th_p, phi=phi_p, pobs=pobs_p, keff=keff_p)
                 ad.record(k, a)
         else:
-            if self.ms is None:
-                th_p = pcn(th, s_th, rng)
-            else:
-                th_p = (np.sqrt(1.0 - s_th * s_th) * th
-                        + s_th * self.ms.draw(self.innovation, rng))
-            phi_p, pobs_p, keff_p = self.potential(th_p, w, lb)
-            a = np.log(rng.random()) < st["phi"] - phi_p
-            if a:
-                st.update(theta=th_p, phi=phi_p, pobs=pobs_p, keff=keff_p)
-            ad.record(0, a)
+            # theta_repeat = k: move A k times per iteration (k = 1: the original
+            # code path, bit-identical).  The control for E8: same share of the
+            # solves spent on theta, plain global moves.
+            for _ in range(self.theta_repeat):
+                th = st["theta"]
+                if self.ms is None:
+                    th_p = pcn(th, s_th, rng)
+                else:
+                    th_p = (np.sqrt(1.0 - s_th * s_th) * th
+                            + s_th * self.ms.draw(self.innovation, rng))
+                phi_p, pobs_p, keff_p = self.potential(th_p, w, lb)
+                a = np.log(rng.random()) < st["phi"] - phi_p
+                if a:
+                    st.update(theta=th_p, phi=phi_p, pobs=pobs_p, keff=keff_p)
+                ad.record(0, a)
         # B: pCN on w with beta fixed (the level barely moves: beta mixes
         #    through D, rho through B and C).  pCN preserves N(0,1) for w;
         #    the curve prior of lb enters the ratio.
