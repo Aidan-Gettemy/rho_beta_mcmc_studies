@@ -43,8 +43,8 @@ from run_curve_sampler import check_curve_matches
 CFG = C.SoftSamplerConfig
 
 
-def exp_name(prior_test, innovation="global"):
-    return io.exp_soft(prior_test, innovation)
+def exp_name(prior_test, innovation="global", tag=""):
+    return io.exp_soft(prior_test, innovation, tag)
 
 
 def chain_path(exp, cid):
@@ -118,8 +118,10 @@ def setup(pc, scfg, curve_field, curve_statistic, exp):
         b = smp.bp.summary()
         print(f"  block pCN ({smp.schedule}): {'x'.join([str(b['blocks'])] * b['dim'])} primal "
               f"blocks, local dims {b['primal_dims']}; dual {b['dual_dims']}; coarse "
-              f"{b['coarse_dim']}; energy >= {b['energy']}, halo {b['halo']}; spans "
-              f"R^{b['r']}: {b['spans']}; {smp.solves_per_iteration} solves / iteration")
+              f"{b['coarse_dim']}{'' if b['coarse'] else ' (coarse move OFF)'}; energy >= "
+              f"{b['energy']} (dual {b['dual_energy']}), halo {b['halo']} (dual "
+              f"{b['dual_halo']}); spans R^{b['r']}: {b['spans']}; coverage min "
+              f"{b['coverage_min']:.3f}; {smp.solves_per_iteration} solves / iteration")
     print(f"  soft prior at rho_true={rt}: beta_bar={prior_at_truth['beta_bar']:.3f}, "
           f"s={prior_at_truth['s']:.3f}; beta_true is {prior_at_truth['z_truth']:+.2f} s "
           f"from the curve; constant field outside the KLE span: "
@@ -150,7 +152,7 @@ def main():
     ap.add_argument("--fresh", action="store_true")
     args = ap.parse_args()
     prior_test = bool(args.prior_test) if args.prior_test is not None else False
-    exp = exp_name(prior_test, args.theta_innovation or "global")
+    exp = exp_name(prior_test, args.theta_innovation or "global", args.exp_tag or "")
 
     if args.status:
         sys.exit(0 if status(exp) else 1)

@@ -131,11 +131,39 @@ INNOV=block E5_ARGS="--n-total 125000 --n-burn 10000 --thin 25" \
 INNOV=block_random E5_ARGS="--n-total 500000 --n-burn 30000 --thin 100" \
     sbatch cluster/slurm/node_e5_soft.sbatch                         # 4. optional: one random block per iteration (4 solves / it)
 ```
+Variants without the coarse move (2026-10-01): the primal + dual blocks alone
+reach every theta in 2D, so the coarse move can be dropped (13 theta solves +
+B + D = 15 per iteration; 2.0M solves = 133,400 iterations). Two runs, each in
+its own folder via `TAG`:
+```bash
+# E8a: exactly the E8 blocks, no coarse move (two directions barely reached: coverage 0.002-0.008)
+PRIOR_TEST=1 TAG=nocoarse INNOV=block E5_ARGS="--block-coarse 0" sbatch cluster/slurm/node_e5_soft.sbatch
+TAG=nocoarse INNOV=block E5_ARGS="--n-total 133400 --n-burn 10000 --thin 25 --block-coarse 0" \
+    sbatch cluster/slurm/node_e5_soft.sbatch
+# E8b: no coarse move, dual blocks widened by 2 cells (coverage min 0.17)
+PRIOR_TEST=1 TAG=nocoarse_dualhalo INNOV=block E5_ARGS="--block-coarse 0 --block-dual-halo 0.0625" \
+    sbatch cluster/slurm/node_e5_soft.sbatch
+TAG=nocoarse_dualhalo INNOV=block E5_ARGS="--n-total 133400 --n-burn 10000 --thin 25 --block-coarse 0 --block-dual-halo 0.0625" \
+    sbatch cluster/slurm/node_e5_soft.sbatch
+```
 `report_mpsrf.py` reads the solves per iteration from each run's manifest, so
-E5, E7 and E8 share the PDE-solve axis. Block settings: `--block-n` (2),
+E5, E7 and E8 (and its variants) share the PDE-solve axis. Block settings: `--block-n` (2),
 `--block-energy` (0.9; 3D needs about 0.8, at 0.9 most 3D dual blocks are
 empty), `--block-dual` (1), `--block-halo` (0), `--block-s0` / `--block-target`
 (0 = use move A's).
+
+### Scaling study: 64x64, ell = 0.05, r = 208 (2026-10-01)
+
+Does the block-pCN gain grow with the number of subdomains when r is large?
+E5, E8 2x2 and E8 3x3 at 2.0M solves per chain, in their own study folder.
+One command submits the whole chain (E3 -> setup -> three node jobs with
+RESUME=1, so preemption or a time limit only pauses them):
+```bash
+python benchmarks/bench_solver.py --dims 2 --sizes 64     # solve time on this machine first
+PART=cpu-preempt TIME=12:00:00 bash cluster/overnight_scaling.sh
+```
+To continue a node job after a time limit, resubmit it the same way, e.g.
+`BRHO_ROOT=$PWD/runs/cluster_l005 RESUME=1 INNOV=block TAG=3x3 sbatch --partition=cpu-preempt cluster/slurm/node_e5_soft.sbatch`.
 
 ## Bringing results back
 

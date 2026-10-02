@@ -84,6 +84,11 @@ def load_kept(exp, n_chains=None):
         if innov.startswith("block"):
             lab = ("E8 soft-curve sampler, block pCN θ"
                    + (" (random block)" if innov == "block_random" else " (sweep)"))
+            b = man.get("block") or {}
+            if b.get("coarse") is False:
+                lab += ", no coarse"
+            if (b.get("dual_halo") or 0) > (b.get("halo") or 0):
+                lab += f", dual halo {b['dual_halo']:g}"
         elif innov == "global":
             lab = "E5 soft-curve sampler (β free)"
         else:
@@ -235,7 +240,8 @@ def run(exp, n_chains=None, skip=2, step=15, iter_burn=10, level=1.2, at=4900,
 COLORS = {"e1_blocked": "#c0392b", "e1_global": "#e67e22", "e4_sampler": "#1f5fa8",
           "e5_soft": "#2e8b57",
           "e5_soft_ms_white": "#7b3fa0", "e5_soft_ms_raw": "#999999",
-          "e5_soft_block": "#138d75", "e5_soft_block_random": "#76d7c4"}
+          "e5_soft_block": "#138d75", "e5_soft_block_random": "#76d7c4",
+          "e5_soft_block_nocoarse": "#e87ba4", "e5_soft_block_nocoarse_dualhalo": "#4a3aa7"}
 
 
 def compare(results, level=1.2):
@@ -307,6 +313,11 @@ def main(argv=None):
                     io.exp_soft(False, "ms_white"), io.exp_soft(False, "ms_raw"),
                     io.exp_soft(False, "block"), io.exp_soft(False, "block_random"))
         if io.chain_files(io.results_dir(e))]
+    # tagged variants (e5_soft_block_<tag>, ...): any other e5_soft_* run with chains
+    rdir = os.path.join(io.root(), "results")
+    if not a.exp and os.path.isdir(rdir):
+        exps += sorted(e for e in os.listdir(rdir) if e.startswith(io.EXP_SOFT + "_")
+                       and e not in exps and io.chain_files(os.path.join(rdir, e)))
     results = {}
     for e in exps:
         results[e] = run(e, a.chains, a.skip, a.step, a.iter_burn, a.level, a.at)

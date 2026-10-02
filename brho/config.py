@@ -206,6 +206,10 @@ class SoftSamplerConfig:
     block_halo: float = 0.0
     block_s0: float = 0.0
     block_target: float = 0.0
+    block_coarse: bool = True      # False: no coarse move (primal + dual must span)
+    block_dual_energy: float = 0.0  # <= 0: same as block_energy
+    block_dual_halo: float = -1.0   # < 0: same as block_halo
+    exp_tag: str = ""               # suffix of the run folder (variants of one innovation)
 
 
 # ------------------------------------ E1: naive global pCN on (theta, beta, rho)

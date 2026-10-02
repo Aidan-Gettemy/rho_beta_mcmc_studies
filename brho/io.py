@@ -33,11 +33,13 @@ EXP_SOFT = "e5_soft"             # E5: soft curve prior, beta free
 EXP_SOFT_PRIOR = "e5_prior_test"
 
 
-def exp_soft(prior_test=False, innovation="global"):
+def exp_soft(prior_test=False, innovation="global", tag=""):
     """E5 run folder; a non-default theta innovation gets its own folder
-    (e5_soft_ms_white, e5_prior_test_ms_raw, ...)."""
+    (e5_soft_ms_white, e5_prior_test_ms_raw, ...), and a tag a further
+    suffix for variants of one innovation (e5_soft_block_nocoarse)."""
     base = EXP_SOFT_PRIOR if prior_test else EXP_SOFT
-    return base if innovation in (None, "global") else f"{base}_{innovation}"
+    name = base if innovation in (None, "global") else f"{base}_{innovation}"
+    return f"{name}_{tag}" if tag else name
 EXP_SETUP = "setup"
 
 

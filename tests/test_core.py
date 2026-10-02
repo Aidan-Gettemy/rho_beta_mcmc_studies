@@ -667,3 +667,44 @@ def test_multiscale_operator_independent_of_eigh_basis():
     c, d = build(False, plain), build(True, plain)
     assert c.r_k == [16] * 8
     assert np.abs(c.Sigma - d.Sigma).max() > 1e-3      # the old rule is basis-dependent
+
+
+def test_block_without_coarse_move():
+    """block_coarse=False: no coarse move and no solve for it; allowed only
+    when primal + dual span R^r (else ValueError); a dual halo raises the
+    weakest direction's coverage; the moves still preserve N(0, I)."""
+    from brho.blockpcn import from_problem
+    from brho.samplers import SoftCurveSampler
+    p = prob()
+    try:
+        bp = from_problem(p, 2, 0.9, coarse=False)
+        assert bp.solves("sweep") == 13 and bp.moves[0]["dim"] == 0
+        assert bp.summary()["spans"]
+    except ValueError as err:                        # not spanning: refused, with a reason
+        assert "irreducible" in str(err)
+    bh = from_problem(p, 2, 0.9, coarse=False, dual_halo=0.0625)
+    b0 = from_problem(p, 2, 0.9)
+    assert bh.summary()["coverage_min"] > 0.1        # every direction well reached
+    assert b0.summary()["coarse"] and not bh.summary()["coarse"]
+    assert bh.dual_halo == 0.0625 and bh.halo == 0.0
+    cfg = replace(C.SoftSamplerConfig(), prior_test=True, theta_innovation="block",
+                  block_coarse=False, block_dual_halo=0.0625,
+                  s_init=(0.5, 0.3, 0.12, 0.6), block_s0=0.6)
+    s = SoftCurveSampler(p, _soft_curve(), cfg)
+    assert s.solves_per_iteration == 13 + 2 and s.move_names[0] == "A0 (off)"
+    rng = np.random.default_rng(9)
+    out = []
+    for c in range(1500):
+        st = s.init_state(rng)
+        ad = StepAdapter(s.s_init, targets=s.targets, every=10 ** 9)
+        for _ in range(10):
+            s.step(st, ad, rng)
+        out.append(st["theta"])
+        assert ad.n[0] == 0                          # the coarse slot is never proposed
+    th = np.array(out)
+    frob = np.linalg.norm(np.cov(th.T) - np.eye(p.r)) / np.sqrt(p.r)
+    ref = np.linalg.norm(np.cov(rng.standard_normal(th.shape).T) - np.eye(p.r)) / np.sqrt(p.r)
+    assert frob < 1.3 * ref, (frob, ref)
+    from brho import io
+    assert io.exp_soft(False, "block", "nocoarse") == "e5_soft_block_nocoarse"
+    assert io.exp_soft(True, "block") == "e5_prior_test_block"

@@ -278,15 +278,19 @@ class SoftCurveSampler:
             # sizes: index 0 = coarse move (A's slot), 1-3 = B, C, D, then one
             # per local block (primal P1.., dual Q1..), each adapted on its own.
             from .blockpcn import from_problem as block_from_problem
-            self.bp = block_from_problem(prob, scfg.block_n, scfg.block_energy,
-                                         scfg.block_dual, scfg.block_halo)
+            self.bp = block_from_problem(
+                prob, scfg.block_n, scfg.block_energy, scfg.block_dual, scfg.block_halo,
+                getattr(scfg, "block_coarse", True),
+                scfg.block_dual_energy if getattr(scfg, "block_dual_energy", 0) > 0 else None,
+                scfg.block_dual_halo if getattr(scfg, "block_dual_halo", -1) >= 0 else None)
             self.schedule = "random" if self.innovation == "block_random" else "sweep"
             nl = self.bp.n_local
             s_loc = scfg.block_s0 if scfg.block_s0 > 0 else scfg.s_init[0]
             t_loc = scfg.block_target if scfg.block_target > 0 else scfg.targets[0]
             self.s_init += (s_loc,) * nl
             self.targets += (t_loc,) * nl
-            self.move_names = ("A0 coarse", "B", "C", "D") + tuple(
+            self.move_names = ("A0 coarse" if self.bp.coarse else "A0 (off)",
+                               "B", "C", "D") + tuple(
                 mv["name"] for mv in self.bp.moves[1:])
             self.solves_per_iteration = self.bp.solves(self.schedule) + 2
         elif self.innovation != "global":
