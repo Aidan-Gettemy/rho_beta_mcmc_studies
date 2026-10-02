@@ -152,6 +152,19 @@ E5, E7 and E8 (and its variants) share the PDE-solve axis. Block settings: `--bl
 empty), `--block-dual` (1), `--block-halo` (0), `--block-s0` / `--block-target`
 (0 = use move A's).
 
+### Scaling study: 64x64, ell = 0.05, r = 208 (2026-10-01)
+
+Does the block-pCN gain grow with the number of subdomains when r is large?
+E5, E8 2x2 and E8 3x3 at 2.0M solves per chain, in their own study folder.
+One command submits the whole chain (E3 -> setup -> three node jobs with
+RESUME=1, so preemption or a time limit only pauses them):
+```bash
+python benchmarks/bench_solver.py --dims 2 --sizes 64     # solve time on this machine first
+PART=cpu-preempt TIME=12:00:00 bash cluster/overnight_scaling.sh
+```
+To continue a node job after a time limit, resubmit it the same way, e.g.
+`BRHO_ROOT=$PWD/runs/cluster_l005 RESUME=1 INNOV=block TAG=3x3 sbatch --partition=cpu-preempt cluster/slurm/node_e5_soft.sbatch`.
+
 ## Bringing results back
 
 Keep the raw run on scratch and commit only what is shareable:

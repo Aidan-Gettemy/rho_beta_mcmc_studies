@@ -115,6 +115,8 @@ def main(argv=None):
     ap.add_argument("--thin", type=int, default=4)
     ap.add_argument("--s", type=float, default=0.3)
     ap.add_argument("--seed", type=int, default=41)
+    ap.add_argument("--out", default=None,
+                    help="output folder (default block_prior_test, + _NxN for --blocks != 2)")
     a = ap.parse_args(argv)
 
     man = io.read_manifest(a.from_exp)
@@ -128,7 +130,8 @@ def main(argv=None):
           f"{a.energy}, halo {a.halo}: primal {bs['primal_dims']} (sum {bs['primal_total']}), "
           f"dual {bs['dual_dims']} (sum {bs['dual_total']}), coarse {bs['coarse_dim']}; "
           f"coarse + primal span R^{kle.r}: {bs['spans']}")
-    fdir, tdir = io.figures_dir(EXP), io.tables_dir(EXP)
+    out = a.out or (EXP if a.blocks == 2 else f"{EXP}_{a.blocks}x{a.blocks}")
+    fdir, tdir = io.figures_dir(out), io.tables_dir(out)
 
     # ------------------------------------------------------------ geometry
     reach = {"primal": bp.reach(("primal",)), "primal+dual": bp.reach(("primal", "dual")),
