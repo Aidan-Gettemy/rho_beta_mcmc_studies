@@ -30,6 +30,8 @@ results and dead ends are logged in `LOG.md`.
 | E7 check 1 | multiscale prior test, pure pCN, no PDE: raw / whitened / per-sample-normalized local-KLE innovation vs direct draws, including pointwise field maps | `experiments/run_ms_prior_test.py` | (writes its own figures and tables) |
 | E7 check 2 | E5 prior test with the multiscale θ innovation (`--theta-innovation ms_raw` or `ms_white`) | `run_soft_sampler.py --prior-test 1 --theta-innovation ...` | `report_soft_prior_test.py --exp e5_prior_test_ms_white` |
 | E7 | E5 with the whitened multiscale θ innovation in move A | `run_soft_sampler.py --theta-innovation ms_white` | `report_soft.py --exp e5_soft_ms_white` |
+| E8 check | block (subdomain) pCN geometry and likelihood-off test: local subspace dimensions, reach maps, pointwise maps, lag-1 maps | `experiments/run_block_prior_test.py` | (writes its own figures and tables) |
+| E8 | E5 with move A = block pCN: coarse + 2×2 primal + 3×3 dual local θ subspaces, one adapted step per block (`--theta-innovation block` or `block_random`) | `run_soft_sampler.py --theta-innovation block` | `report_soft.py --exp e5_soft_block` |
 | convergence | MPSRF / PSRF curves in the group's MATLAB convention (`getMSPRF`, `computeMPSRFcurve`: skip 2, step 15, first 10 points dropped, threshold 1.2), per run and all runs at equal PDE solves | – | `reports/report_mpsrf.py` |
 | diagnostic | spectrum of the θ posterior (marginal and given (β, ρ)) and PSRF per principal direction | – | `reports/report_spectrum.py` |
 | all | E2 + E3 + E4 on one (β, ρ) plane, plus SUMMARY.md | – | `reports/report_combined.py` |
@@ -81,13 +83,18 @@ variance collapses to 0.36 of the target along the subdomain interfaces);
 per-sample normalization collapses the laws of the field's spatial mean and
 variance to points. E7 itself is expected to reproduce E5: a whitened
 innovation is exactly N(0, I), so move A has the same kernel as plain pCN.
+E8 is the first θ move that differs from plain pCN: each block move is pCN on
+the θ-directions whose field lives (≥ 90% of its energy) in one subdomain, so
+it preserves N(0, I) exactly, and every block tunes its own step. Alternating
+the primal and the shifted dual decomposition lets cells on the interfaces move
+under local moves too.
 
 ### Layout
 
 ```
 brho/                     library (no experiment logic)
   config.py               ProblemConfig, NaiveConfig (E1), GridStudyConfig, CurveConfig,
-                          SamplerConfig (E4), SoftSamplerConfig (E5/E7), QUICK
+                          SamplerConfig (E4), SoftSamplerConfig (E5/E7/E8), QUICK
   fv.py                   Permeameter (2D/3D): numba CSR fill (NumPy fallback), splu / CG solvers, keff, obs mask
   physics2d.py            Darcy2D = Permeameter((n, n)), kept for compatibility
   kle.py                  KLE (synthesis matrix T, G = T theta): discrete dense/kron, Gauss-Legendre Nystrom
@@ -99,10 +106,12 @@ brho/                     library (no experiment logic)
   problem.py              Problem = physics + KLE + data; potential(K); frozen runs (kle.npz, truth.npz)
   curve.py                sweep() and BetaCurve: beta_bar(rho, K*) = K*/f(rho), band(), save/load
   naive.py                E1: naive (theta, beta, rho) model, blocked / global pCN, checkpointed chains
-  samplers.py             pcn_fixed_pair (E2); ThreeStepSampler (E4); SoftCurveSampler (E5/E7);
+  samplers.py             pcn_fixed_pair (E2); ThreeStepSampler (E4); SoftCurveSampler (E5/E7/E8);
                           run_chunk/load_chains (checkpointed, exact resume and extension)
   multiscale.py           local-KLE assemble-and-project innovation, Sigma_ms = B B^T, whitening
                           (Pereira, "Variance control in distribution")
+  blockpcn.py             E8: local theta subspaces per subdomain (primal + dual), coarse
+                          complement, block pCN moves, reach maps
   mpsrf.py                MPSRF / PSRF curves, port of the group's MATLAB getMSPRF / computeMPSRFcurve
   diagnostics.py          psrf, split_rhat, mpsrf, ess, window_curve, summarize, pointwise_coverage,
                           logK_summaries (field summaries in blocks of cells), pointwise_moments
@@ -272,6 +281,10 @@ crossing of 1.2 marked. **Spectrum** (`<run>/fig_spectrum`, `spectrum_compare/`)
   `--theta-innovation` (E5 only) swaps in the multiscale innovation, `ms_white`
   (correct, law N(0, I)) or `ms_raw` (wrong law, kept for the prior test), with
   `--ms-blocks` (default 2) and `--ms-local-energy` (0.95).
+  `--theta-innovation block` (E8) replaces move A by block pCN over local θ
+  subspaces (`--block-n` 2, `--block-energy` 0.9, `--block-dual` 1,
+  `--block-halo` 0); `block_random` proposes the coarse move and one random
+  block per iteration.
 - **Likelihood:** pressure only, as in the method report (`--use-keff-term 1`
   adds the log-Keff datum to E4). The default is the **relative** form,
   Φ = ‖d − G‖²/(2σ_rel²‖d‖²) = relerr²/(2σ_rel²), using the global normalized L2

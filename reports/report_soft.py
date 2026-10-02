@@ -183,23 +183,38 @@ def main(argv=None):
 
     # ---------------------------------------------------------- moves
     n_post = scfg.n_total - scfg.n_burn
-    acc = ch["acc_tot"] / scfg.n_total                    # whole-run rates
+    nm = ch["acc_tot"].shape[1]
+    # whole-run rates per proposal (E8's random block schedule skips moves)
+    props = ch["acc_tot_prop"] if "acc_tot_prop" in ch else np.full(ch["acc_tot"].shape,
+                                                                     float(scfg.n_total))
+    acc = ch["acc_tot"] / np.maximum(props, 1)
+    names = list(man.get("moves") or MOVES)[:nm] if nm > 4 else list(MOVES)
+    targets = list(scfg.targets) + [scfg.block_target if scfg.block_target > 0
+                                    else scfg.targets[0]] * (nm - len(scfg.targets))
     fig, ax = plt.subplots(1, 2, figsize=(14, 4.0))
-    nm = acc.shape[1]
-    wdt = 0.8 / nm
-    for j in range(nm):
-        ax[0].bar(np.arange(n_ch) + (j - (nm - 1) / 2) * wdt, acc[:, j], wdt, label=MOVES[j])
-    for j, tg in enumerate(scfg.targets):
-        ax[0].axhline(tg, color=f"C{j}", ls=":", lw=1)
-    ax[0].set_xlabel("chain"); ax[0].set_ylabel("acceptance (whole run)")
-    ax[0].set_title("acceptance per move (dotted: adaptation targets)")
-    ax[0].legend(fontsize=8)
+    if nm <= 4:
+        wdt = 0.8 / nm
+        for j in range(nm):
+            ax[0].bar(np.arange(n_ch) + (j - (nm - 1) / 2) * wdt, acc[:, j], wdt,
+                      label=names[j])
+        for j, tg in enumerate(targets):
+            ax[0].axhline(tg, color=f"C{j}", ls=":", lw=1)
+        ax[0].set_xlabel("chain")
+        ax[0].legend(fontsize=8)
+    else:                                 # E8: one bar per move, chain spread
+        ax[0].bar(np.arange(nm), acc.mean(0), 0.7, color=P.C_BAND,
+                  yerr=[acc.mean(0) - acc.min(0), acc.max(0) - acc.mean(0)], capsize=2)
+        ax[0].plot(np.arange(nm), targets, "k_", ms=14, label="target")
+        ax[0].set_xticks(np.arange(nm), names, rotation=60, fontsize=7)
+        ax[0].legend(fontsize=8)
+    ax[0].set_ylabel("acceptance (whole run)")
+    ax[0].set_title("acceptance per move (targets dotted / black; bars: min-max over chains)")
     for c in range(n_ch):
         sh = ch["s_hist"][c]
         for j in range(sh.shape[1]):
             ax[1].plot(np.arange(1, len(sh) + 1) * scfg.adapt_every, sh[:, j],
-                       color=f"C{j}", lw=0.6, alpha=0.6,
-                       label=MOVES[j] if c == 0 else None)
+                       color=f"C{j % 10}", lw=0.6, alpha=0.6,
+                       label=names[j] if c == 0 and j < 10 else None)
     ax[1].set_yscale("log"); ax[1].set_xlabel("iteration (burn-in)")
     ax[1].set_title("step sizes during adaptation (frozen after)")
     ax[1].legend(fontsize=8)
@@ -230,8 +245,10 @@ def main(argv=None):
                 r=r, truth_mode=prob.pc.truth_mode, Kstar=Ks,
                 noise_floor=floor, mean_phi=float(post["phi"].mean()),
                 coverage90_logK=cov90,
-                acceptance_mean=dict(zip("ABCD", map(float, acc.mean(0)))),
-                steps_median=dict(zip("ABCD", map(float, np.median(ch["s_final"], 0)))),
+                acceptance_mean=dict(zip(names, map(float, acc.mean(0)))),
+                steps_median=dict(zip(names, map(float, np.median(ch["s_final"], 0)))),
+                solves_per_iteration=man.get("solves_per_iteration", 3),
+                block=man.get("block"),
                 soft_prior_at_truth=man.get("soft_prior_at_truth"),
                 rho=s_rho, beta=s_beta, log_beta=s_lb, level=s_lev,
                 psrf={k: float(v) for k, v in psrf.items()})

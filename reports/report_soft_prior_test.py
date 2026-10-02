@@ -114,7 +114,8 @@ def main(argv=None):
     show_c = kth[:3, -1] if kth.shape[0] >= 3 else kth[0, -3:]
     pm_r, pv_r = D.pointwise_moments(ref, prob.kle.T)
     pm_c, pv_c = D.pointwise_moments(th, prob.kle.T)
-    blocks = getattr(scfg, "ms_blocks", None) if innov != "global" else None
+    blocks = (scfg.block_n if innov.startswith("block") else
+              getattr(scfg, "ms_blocks", None) if innov != "global" else None)
     figf = P.prior_fields([("direct draws", prob.kle.field(ref[:3]), pm_r, pv_r),
                            (f"chain ({innov})", prob.kle.field(show_c), pm_c, pv_c)],
                           target, prob.pc.n, blocks,
@@ -125,6 +126,8 @@ def main(argv=None):
     P.save(figf, EXP, "fig_e5_prior_fields")
 
     acc = ch["acc_tot"].sum(0) / (scfg.n_total * ch["acc_tot"].shape[0])
+    if "acc_tot_prop" in ch:                         # per proposal (E8 random schedule)
+        acc = ch["acc_tot"].sum(0) / np.maximum(ch["acc_tot_prop"].sum(0), 1)
     out = dict(n_samples=int(th.shape[0]), frob_chain=float(frob_c),
                frob_reference=float(frob_r), w_mean=float(w.mean()), w_sd=float(w.std()),
                w_mean_target=float(tn.mean()), w_sd_target=float(tn.std()),

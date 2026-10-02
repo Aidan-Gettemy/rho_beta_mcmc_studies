@@ -21,6 +21,8 @@ Same workflow as run_curve_sampler.py:
 Requires results/e3_curve/curve_<field>.npz from the SAME study (same KLE,
 same truth: K* comes from the truth).
 Output: results/e5_soft/ (or results/e5_prior_test/)
+--theta-innovation ms_white (E7) or block / block_random (E8, block pCN,
+brho/blockpcn.py) writes to e5_soft_<innovation> / e5_prior_test_<innovation>.
 """
 import _common  # noqa: F401  (first: pins threads before NumPy loads)
 import glob
@@ -97,6 +99,9 @@ def setup(pc, scfg, curve_field, curve_statistic, exp):
                            soft_prior_at_truth=prior_at_truth,
                            constant_field_residual=smp.c_resid,
                            multiscale=(smp.ms.summary() if smp.ms is not None else None),
+                           block=(smp.bp.summary() if smp.bp is not None else None),
+                           solves_per_iteration=smp.solves_per_iteration,
+                           moves=list(smp.move_names),
                            truth=syn.summary(), status="set up"))
     print(f"E5{' PRIOR TEST' if scfg.prior_test else ''} (beta free, soft curve "
           f"prior, moves A-D): {scfg.n_chains} chains x {scfg.n_total} it "
@@ -109,6 +114,12 @@ def setup(pc, scfg, curve_field, curve_statistic, exp):
               f"{ms['r_k']} (p={ms['p']}), Sigma_ms eigenvalues "
               f"[{ms['sigma_ms_eig_min']:.3f}, {ms['sigma_ms_eig_max']:.3f}], "
               f"r_plus={ms['r_plus']}/{ms['r']}, whitening check {ms['operator_check']:.1e}")
+    if smp.bp is not None:
+        b = smp.bp.summary()
+        print(f"  block pCN ({smp.schedule}): {'x'.join([str(b['blocks'])] * b['dim'])} primal "
+              f"blocks, local dims {b['primal_dims']}; dual {b['dual_dims']}; coarse "
+              f"{b['coarse_dim']}; energy >= {b['energy']}, halo {b['halo']}; spans "
+              f"R^{b['r']}: {b['spans']}; {smp.solves_per_iteration} solves / iteration")
     print(f"  soft prior at rho_true={rt}: beta_bar={prior_at_truth['beta_bar']:.3f}, "
           f"s={prior_at_truth['s']:.3f}; beta_true is {prior_at_truth['z_truth']:+.2f} s "
           f"from the curve; constant field outside the KLE span: "

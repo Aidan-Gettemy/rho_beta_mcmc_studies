@@ -530,6 +530,38 @@ sigma_rel 2e-3); 64 chains each; E5 667k it. x 3 solves, E1 1M x 2.
   byte-identical to the copies in runs/e5_3d_2026-10 and is removed; the 3D
   study's export folder is e5_3d_2026-10.
 
+## 2026-10-01: E8 block (subdomain) pCN for theta, implementation (PR, no cluster runs yet)
+The advisor's subdomain idea, made exact.  brho/blockpcn.py; the
+SoftCurveSampler's move A becomes a sweep (--theta-innovation block) or a
+random choice (block_random) of block moves; every move has its own step.
+- Local subspace of block k: generalized eigenproblem T_k^T T_k v =
+  mu T^T T v (mu = fraction of the field energy of v inside the block), keep
+  mu >= 0.9, QR.  Move: pCN on alpha = V_k^T theta, rest of theta fixed;
+  preserves N(0, I) exactly, likelihood-only ratio, one solve.  Coarse move on
+  the complement of the primal locals (needed to span R^r).  Cell-space
+  conditioning is ruled out: with r = 57 the field inside a block given the
+  outside has ~zero variance.
+- 2D (r = 57): primal 9 dims per block (36), dual 3x3 [3,4,3,4,6,4,3,4,3]
+  (34), coarse 21; ~1% of a move's field energy leaks outside its block.
+  Reach of local moves (prior variance they can change / prior variance):
+  primal 0.00-1.00 (zero on the x, y = 0.5 interfaces), primal + dual
+  0.21-1.99.  At energy 0.8: primal 13, dual 40, coarse 5.
+- 3D (r = 78): at 0.9 primal 4 per block, dual blocks 0-1 dims (empty blocks
+  get no move); at 0.8 primal 7, dual 27 x 1, coarse 22.  3D needs 0.8.
+- Likelihood-off test (run_block_prior_test.py, 32 chains x 4000 sweeps,
+  s = 0.3): cov(theta) error 0.099 / 0.082 / 0.080 (coarse+primal / + dual /
+  random) against 0.043 for as many direct draws; pointwise variance 0.95-1.05;
+  no seams.  Started at exact prior draws, 15 sweeps of either schedule keep
+  N(0, I) to the precision of direct draws (test).  With the likelihood off
+  the lag-1 maps only count refreshes (sqrt(1 - s^2) per move).
+- StepAdapter now adapts on acceptance per PROPOSAL (identical to the old
+  rate when every move is proposed once per iteration, i.e. all earlier
+  runs); checkpoints store acc_tot_prop.
+- Smoke run (4 chains x 3000 it., 2D, likelihood on): the block steps adapt
+  to 0.03-0.37 against E5's global theta step 0.0124; acceptance on target.
+  Whether this beats E5 per PDE solve is the cluster run (125k it. x 16
+  solves = 2.0M).
+
 ## 2026-10-01: 3D multiscale -- prior tests and E7 (runs/e5_3d_2026-10, PRs #57, #58); local-KLE tie fix
 Pinned (Aidan): the multi-truth / simulation-based-calibration study of rho's
 coverage (see the 3D entry above); revisit later.
