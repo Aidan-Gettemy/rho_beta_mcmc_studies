@@ -85,6 +85,8 @@ def load_kept(exp, n_chains=None):
             lab = ("E8 soft-curve sampler, block pCN θ"
                    + (" (random block)" if innov == "block_random" else " (sweep)"))
             b = man.get("block") or {}
+            if b.get("blocks"):
+                lab += f", {b['blocks']}x{b['blocks']} blocks"
             if b.get("coarse") is False:
                 lab += ", no coarse"
             if (b.get("dual_halo") or 0) > (b.get("halo") or 0):
@@ -240,7 +242,8 @@ def run(exp, n_chains=None, skip=2, step=15, iter_burn=10, level=1.2, at=4900,
 COLORS = {"e1_blocked": "#c0392b", "e1_global": "#e67e22", "e4_sampler": "#1f5fa8",
           "e5_soft": "#2e8b57",
           "e5_soft_ms_white": "#7b3fa0", "e5_soft_ms_raw": "#999999",
-          "e5_soft_block": "#138d75", "e5_soft_block_random": "#76d7c4",
+          "e5_soft_block": "#2a78d6", "e5_soft_block_random": "#76d7c4",
+          "e5_soft_block_3x3": "#eda100",
           "e5_soft_block_nocoarse": "#e87ba4", "e5_soft_block_nocoarse_dualhalo": "#4a3aa7"}
 
 
@@ -266,8 +269,8 @@ def compare(results, level=1.2):
             lab = (f"{res['label']}, {res['m']} chains: "
                    + ("no crossing" if conv_s is None else f"{int(conv_s):,} solves")
                    + f" (final {abs(c[key][-1]):.2f})")
-            col = COLORS.get(e)
-            ax.plot(xs, np.abs(c[key]), lw=2.5, color=col, label=lab)
+            line, = ax.plot(xs, np.abs(c[key]), lw=2.5, color=COLORS.get(e), label=lab)
+            col = line.get_color()                 # crossing marks match the curve
             if conv_s is not None:
                 ax.plot([conv_s, conv_s], [0, level], "--", lw=3, color=col)
                 ax.scatter([conv_s], [level], color=col, zorder=5, s=60)
