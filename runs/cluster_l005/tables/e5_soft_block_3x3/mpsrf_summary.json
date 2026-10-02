@@ -1,6 +1,6 @@
 {
  "exp": "e5_soft_block_3x3",
- "label": "E8 soft-curve sampler, block pCN \u03b8 (sweep)",
+ "label": "E8 soft-curve sampler, block pCN \u03b8 (sweep), 3x3 blocks",
  "n_chains": 64,
  "n_samples": 4434,
  "thinning": 15,
