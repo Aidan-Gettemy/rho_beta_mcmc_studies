@@ -46,5 +46,21 @@
    "final_solves": 2001000.0,
    "dim": 57
   }
+ },
+ "e5_soft_block": {
+  "mpsrf": {
+   "convergence_iteration": 59005.0,
+   "convergence_solves": 944080.0,
+   "final": 1.0746753254286276,
+   "final_solves": 2000000.0,
+   "dim": 57
+  },
+  "psrf": {
+   "convergence_iteration": 37319.0,
+   "convergence_solves": 597104.0,
+   "final": 1.0439384419798705,
+   "final_solves": 2000000.0,
+   "dim": 57
+  }
  }
 }
