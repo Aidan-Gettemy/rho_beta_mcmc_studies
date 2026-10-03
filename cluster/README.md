@@ -199,11 +199,15 @@ BRHO_ROOT=$PWD/runs/cluster_l005_s2086 PROBLEM_ARGS="$P --truth-seed 2086" RUNS=
 ```
 
 **Likelihood check (2026-10-03).** The relative likelihood overstates the
-sensor noise (4.6x at 64x64), which biases rho low (LOG 2026-10-03).
-Confirmation with the noise-matched (absolute) likelihood on the worst truth:
+sensor noise (4.6x at 64x64, kappa = 0.048), which biases rho low (LOG
+2026-10-03).  Confirmation that keeps the posterior's sharpness (and so the
+sampler's cost): generate the data with the noise the likelihood assumes,
+noise_rel = 0.01 / sqrt(0.048) = 0.0457, same truth (seed 2026).  Predicted:
+rho unbiased (~1.5).  (The absolute likelihood would instead make the posterior
+~21x sharper and pCN far slower.)
 ```bash
 P="--n 64 --ell 0.05 --truth-mode kle --sigma-rel 2e-3"
-BRHO_ROOT=$PWD/runs/cluster_l005_abs PROBLEM_ARGS="$P --likelihood absolute" \
+BRHO_ROOT=$PWD/runs/cluster_l005_matched PROBLEM_ARGS="$P --noise-rel 0.0457" \
     RUNS=e5 THETA_REPEAT=7 SOLVES=1000000 TIME=12:00:00 bash cluster/overnight_scaling.sh
 ```
 
