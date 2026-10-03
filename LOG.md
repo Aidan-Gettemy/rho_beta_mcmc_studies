@@ -748,3 +748,18 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
   ~1.32 on average.  At r = 208 the posterior of rho is biased low for a fixed
   rho* = 1.5 whatever the truth; not bad luck.  An SBC study (rho drawn from
   its prior) is now needed to say whether the posterior is calibrated.
+- **Why rho is low: the tempered likelihood, not prior shrinkage** (same day;
+  reports/linearized/calib_linear.py, exact 1-D posterior of rho in the
+  linearized hierarchical model, 400 truths per rho*, SBC with 1000 draws).
+  With noise matched to the likelihood, rho is calibrated at every rho*
+  (90% coverage 88-93%, bias within 2%, SBC uniform).  With the likelihood as
+  run (relative, sigma_rel = 2e-3, which assumes a sensor noise 2.2x (r = 57)
+  / 4.6x (r = 208) the actual one, kappa = w sigma_p^2 = 0.20 / 0.048), rho is
+  biased low at EVERY rho*: r = 208 -12% to -20%, coverage 31-43%, SBC 37%;
+  r = 57 -5% to -10%, coverage 83-86%.  Overstated noise makes the model
+  assign too little of the data's variance to the signal (rho^2).  Predicts
+  the MCMC: typical median 1.27 at rho* = 1.5, r = 208 (MCMC truths: 1.20,
+  1.24, 1.28, 1.34); probably also most of the 3D miss (rho 1.26, 2048
+  sensors).  beta and the level are pinned directly by the data: unaffected.
+  Confirmation: --likelihood absolute on r = 208, seed 2026 (predicted rho
+  ~1.5).
