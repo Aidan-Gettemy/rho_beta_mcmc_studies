@@ -1,0 +1,50 @@
+{
+ "e5_soft": {
+  "mpsrf": {
+   "convergence_iteration": 509804.0,
+   "convergence_solves": 1529412.0,
+   "final": 1.193359508608218,
+   "final_solves": 1587000.0,
+   "dim": 208
+  },
+  "psrf": {
+   "convergence_iteration": 173542.0,
+   "convergence_solves": 520626.0,
+   "final": 1.046250523977737,
+   "final_solves": 1587000.0,
+   "dim": 208
+  }
+ },
+ "e5_soft_block": {
+  "mpsrf": {
+   "convergence_iteration": 57015.0,
+   "convergence_solves": 912240.0,
+   "final": 1.0792241115574122,
+   "final_solves": 2000000.0,
+   "dim": 208
+  },
+  "psrf": {
+   "convergence_iteration": 26345.0,
+   "convergence_solves": 421520.0,
+   "final": 1.0232985160192143,
+   "final_solves": 2000000.0,
+   "dim": 208
+  }
+ },
+ "e5_soft_block_3x3": {
+  "mpsrf": {
+   "convergence_iteration": 46343.0,
+   "convergence_solves": 1297604.0,
+   "final": 1.1274654925551357,
+   "final_solves": 1996400.0,
+   "dim": 208
+  },
+  "psrf": {
+   "convergence_iteration": 21710.0,
+   "convergence_solves": 607880.0,
+   "final": 1.063324359398784,
+   "final_solves": 1996400.0,
+   "dim": 208
+  }
+ }
+}

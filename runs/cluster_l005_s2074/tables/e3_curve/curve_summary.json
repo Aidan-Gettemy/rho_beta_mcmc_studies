@@ -1,0 +1,20 @@
+{
+ "Kstar": 2.3999206930231467,
+ "statistic": "ratio_of_mean",
+ "n_real": 1024,
+ "n_rho": 40,
+ "rho_range": [
+  0.05,
+  5.0
+ ],
+ "beta_bar_at_rho_true": 2.5772906131501294,
+ "beta_true": 2.3,
+ "rel_err_at_truth": 0.1205611361522303,
+ "beta_bar_at_0": 2.3999206930231467,
+ "band_at_rho_true": [
+  1.886896546514266,
+  3.5357303759123266
+ ],
+ "minutes": 11.184859784444173,
+ "cholesky_vs_kle_beta_at_truth": 0.024152287601877154
+}

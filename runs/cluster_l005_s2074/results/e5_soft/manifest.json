@@ -1,0 +1,165 @@
+{
+ "experiment": "e5_soft",
+ "time": "2026-10-02 17:51:25",
+ "argv": [
+  "experiments/run_soft_sampler.py",
+  "--setup-only",
+  "--n-chains",
+  "64",
+  "--n",
+  "64",
+  "--ell",
+  "0.05",
+  "--truth-mode",
+  "kle",
+  "--sigma-rel",
+  "2e-3",
+  "--truth-seed",
+  "2074",
+  "--n-total",
+  "666666",
+  "--n-burn",
+  "30000",
+  "--thin",
+  "100"
+ ],
+ "python": "3.11.15",
+ "numpy": "1.26.4",
+ "configs": {
+  "ProblemConfig": {
+   "n": 64,
+   "dim": 2,
+   "ell": 0.05,
+   "energy": 0.95,
+   "kernel": "sqexp",
+   "kle_method": "auto",
+   "kle_nq": 40,
+   "kle_quadrature": "gauss_legendre",
+   "q_in": 1.0,
+   "solver": "auto",
+   "backend": "auto",
+   "beta_true": 2.3,
+   "rho_true": 1.5,
+   "truth_mode": "kle",
+   "truth_seed": 2074,
+   "noise_rel": 0.01,
+   "sigma_e": 0.05,
+   "likelihood": "relative",
+   "sigma_rel": 0.002,
+   "rel_eps": 0.02,
+   "rel_n_eff": 128.0
+  },
+  "SoftSamplerConfig": {
+   "n_chains": 64,
+   "n_total": 666666,
+   "n_burn": 30000,
+   "thin": 100,
+   "chunk": 5000,
+   "mu_rho": 0.0,
+   "s_rho": 0.75,
+   "s_init": [
+    0.15,
+    0.2,
+    0.2,
+    0.2
+   ],
+   "targets": [
+    0.25,
+    0.25,
+    0.45,
+    0.45
+   ],
+   "adapt_every": 100,
+   "adapt_factor": 1.12,
+   "curve_sigma_e": true,
+   "init": "prior",
+   "seed0": 505,
+   "seed_scheme": "spawn",
+   "n_workers": 4,
+   "prior_test": false,
+   "trace_every": 1,
+   "theta_innovation": "global",
+   "ms_blocks": 2,
+   "ms_local_energy": 0.95,
+   "block_n": 2,
+   "block_energy": 0.9,
+   "block_dual": true,
+   "block_halo": 0.0,
+   "block_s0": 0.0,
+   "block_target": 0.0,
+   "block_coarse": true,
+   "block_dual_energy": 0.0,
+   "block_dual_halo": -1.0,
+   "exp_tag": "",
+   "theta_repeat": 1
+  }
+ },
+ "r": 208,
+ "Kstar": 2.3999206930231467,
+ "kle_key": {
+  "v": 1,
+  "grid": [
+   64,
+   64
+  ],
+  "kernel": "sqexp",
+  "ell": 0.05,
+  "energy": 0.95,
+  "method": "dense"
+ },
+ "kle": {
+  "method": "dense",
+  "r": 208,
+  "energy": 0.9504432136251815,
+  "total": 4096.0
+ },
+ "likelihood": {
+  "likelihood": "relative",
+  "noise_floor": 69.52564967536354,
+  "data_norm": 10.48634716912525,
+  "sigma_rel": 0.002,
+  "eps_at_n_eff": {
+   "n_eff": 128.0,
+   "eps": 0.022627416997969524
+  },
+  "weight_vs_absolute": 0.0678961422610972
+ },
+ "curve": {
+  "source": "/scratch/ganymede2/arg210006/rho_beta_mcmc_studies/runs/cluster_l005_s2074/results/e3_curve/curve_kle.npz",
+  "statistic": "ratio_of_mean",
+  "rho_max": 5.0
+ },
+ "soft_prior_at_truth": {
+  "rho": 1.5,
+  "m": 0.9467386971979209,
+  "s": 0.21182478811141853,
+  "beta_bar": 2.5772906131501294,
+  "z_truth": -0.5373760799087564
+ },
+ "constant_field_residual": 0.02720884364862605,
+ "multiscale": null,
+ "block": null,
+ "solves_per_iteration": 3,
+ "moves": [
+  "A",
+  "B",
+  "C",
+  "D"
+ ],
+ "truth": {
+  "theta_norm2_over_r": 0.9553927937633157,
+  "mode": "kle",
+  "beta_true": 2.3,
+  "rho_true": 1.5,
+  "n_obs": 2048,
+  "sigma_p": 0.005464831516018979,
+  "sigma_e": 0.05,
+  "keff_true": 2.269671611338071,
+  "keff_obs": 2.3999206930231467,
+  "level_true": 0.8323741338379557,
+  "Gbar": -0.0003566593980987992,
+  "G_std": 0.9797111939724741,
+  "noise_rel": 0.023584002997856585
+ },
+ "status": "set up"
+}
