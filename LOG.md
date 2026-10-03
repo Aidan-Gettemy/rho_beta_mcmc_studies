@@ -706,3 +706,45 @@ Gaussian approximation at the truth (finite-difference Jacobian, 2r + 1 solves).
   already typical (45th percentile).  The analysis scripts are in
   reports/linearized/ (lin.py, sim.py, visit.py, screen.py).
 
+
+## 2026-10-03: control for E8 (theta-repeat) and the scaling study on new truths
+**Control** (main 2D study, r = 57, 64 chains, 2.0M solves; runs/e5_kle_2026-09,
+e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
+
+| solves to theta MPSRF < | E5 | E5 x4 | E5 x7 | E5 x14 | E8 2x2 |
+|---|---|---|---|---|---|
+| 1.2  | 1.26M | 0.71M | 0.63M | **0.61M** | 0.95M |
+| 1.15 | 1.65M | 0.87M | 0.76M | **0.71M** | 1.12M |
+| 1.1  | never | 1.17M | 1.04M | **0.96M** | 1.58M |
+| final (2.0M) | 1.123 | 1.047 | 1.043 | **1.039** | 1.075 |
+
+- E8's speed-up is entirely the budget split, and then some: E5 x14 spends
+  the same theta share as E8 2x2 (14 of 16 solves) and converges 1.55x faster
+  than E8, 2.1x faster than E5.  Diminishing returns past k = 7.
+- Worst single-theta PSRF below 1.2: E5 0.60M, x4 0.48M, x7 0.38M, x14 0.43M,
+  E8 0.60M.
+- ESS (rho / log beta / level): E5 7.1k / 36k / 1.8k; x14 11.8k / 66k / 3.3k;
+  E8 12.4k / 103k / 2.9k.  Block moves still mix log beta best.
+- Posterior unchanged (rho 1.473-1.478 [1.23, 1.79] in all).
+- Conclusion: block pCN is exact but not faster than global pCN; the lever
+  is how many theta moves are made per round of B, C, D.  The Gaussian
+  surrogate predicted this (equal efficiency per theta-solve).
+- Fairness: E1 must get the same knob (theta moves repeated) before the final
+  E1 vs E5 comparison.
+
+**Scaling study on new truths** (64x64, ell 0.05, r = 208):
+- Seed 2074, E8 2x2 / 3x3 at 2.0M; E5 stopped at 1.59M of 2.0M (time limit,
+  no report yet; resume).  theta MPSRF < 1.2: E5 1.53M, E8 2x2 0.91M, 3x3 1.30M.
+- rho, all low: seed 2074 1.34 [1.19, 1.53] (covers), stubs 2063 1.24
+  [1.09, 1.40] and 2086 1.28 [1.13, 1.47] (E5 at 0.5M; miss), and seed 2026
+  1.20.  beta and the level are covered in all.
+- The truth screen of 2026-10-02 was wrong: it reused the Jacobian of truth
+  2026.  With each truth's own Jacobian the linear prediction tracks the MCMC
+  (rho 1.42 / 1.28 / 1.33 vs 1.34 / 1.24 / 1.28; Phi within 1%).
+- Over 30 truths with their own Jacobians (reports/linearized/truth_energy.py)
+  the informed energy averages 0.77 (sd 0.09) for our "kle" truths and 0.79
+  (sd 0.15) for exact prior draws ("kle_raw"): the data are most informative
+  in directions where the truth itself has little energy.  Predicted rho
+  ~1.32 on average.  At r = 208 the posterior of rho is biased low for a fixed
+  rho* = 1.5 whatever the truth; not bad luck.  An SBC study (rho drawn from
+  its prior) is now needed to say whether the posterior is calibrated.
