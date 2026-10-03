@@ -18,6 +18,7 @@
 #                 add e.g. --truth-seed 2074 for another truth
 #   RUNS          which runs (default "e5 b2 b3")
 #   SOLVES        PDE solves per chain (default 2000000); e.g. 500000 for stubs
+#   THETA_REPEAT  e5 only: theta moves per iteration (default 1; 7 is about 2x faster)
 # Representative truth (2026-10-02, reports/linearized/screen.py): seed 2074
 # (informed energy at the 49.5th prior percentile); the original seed 2026 is
 # at the 0.3rd.  Stub truths: 2063 (9.8th), 2086 (93.4th).
@@ -29,6 +30,7 @@ export BRHO_ROOT="${BRHO_ROOT:-$PWD/runs/cluster_l005}"
 export PROBLEM_ARGS="${PROBLEM_ARGS:---n 64 --ell 0.05 --truth-mode kle --sigma-rel 2e-3}"
 RUNS="${RUNS:-e5 b2 b3}"
 SOLVES="${SOLVES:-2000000}"
+K="${THETA_REPEAT:-1}"          # e5 only: move A K times per iteration (2 + K solves)
 mkdir -p logs "$BRHO_ROOT"
 echo "study $BRHO_ROOT; problem $PROBLEM_ARGS; runs $RUNS; $SOLVES solves / chain; partition $PART; node time $TIME"
 
@@ -40,7 +42,8 @@ SETUP="source cluster/env.sh; export OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 MK
 JOBS=()
 for run in $RUNS; do
     case $run in
-        e5) n=$(( SOLVES / 3 ));  SETUP="$SETUP && $RUN --n-total $n --n-burn 30000 --thin 100"
+        e5) spi=$(( 2 + K )); n=$(( SOLVES / spi )); nb=$(( 90000 / spi )); th=$(( 300 / spi ))
+            SETUP="$SETUP && $RUN --n-total $n --n-burn $nb --thin $(( th > 0 ? th : 1 )) --theta-repeat $K"
             JOBS+=("global:") ;;
         b2) n=$(( SOLVES / 16 )); SETUP="$SETUP && $RUN --theta-innovation block --n-total $n --n-burn 10000 --thin 25"
             SETUP="$SETUP && python experiments/run_block_prior_test.py --from-exp e5_soft_block --blocks 2"
