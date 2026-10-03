@@ -198,6 +198,15 @@ BRHO_ROOT=$PWD/runs/cluster_l005_s2063 PROBLEM_ARGS="$P --truth-seed 2063" RUNS=
 BRHO_ROOT=$PWD/runs/cluster_l005_s2086 PROBLEM_ARGS="$P --truth-seed 2086" RUNS=e5 SOLVES=500000 TIME=04:00:00 bash cluster/overnight_scaling.sh
 ```
 
+**Likelihood check (2026-10-03).** The relative likelihood overstates the
+sensor noise (4.6x at 64x64), which biases rho low (LOG 2026-10-03).
+Confirmation with the noise-matched (absolute) likelihood on the worst truth:
+```bash
+P="--n 64 --ell 0.05 --truth-mode kle --sigma-rel 2e-3"
+BRHO_ROOT=$PWD/runs/cluster_l005_abs PROBLEM_ARGS="$P --likelihood absolute" \
+    RUNS=e5 THETA_REPEAT=7 SOLVES=1000000 TIME=12:00:00 bash cluster/overnight_scaling.sh
+```
+
 To continue a node job after a time limit, resubmit it the same way, e.g.
 `BRHO_ROOT=$PWD/runs/cluster_l005 RESUME=1 INNOV=block TAG=3x3 sbatch --partition=cpu-preempt cluster/slurm/node_e5_soft.sbatch`.
 
