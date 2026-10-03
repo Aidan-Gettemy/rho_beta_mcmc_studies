@@ -19,6 +19,9 @@
 #   RUNS          which runs (default "e5 b2 b3")
 #   SOLVES        PDE solves per chain (default 2000000); e.g. 500000 for stubs
 #   THETA_REPEAT  e5 only: theta moves per iteration (default 1; 7 is about 2x faster)
+#   E5_EXTRA      extra sampler flags for e5 (default none), e.g. "--learn-noise 1"
+#                 (learned sigma_rel, 2026-10-03)
+#   E5_TAG        e5 run-folder suffix (default none -> e5_soft); e.g. a7_noise
 # Representative truth (2026-10-02, reports/linearized/screen.py): seed 2074
 # (informed energy at the 49.5th prior percentile); the original seed 2026 is
 # at the 0.3rd.  Stub truths: 2063 (9.8th), 2086 (93.4th).
@@ -43,8 +46,8 @@ JOBS=()
 for run in $RUNS; do
     case $run in
         e5) spi=$(( 2 + K )); n=$(( SOLVES / spi )); nb=$(( 90000 / spi )); th=$(( 300 / spi ))
-            SETUP="$SETUP && $RUN --n-total $n --n-burn $nb --thin $(( th > 0 ? th : 1 )) --theta-repeat $K"
-            JOBS+=("global:") ;;
+            SETUP="$SETUP && $RUN --n-total $n --n-burn $nb --thin $(( th > 0 ? th : 1 )) --theta-repeat $K ${E5_EXTRA:-}${E5_TAG:+ --exp-tag $E5_TAG}"
+            JOBS+=("global:${E5_TAG:-}") ;;
         b2) n=$(( SOLVES / 16 )); SETUP="$SETUP && $RUN --theta-innovation block --n-total $n --n-burn 10000 --thin 25"
             SETUP="$SETUP && python experiments/run_block_prior_test.py --from-exp e5_soft_block --blocks 2"
             JOBS+=("block:") ;;

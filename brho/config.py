@@ -210,6 +210,12 @@ class SoftSamplerConfig:
     block_dual_energy: float = 0.0  # <= 0: same as block_energy
     block_dual_halo: float = -1.0   # < 0: same as block_halo
     exp_tag: str = ""               # suffix of the run folder (variants of one innovation)
+    learn_noise: bool = False       # sigma_rel unknown: s2 = sigma_rel^2 ~ IG(noise_a0, noise_b0),
+                                    # exact Gibbs draw each iteration (no solve); relative
+                                    # likelihood only.  noise_b0 <= 0: a0 * sigma_rel^2
+                                    # (prior mean of s2 near the configured sigma_rel^2)
+    noise_a0: float = 2.0
+    noise_b0: float = 0.0
     theta_repeat: int = 1           # move A k times per iteration (global / ms only):
                                     # 2 + k solves; the E8 control (same theta share,
                                     # global moves).  E8 2x2 spends 14 of 16 on theta.

@@ -268,6 +268,20 @@ class SoftCurveSampler:
         ones = np.ones(T.shape[0])
         self.c, *_ = np.linalg.lstsq(T, ones, rcond=None)
         self.c_resid = float(np.linalg.norm(T @ self.c - ones) / np.sqrt(len(ones)))
+        # learned noise level (relative likelihood only): sigma_rel^2 = s2 is a
+        # state variable with an inverse-gamma prior, updated each iteration by
+        # an exact Gibbs draw from its conditional (no PDE solve: the residual
+        # is known).  st["phi"] stays the misfit at the FIXED sigma_rel of the
+        # config; the misfit at the current s2 is noise_c(st) * st["phi"].
+        self.learn_noise = bool(getattr(scfg, "learn_noise", False))
+        if self.learn_noise:
+            if prob.pc.likelihood != "relative":
+                raise ValueError("learn_noise needs the relative likelihood")
+            self.s2_fixed = float(prob.sigma_rel) ** 2
+            self.noise_a0 = float(scfg.noise_a0)
+            self.noise_b0 = float(scfg.noise_b0) if scfg.noise_b0 > 0 else self.noise_a0 * self.s2_fixed
+            self.n_obs = int(prob.syn.n_obs)
+            self.STATE = ("w", "lb", "s2")
         self.innovation = getattr(scfg, "theta_innovation", "global")
         self.ms = self.bp = None
         self.s_init, self.targets = tuple(scfg.s_init), tuple(scfg.targets)
@@ -341,11 +355,30 @@ class SoftCurveSampler:
     def level_st(self, st):
         return float(st["lb"] + self.rho(st["w"]) * self.prob.kle.spatial_mean(st["theta"]))
 
+    def noise_c(self, st):
+        """Misfit scale: Phi(current sigma_rel) = noise_c * Phi(config sigma_rel)."""
+        return self.s2_fixed / st["s2"] if self.learn_noise else 1.0
+
+    def gibbs_noise(self, st, rng):
+        """Exact draw of s2 = sigma_rel^2 from its conditional:
+        prior IG(a0, b0); likelihood (s2)^(-n/2) exp(-|d - G|^2 / (2 s2 |d|^2))
+        and |d - G|^2 / (2 |d|^2) = phi * s2_fixed  ->  IG(a0 + n/2, b0 + phi s2_fixed).
+        With the likelihood off (prior test) the conditional is the prior."""
+        if self.cfg.prior_test:
+            a, b = self.noise_a0, self.noise_b0
+        else:
+            a = self.noise_a0 + 0.5 * self.n_obs
+            b = self.noise_b0 + st["phi"] * self.s2_fixed
+        st["s2"] = float(b / rng.gamma(a))
+
     def extra_traces(self, st):
         if st is None:
-            return {"xi_b": None}
+            return {"xi_b": None, "sigma_rel": None} if self.learn_noise else {"xi_b": None}
         rho = self.rho(st["w"])
-        return {"xi_b": (st["lb"] - self.m(rho)) / self.s(rho)}
+        out = {"xi_b": (st["lb"] - self.m(rho)) / self.s(rho)}
+        if self.learn_noise:
+            out["sigma_rel"] = float(np.sqrt(st["s2"]))
+        return out
 
     def init_state(self, rng):
         if self.cfg.init == "prior":
@@ -360,7 +393,10 @@ class SoftCurveSampler:
             theta, w = np.zeros(self.r), 0.0
             lb = self.m(self.rho(w))
         phi, pobs, keff = self.potential(theta, w, lb)
-        return dict(theta=theta, w=w, lb=lb, phi=phi, pobs=pobs, keff=keff)
+        st = dict(theta=theta, w=w, lb=lb, phi=phi, pobs=pobs, keff=keff)
+        if self.learn_noise:
+            st["s2"] = self.s2_fixed
+        return st
 
     # ------------------------------------------------------------ one sweep
     def step(self, st, ad, rng):
@@ -377,7 +413,7 @@ class SoftCurveSampler:
                 if th_p is None:
                     continue
                 phi_p, pobs_p, keff_p = self.potential(th_p, w, lb)
-                a = np.log(rng.random()) < st["phi"] - phi_p
+                a = np.log(rng.random()) < self.noise_c(st) * (st["phi"] - phi_p)
                 if a:
                     st.update(theta=th_p, phi=phi_p, pobs=pobs_p, keff=keff_p)
                 ad.record(k, a)
@@ -393,7 +429,7 @@ class SoftCurveSampler:
                     th_p = (np.sqrt(1.0 - s_th * s_th) * th
                             + s_th * self.ms.draw(self.innovation, rng))
                 phi_p, pobs_p, keff_p = self.potential(th_p, w, lb)
-                a = np.log(rng.random()) < st["phi"] - phi_p
+                a = np.log(rng.random()) < self.noise_c(st) * (st["phi"] - phi_p)
                 if a:
                     st.update(theta=th_p, phi=phi_p, pobs=pobs_p, keff=keff_p)
                 ad.record(0, a)
@@ -406,7 +442,7 @@ class SoftCurveSampler:
         a = False
         if np.isfinite(lp_new):
             phi_p, pobs_p, keff_p = self.potential(th, w_p, lb)
-            logA = st["phi"] - phi_p + lp_new - self.log_p_lb(lb, rho)
+            logA = self.noise_c(st) * (st["phi"] - phi_p) + lp_new - self.log_p_lb(lb, rho)
             a = np.log(rng.random()) < logA
             if a:
                 st.update(w=w_p, phi=phi_p, pobs=pobs_p, keff=keff_p)
@@ -432,12 +468,15 @@ class SoftCurveSampler:
         lb_p = lb + delta
         th_p = th - (delta / rho) * self.c
         phi_p, pobs_p, keff_p = self.potential(th_p, w, lb_p)
-        logA = (st["phi"] - phi_p - 0.5 * (th_p @ th_p - th @ th)
+        logA = (self.noise_c(st) * (st["phi"] - phi_p) - 0.5 * (th_p @ th_p - th @ th)
                 + self.log_p_lb(lb_p, rho) - self.log_p_lb(lb, rho))
         a = np.log(rng.random()) < logA
         if a:
             st.update(theta=th_p, lb=float(lb_p), phi=phi_p, pobs=pobs_p, keff=keff_p)
         ad.record(3, a)
+        # E: noise level, exact Gibbs draw (no solve)
+        if self.learn_noise:
+            self.gibbs_noise(st, rng)
         return st
 
 

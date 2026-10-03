@@ -211,6 +211,29 @@ BRHO_ROOT=$PWD/runs/cluster_l005_matched PROBLEM_ARGS="$P --noise-rel 0.0457" \
     RUNS=e5 THETA_REPEAT=7 SOLVES=1000000 TIME=12:00:00 bash cluster/overnight_scaling.sh
 ```
 
+**Learned noise level (2026-10-03).** Keeps the relative likelihood (grid
+independent) and the data, and lets the data set sigma_rel: one exact
+inverse-gamma Gibbs draw per iteration (move E, no PDE solve),
+`--learn-noise 1` (prior IG(a0 = 2, b0 = a0 sigma_rel^2) centred on the
+configured value; `--noise-a0`, `--noise-b0`).  Predicted: sigma_rel settles
+near the matched value sigma_p / |d| (about 9e-4 at r = 57, 4.4e-4 at r = 208)
+and rho is calibrated (about 1.5 on seed 2026).  Both with move A x7 (the
+fastest E5 setting), 2.0M solves per chain, next to the existing runs:
+```bash
+# r = 57, main 2D study (compare e5_soft_a7)
+BRHO_ROOT=$PWD/runs/cluster_kle PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3" TAG=a7_noise \
+    E5_ARGS="--n-total 222300 --n-burn 18000 --thin 45 --theta-repeat 7 --learn-noise 1" \
+    sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
+# r = 208, 64x64, seed 2026 (compare e5_soft: rho 1.20)
+BRHO_ROOT=$PWD/runs/cluster_l005 PROBLEM_ARGS="--n 64 --ell 0.05 --truth-mode kle --sigma-rel 2e-3" TAG=a7_noise \
+    E5_ARGS="--n-total 222200 --n-burn 10000 --thin 33 --theta-repeat 7 --learn-noise 1" \
+    sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
+# continue either after a time limit: same line with RESUME=1 added
+python reports/report_soft.py --exp e5_soft_a7_noise    # table row "sigma_rel (learned)"
+```
+In a fresh study folder the driver does the same:
+`RUNS=e5 THETA_REPEAT=7 E5_TAG=a7_noise E5_EXTRA="--learn-noise 1" bash cluster/overnight_scaling.sh`.
+
 To continue a node job after a time limit, resubmit it the same way, e.g.
 `BRHO_ROOT=$PWD/runs/cluster_l005 RESUME=1 INNOV=block TAG=3x3 sbatch --partition=cpu-preempt cluster/slurm/node_e5_soft.sbatch`.
 
