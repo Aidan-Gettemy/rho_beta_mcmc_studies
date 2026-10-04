@@ -63,6 +63,22 @@
    "dim": 57
   }
  },
+ "e1_blocked_a7": {
+  "mpsrf": {
+   "convergence_iteration": null,
+   "convergence_solves": null,
+   "final": 1.4159228365236831,
+   "final_solves": 1996000.0,
+   "dim": 57
+  },
+  "psrf": {
+   "convergence_iteration": null,
+   "convergence_solves": null,
+   "final": 1.3770603304619669,
+   "final_solves": 1996000.0,
+   "dim": 57
+  }
+ },
  "e5_soft_a14": {
   "mpsrf": {
    "convergence_iteration": 37912.0,
@@ -107,6 +123,22 @@
    "convergence_iteration": 42501.0,
    "convergence_solves": 382509.0,
    "final": 1.0227993990417117,
+   "final_solves": 2000700.0,
+   "dim": 57
+  }
+ },
+ "e5_soft_a7_noise": {
+  "mpsrf": {
+   "convergence_iteration": 197543.0,
+   "convergence_solves": 1777887.0,
+   "final": 1.1727529221200157,
+   "final_solves": 2000700.0,
+   "dim": 57
+  },
+  "psrf": {
+   "convergence_iteration": 142385.0,
+   "convergence_solves": 1281465.0,
+   "final": 1.1037693383721559,
    "final_solves": 2000700.0,
    "dim": 57
   }

@@ -1,0 +1,79 @@
+{
+ "exp": "e1_blocked_a7",
+ "label": "E1 naive pCN (blocked), 7 \u03b8 moves / it",
+ "n_chains": 64,
+ "n_samples": 5000,
+ "thinning": 50,
+ "first_kept_iteration": 0,
+ "solves_per_iteration": 8,
+ "skip": 2,
+ "step": 15,
+ "iter_burn": 10,
+ "level": 1.2,
+ "theta": {
+  "dim": 57,
+  "mpsrf_convergence_iteration": null,
+  "psrf_convergence_iteration": null,
+  "at_iteration": 5000.0,
+  "mpsrf_at": 17.058413014804227,
+  "psrf_max_at": 8.463046408787317,
+  "mpsrf_final": 1.4159228365236831,
+  "psrf_max_final": 1.3770603304619669,
+  "n_components_above_level_final": 2,
+  "worst_components_final": [
+   [
+    "theta1",
+    1.377
+   ],
+   [
+    "theta5",
+    1.33
+   ],
+   [
+    "theta17",
+    1.155
+   ],
+   [
+    "theta11",
+    1.105
+   ],
+   [
+    "theta31",
+    1.056
+   ]
+  ]
+ },
+ "all": {
+  "dim": 59,
+  "mpsrf_convergence_iteration": null,
+  "psrf_convergence_iteration": null,
+  "at_iteration": 5000.0,
+  "mpsrf_at": 20.25085679997863,
+  "psrf_max_at": 11.696674122761348,
+  "mpsrf_final": 1.4221067613465417,
+  "psrf_max_final": 1.410943976058306,
+  "n_components_above_level_final": 3,
+  "worst_components_final": [
+   [
+    "log\u03b2",
+    1.411
+   ],
+   [
+    "\u03b81",
+    1.377
+   ],
+   [
+    "\u03b85",
+    1.33
+   ],
+   [
+    "\u03b817",
+    1.155
+   ],
+   [
+    "\u03b811",
+    1.105
+   ]
+  ]
+ }
+}
