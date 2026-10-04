@@ -798,3 +798,39 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
   covered), beta 2.52 [2.06, 3.10] (2.3), level 0.90 [0.82, 0.96] (0.83).
   rho matches the tempered-likelihood prediction for this truth (1.33).
 
+## 2026-10-04 - Learned noise level (r = 57, r = 208) and E1 x7 (PR #82)
+
+- Learned sigma_rel (`--learn-noise 1`, A x7, 64 chains, 2.0M solves):
+  - r = 57 (runs/e5_kle_2026-09, e5_soft_a7_noise): sigma_rel 8.72e-4
+    [8.26e-4, 9.22e-4] vs matched 8.98e-4.  rho 1.64 [1.40, 1.96] (1.5),
+    beta 1.95 [1.26, 2.99] (2.3), level 0.833 [0.72, 0.90] (0.835).  Phi at
+    the configured sigma 46.9 vs floor 51.7 -> d_eff about 47 of 57 (as
+    E[Phi] = floor - kappa d_eff / 2 predicts).  logK 90% coverage 87%.
+  - r = 208, seed 2026 (runs/cluster_l005): sigma_rel 4.48e-4 [4.36e-4,
+    4.60e-4] vs matched 4.38e-4.  rho 1.445 [1.31, 1.60] (1.5; fixed sigma
+    gave 1.20 [1.05, 1.38], missed), beta 2.29 [1.84, 2.85] (2.3), level
+    0.854 [0.79, 0.90] (0.832).  logK 90% coverage 88%.
+  - Prediction confirmed: the data recover the sensor noise to 2-3% and the
+    rho bias disappears at both resolutions.
+- Cost: much larger than the Gaussian-surrogate estimate (about 10%).
+  - theta MPSRF < 1.2: r = 57 at 1.78M solves (A x7 with fixed sigma: 0.63M,
+    2.8x); r = 208 not reached at 2.0M (final 1.67; E5 fixed sigma 1.14M).
+  - Move A step 0.0124 -> 0.0050 (r = 57; surrogate predicted exactly this)
+    and 0.0245 -> 0.0050 (r = 208).  Lag is spread over theta, not along the
+    constant-field direction.
+  - Why the surrogate missed it: in the linearized model with beta, rho fixed,
+    scaling the likelihood weight w cancels out of the IACT of informed
+    directions.  In the full posterior the widths of rho and log beta are set
+    by the prior (rho sd 0.17 in both runs at r = 57) while the theta step
+    shrinks like 1/sqrt(w), so the theta directions coupled to them slow down
+    by up to w-fold.  Hypothesis; testable with a surrogate that includes rho.
+  - Next: extend the r = 208 run (experiments/extend_run.py) to 4-6M solves.
+- E1 with theta-repeat 7 (runs/e5_kle_2026-09, e1_blocked_a7, 2.0M solves):
+  WORSE than plain E1.  theta MPSRF final 1.42 (E1: 1.21); log beta PSRF
+  1.41 (1.21), spread of chain means / prior sd 0.31 (0.19); rho and level
+  unchanged.  E1's bottleneck is the beta ridge, moved only by block B, and
+  theta-repeat cuts B's share of the solves from 1/2 to 1/8.  E5 removes that
+  ridge (soft curve prior, moves C and D), which is why the same knob gives
+  E5 a 2x gain.  For the paper: theta-repeat pays only once the
+  non-identifiability is fixed.
+
