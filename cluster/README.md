@@ -249,6 +249,27 @@ python reports/report_soft.py --exp e5_soft_a7_noise    # table row "sigma_rel (
 In a fresh study folder the driver does the same:
 `RUNS=e5 THETA_REPEAT=7 E5_TAG=a7_noise E5_EXTRA="--learn-noise 1" bash cluster/overnight_scaling.sh`.
 
+**Scale-block pCN with learned noise (E9, 2026-10-04).** Move A on blocks of
+KLE modes by index (`--theta-innovation scale`, brho/scaleblocks.py): modes
+1-20, 21-60, 61-r (`--scale-edges 20,60`; r = 57 gets 1-20, 21-57), one block
+per theta move at random (`--scale-probs`, default equal), each with its own
+adapted step.  Exactly prior-preserving, gradient-free.  Same budget and
+theta share as the a7_noise runs (theta-repeat 7, 9 solves / iteration,
+2.0M solves), so `report_mpsrf.py` compares them directly:
+```bash
+# r = 57 (compare e5_soft_a7_noise)
+BRHO_ROOT=$PWD/runs/cluster_kle PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3" TAG=noise INNOV=scale \
+    E5_ARGS="--n-total 222300 --n-burn 18000 --thin 45 --theta-repeat 7 --learn-noise 1 --scale-edges 20,60" \
+    sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
+# r = 208, seed 2026 (compare e5_soft_a7_noise over its first 2.0M solves)
+BRHO_ROOT=$PWD/runs/cluster_l005 PROBLEM_ARGS="--n 64 --ell 0.05 --truth-mode kle --sigma-rel 2e-3" TAG=noise INNOV=scale \
+    E5_ARGS="--n-total 222200 --n-burn 10000 --thin 33 --theta-repeat 7 --learn-noise 1 --scale-edges 20,60" \
+    sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
+# continue either: RESUME=1 TAG=noise INNOV=scale sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
+```
+Run folders e5_soft_scale_noise.  Optional prior test (likelihood off):
+`PRIOR_TEST=1 TAG=noise INNOV=scale E5_ARGS="--theta-repeat 7 --learn-noise 1 --scale-edges 20,60" sbatch ...`.
+
 To continue a node job after a time limit, resubmit it the same way, e.g.
 `BRHO_ROOT=$PWD/runs/cluster_l005 RESUME=1 INNOV=block TAG=3x3 sbatch --partition=cpu-preempt cluster/slurm/node_e5_soft.sbatch`.
 

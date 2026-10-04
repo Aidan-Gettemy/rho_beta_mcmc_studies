@@ -51,6 +51,20 @@ BRHO_ROOT=$PWD/runs/cluster_l005 PROBLEM_ARGS="--n 64 --ell 0.05 --truth-mode kl
     sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
 ```
 
+### Scale-block pCN with learned noise (E9; compare with a7_noise)
+
+```bash
+# r = 57
+BRHO_ROOT=$PWD/runs/cluster_kle PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3" TAG=noise INNOV=scale \
+    E5_ARGS="--n-total 222300 --n-burn 18000 --thin 45 --theta-repeat 7 --learn-noise 1 --scale-edges 20,60" \
+    sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
+# r = 208, seed 2026
+BRHO_ROOT=$PWD/runs/cluster_l005 PROBLEM_ARGS="--n 64 --ell 0.05 --truth-mode kle --sigma-rel 2e-3" TAG=noise INNOV=scale \
+    E5_ARGS="--n-total 222200 --n-burn 10000 --thin 33 --theta-repeat 7 --learn-noise 1 --scale-edges 20,60" \
+    sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
+# report: python reports/report_soft.py --exp e5_soft_scale_noise   (as a job, section 5)
+```
+
 ### Theta-repeat control (r = 57)
 
 ```bash

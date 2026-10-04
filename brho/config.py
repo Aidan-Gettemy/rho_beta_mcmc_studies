@@ -216,7 +216,10 @@ class SoftSamplerConfig:
                                     # (prior mean of s2 near the configured sigma_rel^2)
     noise_a0: float = 2.0
     noise_b0: float = 0.0
-    theta_repeat: int = 1           # move A k times per iteration (global / ms only):
+    scale_edges: str = "20,60"     # theta_innovation="scale": KLE-mode cuts (1-based last
+                                    # mode of each block but the last); edges >= r dropped
+    scale_probs: str = ""          # visit probabilities per scale block ("" = equal)
+    theta_repeat: int = 1           # move A k times per iteration (global / ms / scale):
                                     # 2 + k solves; the E8 control (same theta share,
                                     # global moves).  E8 2x2 spends 14 of 16 on theta.
 

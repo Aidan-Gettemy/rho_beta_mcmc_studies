@@ -793,3 +793,50 @@ def test_learned_noise_level():
     ratio = np.median(sig) / matched
     assert 0.7 < ratio < 1.5, (np.median(sig), matched, p.sigma_rel)
     assert p.sigma_rel / matched > 1.5           # the configured value is tempered
+
+
+def test_scale_blocks():
+    """E9: theta_innovation="scale" moves one block of KLE modes per theta move,
+    each block with its own step slot; combines with theta_repeat (2 + k
+    solves); exactly prior-preserving (prior test); edges >= r dropped."""
+    from brho.samplers import SoftCurveSampler
+    from brho.scaleblocks import ScaleBlocks
+    p = prob()
+    r = p.r
+    sb = ScaleBlocks(r, "5,10,%d" % (r + 50), "1,1,2")
+    assert sb.n == 3 and sb.ranges == [(1, 5), (6, 10), (11, r)]
+    assert np.allclose(sb.p, [0.25, 0.25, 0.5])
+    assert sum(len(b) for b in sb.blocks) == r
+    for bad in ("1,1", "1,0,1"):
+        try:
+            ScaleBlocks(r, "5,10", bad)
+            raise AssertionError("bad scale_probs accepted: " + bad)
+        except ValueError:
+            pass
+    th = np.arange(r, dtype=float)
+    tp = sb.propose(th, 1, 0.3, np.random.default_rng(0))
+    assert np.array_equal(tp[:5], th[:5]) and np.array_equal(tp[10:], th[10:])
+    assert not np.array_equal(tp[5:10], th[5:10])
+    base = replace(C.SoftSamplerConfig(), prior_test=True, s_init=(0.5, 0.3, 0.12, 0.6),
+                   theta_innovation="scale", scale_edges="5,10", theta_repeat=3)
+    sk = SoftCurveSampler(p, _soft_curve(), base)
+    assert sk.solves_per_iteration == 5 and sk.sc.n == 3
+    assert len(sk.s_init) == len(sk.targets) == 6
+    assert sk.move_names[0].startswith("A1 modes 1-5") and sk.move_names[4].startswith("A2")
+    rng = np.random.default_rng(8)
+    out = []
+    for c in range(1200):
+        st = sk.init_state(rng)
+        ad = StepAdapter(sk.s_init, targets=sk.targets, every=10 ** 9)
+        for _ in range(5):
+            sk.step(st, ad, rng)
+        theta_props = ad.n[0] + ad.n[4] + ad.n[5]
+        assert theta_props == 15 and ad.n[1] == 5
+        out.append(st["theta"])
+    th = np.array(out)
+    frob = np.linalg.norm(np.cov(th.T) - np.eye(r)) / np.sqrt(r)
+    ref = np.linalg.norm(np.cov(rng.standard_normal(th.shape).T) - np.eye(r)) / np.sqrt(r)
+    assert frob < 1.3 * ref, (frob, ref)
+    assert abs(th.mean()) < 0.05
+    from brho import io
+    assert io.exp_soft(False, "scale", "noise") == "e5_soft_scale_noise"
