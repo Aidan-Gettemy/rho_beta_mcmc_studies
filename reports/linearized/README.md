@@ -9,6 +9,7 @@ intermediate .npz / .npy files are written here and git-ignored.
 | `lin.py` | Jacobian at the truth (central differences, 2r+1 solves) for the main 2D study (r = 57) and the scaling study (r = 208); d_eff, predicted posterior Phi, truth's informed energy and predicted rho | ~1 min |
 | `sim.py global|2x2|3x3` | global / block pCN on the Gaussian surrogate (r = 208, beta and rho fixed), IACT per theta-solve | ~1.5-3 min each (needs lin.py first) |
 | `visit.py` | 3x3 with visits weighted ~1/s^2, and a second global seed | ~5 min (needs sim.py 3x3) |
+| `spectral_split.py`, `spectral_split3.py` | pCN blocks by KLE index (scale) instead of space: budgets and simulated IACT vs global pCN | ~10 + 15 min |
 | `why_blocks.py` | why block pCN cannot beat global pCN: acceptance budget A(V) per block, per-direction speed predictions, likelihood-informed split | ~1 min |
 | `visit_adaptive.py` | importance-weighted random-scan visiting of the blocks (6 rules, 2x2 and 3x3) vs global pCN | ~25 min |
 | `screen.py` | informed energy of truth seeds 2000-2099 (same truth recipe, same frozen basis) | ~1 min |
@@ -57,4 +58,23 @@ learned in burn-in and then frozen (a fixed random scan, so the kernel is exact)
   - By contrast, the likelihood-informed split puts 2.07e4 of the 2.12e4 budget in 20 directions and leaves only 577 for the other 188.
   - That gives soft-part steps about 6x larger. But this split needs the Jacobian (idea 3 / DILI).
 - **The simple per-direction model brackets the measurement.** Averaging rates over parts predicts 2-4x median speed-up; averaging IACTs predicts 0.6-1.0x. Measured: 1.0-1.25x median, about 1.0x on the slowest direction. The ranking of rules matches.
+
+## Blocks by scale instead of space (2026-10-04, `spectral_split*.py`)
+
+- **The split.** How strongly the data constrain a direction depends on its scale. The mean of diag H falls from 879 (KLE modes 1-20) to 2.3 (modes 151-208).
+  - A split by KLE index therefore separates stiff from soft directions, as the likelihood-informed split does, without any Jacobian.
+  - Modes 101-208 hold 2.6% of the acceptance budget, so their step can be about 6x larger.
+- **Why it can beat global pCN, unlike the spatial blocks.** Stiff directions have small posterior widths, so they need little movement. A block made only of stiff directions can be visited rarely. Spatial blocks always contain soft directions, so no block gets that saving.
+- **Simulated (r = 208 surrogate, IACT per theta-solve, posterior PCs; global pCN: max 22.9k, median 13.8k):**
+
+| blocks (KLE modes) | visit probs | steps | speed-up max / median |
+|---|---|---|---|
+| 1-60, 61-208 | 0.5 / 0.5 | 0.022 / 0.061 | 1.30 / 2.32 |
+| 1-100, 101-208 | 0.5 / 0.5 | 0.022 / 0.120 | 1.28 / 1.70 |
+| 1-20, 21-60, 61-208 | 0.2 / 0.3 / 0.5 | 0.025 / 0.061 / 0.068 | 1.76 / 2.81 |
+| 1-20, 21-60, 61-208 | equal | 0.027 / 0.054 / 0.076 | 1.82 / 2.43 |
+| 1-10, 11-40, 41-100, 101-208 | 0.15 / 0.25 / 0.3 / 0.3 | 0.025 / 0.043 / 0.061 / 0.120 | 1.70 / 3.07 |
+
+- **Properties.** Gradient-free, exactly prior-preserving (pCN on coordinate blocks of N(0, I)), and the blocks are fixed by the prior alone.
+- **Caveat.** The surrogate fixes beta and rho, and it missed the learned-noise slowdown. The real gain must be measured in the full sampler.
 
