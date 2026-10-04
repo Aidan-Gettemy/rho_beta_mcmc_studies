@@ -15,9 +15,9 @@
   "mpsrf_convergence_iteration": 46343.0,
   "psrf_convergence_iteration": 21710.0,
   "at_iteration": 5375.0,
-  "mpsrf_at": 16.58333408101078,
+  "mpsrf_at": 16.583334081010754,
   "psrf_max_at": 4.10371958558199,
-  "mpsrf_final": 1.1274654925551357,
+  "mpsrf_final": 1.1274654925551355,
   "psrf_max_final": 1.063324359398784,
   "n_components_above_level_final": 0,
   "worst_components_final": [
