@@ -59,7 +59,7 @@
   },
   "SoftSamplerConfig": {
    "n_chains": 64,
-   "n_total": 222200,
+   "n_total": 666600,
    "n_burn": 10000,
    "thin": 33,
    "chunk": 5000,
@@ -172,5 +172,14 @@
   "G_std": 0.972538984842556,
   "noise_rel": 0.019798697014683207
  },
- "status": "set up"
+ "status": "extending to 666600",
+ "extensions": [
+  {
+   "key": "SoftSamplerConfig.n_total",
+   "old": 222200,
+   "new": 666600,
+   "note": "learned noise needs more than 2M solves at r = 208",
+   "time": "2026-10-04 10:39:02"
+  }
+ ]
 }
