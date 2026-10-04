@@ -80,11 +80,12 @@ def main(argv=None):  # argv=[] when called from report_all
     ap.add_argument("--n-pstats", type=int, default=200,
                     help="samples reconstructed for the posterior mean / sd")
     ap.add_argument("--window", type=int, default=None, help="acceptance window")
+    ap.add_argument("--exp-tag", default="", help="tagged run, e.g. a7 -> e1_blocked_a7")
     a = ap.parse_args(argv)
     moves = MOVES if a.move == "all" else (a.move,)
     done = {}
     for mv in moves:
-        exp = io.exp_e1(mv)
+        exp = io.exp_e1(mv, a.exp_tag)
         if not have(exp):
             print(f"E1 [{mv}]: no results"); continue
         out = report_move(exp, a)
@@ -99,7 +100,7 @@ def report_move(EXP, a):
     prob, man = load_problem(EXP)
     cfg = C.from_dict(C.NaiveConfig, man["configs"]["NaiveConfig"])
     blocked = cfg.move == "blocked"
-    ns = 2 if blocked else 1                           # PDE solves per iteration
+    ns = (int(getattr(cfg, "theta_repeat", 1)) + 1) if blocked else 1   # PDE solves / it
     paths = io.chain_files(io.results_dir(EXP))
     if not paths:
         print(f"E1 [{cfg.move}]: set up, no chains yet"); return None

@@ -19,6 +19,10 @@
 #                                 MOVE=both sbatch cluster/slurm/mpi_e1_naive.sbatch
 # Continue after a time limit:    RESUME=1 [MOVE=...] sbatch cluster/slurm/mpi_e1_naive.sbatch
 # Start over in the same study:   FRESH=1 [MOVE=...] sbatch cluster/slurm/mpi_e1_naive.sbatch
+# Theta-repeat (E1 counterpart of E5's --theta-repeat): TAG names the run folder
+# (results/e1_blocked_<TAG>) and must be given again with RESUME=1, e.g.
+#   TAG=a7 MOVE=blocked E1_ARGS_BLOCKED="--n-iter 250000 --n-burn 20000 --thin 50 --theta-repeat 7" \
+#       sbatch cluster/slurm/mpi_e1_naive.sbatch
 # Budgets (E1_ARGS_BLOCKED / E1_ARGS_GLOBAL below): the blocked move costs 2
 # PDE solves per iteration, the global move 1, so the defaults give both the
 # same 400k solves per chain (~1.5 ms per solve at 32x32: ~10-15 min per chain).
@@ -40,21 +44,22 @@ MODE=""
 [[ "${FRESH:-0}" == 1 ]] && MODE="--fresh"
 case "$MOVE" in blocked|global) MOVES="$MOVE" ;; both) MOVES="blocked global" ;;
      *) echo "MOVE must be blocked, global or both"; exit 1 ;; esac
-echo "BRHO_ROOT=$BRHO_ROOT  ranks=$SLURM_NTASKS  node=$(hostname)  moves=$MOVES  mode=${MODE:-new}"
+TAGARG="${TAG:+--exp-tag $TAG}"
+echo "BRHO_ROOT=$BRHO_ROOT  ranks=$SLURM_NTASKS  node=$(hostname)  moves=$MOVES  mode=${MODE:-new}  tag=${TAG:-none}"
 
 EXEC=experiments/run_e1_naive.py
 for mv in $MOVES; do
     if [[ "$MODE" == "--resume" ]]; then
-        ARGS="--resume"
+        ARGS="--resume $TAGARG"
     else
         [[ "$mv" == blocked ]] && BUDGET="$E1_ARGS_BLOCKED" || BUDGET="$E1_ARGS_GLOBAL"
-        ARGS="$MODE $PROBLEM_ARGS $BUDGET"
+        ARGS="$MODE $PROBLEM_ARGS $BUDGET $TAGARG"
     fi
     mpirun --bind-to core --map-by core -np "$SLURM_NTASKS" \
         python3 $EXEC --move "$mv" $ARGS
 done
 
 # --- post-processing (one process): each move, plus the comparison if both exist
-python3 reports/report_e1.py --move all
+python3 reports/report_e1.py --move all $TAGARG
 python3 reports/report_mpsrf.py          # MPSRF / PSRF curves of all theta (MATLAB convention)
 echo "figures: $BRHO_ROOT/figures/e1_{blocked,global,compare}"

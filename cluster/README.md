@@ -170,6 +170,19 @@ TAG=a4  E5_ARGS="--n-total 333400 --n-burn 27000 --thin 67 --theta-repeat 4"  sb
 ```
 Run folders e5_soft_a14 / a7 / a4; `report_mpsrf.py` puts them on the E5 / E8 axis.
 
+**E1 with the same knob (2026-10-03).** For a fair efficiency comparison E1
+gets theta-repeat too: blocked E1 moves theta k times per (xi_b, xi_r) move
+(`--theta-repeat k`, 1 + k solves per iteration), in its own folder via `TAG`.
+Main 2D study, 2.0M solves per chain:
+```bash
+export BRHO_ROOT=$PWD/runs/cluster_kle
+export PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3"
+TAG=a7 MOVE=blocked E1_ARGS_BLOCKED="--n-iter 250000 --n-burn 5000 --thin 50 --checkpoint-every 10000 --log-every 25000 --theta-repeat 7" \
+    sbatch --partition=cpu-preempt cluster/slurm/mpi_e1_naive.sbatch
+# continue after a time limit: RESUME=1 TAG=a7 MOVE=blocked sbatch --partition=cpu-preempt cluster/slurm/mpi_e1_naive.sbatch
+```
+Run folder e1_blocked_a7; `report_mpsrf.py` puts it on the common axis.
+
 ### Scaling study: 64x64, ell = 0.05, r = 208 (2026-10-01)
 
 Does the block-pCN gain grow with the number of subdomains when r is large?

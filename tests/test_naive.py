@@ -134,3 +134,31 @@ def test_mpsrf_matlab_port():
     j = int(np.flatnonzero(v[10:] < 1.2)[0]) + 10
     assert c == np.ceil(x[j - 1] + (x[j] - x[j - 1]) * (1.2 - v[j - 1]) / (v[j] - v[j - 1]))
     assert M.convergence_iteration(x, np.full(20, 3.0)) is None
+
+
+def test_theta_repeat():
+    """E1 blocked with theta_repeat = k: move A k times per iteration
+    (k + 1 solves), acc = fraction of the k accepted, resume still exact;
+    refused for the global move."""
+    p = prob()
+    c_full = cfg(move="blocked", theta_repeat=3, n_iter=600, n_burn=300, checkpoint_every=200)
+    c_half = replace(c_full, n_iter=400)
+    with tempfile.TemporaryDirectory() as d:
+        a, b = os.path.join(d, "a.npz"), os.path.join(d, "b.npz")
+        out = run_chain(p, c_full, 1, a, log=lambda m: None)
+        run_chain(p, c_half, 1, b, log=lambda m: None)
+        run_chain(p, c_full, 1, b, log=lambda m: None)
+        za, zb = np.load(a), np.load(b)
+        for k in ("acc", "acc_h", "phi", "kept_theta", "u", "s_final"):
+            assert np.array_equal(za[k], zb[k]), k
+        assert int(za["solves_per_iteration"]) == 4 and int(za["solves"]) == 4 * 600
+        assert int(za["theta_repeat"]) == 3 and out["theta_repeat"] == 3
+        fr = np.unique(np.round(za["acc"] * 3, 4))
+        assert set(fr) <= {0.0, 1.0, 2.0, 3.0} and len(fr) > 1
+    try:
+        run_chain(p, cfg(move="global", theta_repeat=2), 0, "unused.npz", log=lambda m: None)
+        raise AssertionError("global + theta_repeat should be refused")
+    except ValueError:
+        pass
+    from brho import io
+    assert io.exp_e1("blocked", "a7") == "e1_blocked_a7" and io.exp_e1("global") == "e1_global"

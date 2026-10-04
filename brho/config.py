@@ -229,8 +229,13 @@ class NaiveConfig:
         log beta = mu_logbeta + s_logbeta xi_b,  log rho = mu_logrho + s_logrho xi_r.
     move = "blocked" (default): per iteration A) pCN on theta, B) pCN on
            (xi_b, xi_r), each with its own adapted step (2 solves / iteration)
-    move = "global": ONE pCN move on all of u with a single step (1 solve)."""
+    move = "global": ONE pCN move on all of u with a single step (1 solve).
+    theta_repeat = k (blocked only): move A k times per iteration, then B once
+           (k + 1 solves / iteration); the E1 counterpart of E5's --theta-repeat,
+           so both samplers get the same knob in the efficiency comparison."""
     move: str = "blocked"
+    theta_repeat: int = 1          # blocked: theta moves per (xi_b, xi_r) move
+    exp_tag: str = ""              # run folder suffix: e1_<move>_<tag>
     n_iter: int = 100000
     n_burn: int = 10000            # step-size adaptation window (frozen after)
     thin: int = 100                # theta / p_obs saved every `thin` iterations

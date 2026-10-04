@@ -20,7 +20,8 @@ and its samples start after burn-in (the sampler keeps only those).
 With two or more runs present, figures/mpsrf_compare/ adds
     fig_mpsrf_compare_theta.png   MPSRF of all theta, every run on one axis
     fig_psrf_compare_theta.png    worst-component PSRF of theta, same
-with x = PDE solves per chain (E1 blocked 2 per iteration, global 1, E4 3,
+with x = PDE solves per chain (E1 blocked 2 per iteration, 1 + k with
+--theta-repeat k, global 1, E4 3,
 E5 / E7 3: A, B, D; C is free; E8 from the manifest's solves_per_iteration,
 e.g. 16 for the 2D block sweep), so equal x means equal work; tables/mpsrf_compare/mpsrf_compare.json.
 Writes, for each set, into figures/<exp>/ and tables/<exp>/:
@@ -65,11 +66,12 @@ def load_kept(exp, n_chains=None):
         lr = np.log(np.stack([z["kept_rho"][:L] for z in zs]))
         its = np.asarray(zs[0]["kept_it"][:L])
         move = str(zs[0]["move"]) if "move" in zs[0].files else "global"
+        k = int(zs[0]["theta_repeat"]) if "theta_repeat" in zs[0].files else 1
         full = np.concatenate([theta, lb[..., None], lr[..., None]], axis=2)
         return dict(sets=dict(theta=theta, all=full),
                     extra=dict(theta=[], all=["logβ", "logρ"]),
-                    its=its, m=len(paths), solves=2 if move == "blocked" else 1,
-                    label=f"E1 naive pCN ({move})")
+                    its=its, m=len(paths), solves=(k + 1) if move == "blocked" else 1,
+                    label=f"E1 naive pCN ({move})" + (f", {k} θ moves / it" if k > 1 else ""))
     L = min(len(z["kept_theta"]) for z in zs)                      # E4 / E5
     theta = np.stack([z["kept_theta"][:L] for z in zs])
     lr = np.log(np.stack([z["kept_rho"][:L] for z in zs]))
@@ -241,6 +243,7 @@ def run(exp, n_chains=None, skip=2, step=15, iter_burn=10, level=1.2, at=4900,
 
 
 COLORS = {"e1_blocked": "#c0392b", "e1_global": "#e67e22", "e4_sampler": "#1f5fa8",
+          "e1_blocked_a4": "#f1948a", "e1_blocked_a7": "#922b21", "e1_blocked_a14": "#641e16",
           "e5_soft": "#2e8b57",
           "e5_soft_ms_white": "#7b3fa0", "e5_soft_ms_raw": "#999999",
           "e5_soft_block": "#2a78d6", "e5_soft_block_random": "#76d7c4",
@@ -320,10 +323,12 @@ def main(argv=None):
                     io.exp_soft(False, "ms_white"), io.exp_soft(False, "ms_raw"),
                     io.exp_soft(False, "block"), io.exp_soft(False, "block_random"))
         if io.chain_files(io.results_dir(e))]
-    # tagged variants (e5_soft_block_<tag>, ...): any other e5_soft_* run with chains
+    # tagged variants (e5_soft_block_<tag>, e1_blocked_<tag>, ...): any other run with chains
     rdir = os.path.join(io.root(), "results")
     if not a.exp and os.path.isdir(rdir):
-        exps += sorted(e for e in os.listdir(rdir) if e.startswith(io.EXP_SOFT + "_")
+        exps += sorted(e for e in os.listdir(rdir)
+                       if (e.startswith(io.EXP_SOFT + "_") or e.startswith("e1_blocked_")
+                           or e.startswith("e1_global_"))
                        and e not in exps and io.chain_files(os.path.join(rdir, e)))
     results = {}
     for e in exps:
