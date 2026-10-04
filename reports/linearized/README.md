@@ -9,6 +9,7 @@ intermediate .npz / .npy files are written here and git-ignored.
 | `lin.py` | Jacobian at the truth (central differences, 2r+1 solves) for the main 2D study (r = 57) and the scaling study (r = 208); d_eff, predicted posterior Phi, truth's informed energy and predicted rho | ~1 min |
 | `sim.py global|2x2|3x3` | global / block pCN on the Gaussian surrogate (r = 208, beta and rho fixed), IACT per theta-solve | ~1.5-3 min each (needs lin.py first) |
 | `visit.py` | 3x3 with visits weighted ~1/s^2, and a second global seed | ~5 min (needs sim.py 3x3) |
+| `why_blocks.py` | why block pCN cannot beat global pCN: acceptance budget A(V) per block, per-direction speed predictions, likelihood-informed split | ~1 min |
 | `visit_adaptive.py` | importance-weighted random-scan visiting of the blocks (6 rules, 2x2 and 3x3) vs global pCN | ~25 min |
 | `screen.py` | informed energy of truth seeds 2000-2099 (same truth recipe, same frozen basis) | ~1 min |
 | `da_test.py` | delayed acceptance (Christen & Fox) with the surrogate linearized at the truth: global pCN, both studies | ~1 min |
@@ -44,3 +45,16 @@ learned in burn-in and then frozen (a fixed random scan, so the kernel is exact)
 - Weighting by block size alone ("dim") does as well as the data-informed rule. So the gain is mostly a fix of uniform visiting, which under-visits large blocks, not data importance.
 - Aggressive weighting (1/s^2, dim/s^2) starves blocks and is worse.
 - Conclusion: this does not close the 1.55x gap to E5 with theta-repeat 14.
+
+### Why it doesn't help (`why_blocks.py`)
+
+- **The acceptance budget is additive.** The log-acceptance variance of a pCN move on subspace V is about s^2 A(V), with A(V) = E|V' grad Phi|^2, and A adds up over orthogonal directions.
+  - So s_V^2 ~ 1/A(V), and progress per solve in block V scales as p_V / A(V).
+  - The best allocation (p_V ~ A(V)) gives every block the rate 1/sum A.
+  - For an exact partition this is exactly global pCN. Overlap makes it worse: sum A = 1.6x global for both 2x2 and 3x3 (with the dual blocks).
+- **Reweighting only fixes uniform visiting's imbalance.** Block A ranges from about 1 to 9.6e3, so uniform visiting is very unbalanced. Reweighting cannot beat global pCN.
+- **Spatial blocks do not separate stiff from soft directions.** Every subdomain holds both data-informed and prior-dominated directions.
+  - By contrast, the likelihood-informed split puts 2.07e4 of the 2.12e4 budget in 20 directions and leaves only 577 for the other 188.
+  - That gives soft-part steps about 6x larger. But this split needs the Jacobian (idea 3 / DILI).
+- **The simple per-direction model brackets the measurement.** Averaging rates over parts predicts 2-4x median speed-up; averaging IACTs predicts 0.6-1.0x. Measured: 1.0-1.25x median, about 1.0x on the slowest direction. The ranking of rules matches.
+
