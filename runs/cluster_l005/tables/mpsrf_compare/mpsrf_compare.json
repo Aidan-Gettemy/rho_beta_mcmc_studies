@@ -19,7 +19,7 @@
   "mpsrf": {
    "convergence_iteration": 41754.0,
    "convergence_solves": 668064.0,
-   "final": 1.06298949143021,
+   "final": 1.0629894914302103,
    "final_solves": 2000000.0,
    "dim": 208
   },
@@ -28,6 +28,22 @@
    "convergence_solves": 361744.0,
    "final": 1.0212966024747032,
    "final_solves": 2000000.0,
+   "dim": 208
+  }
+ },
+ "e5_soft_a7_noise": {
+  "mpsrf": {
+   "convergence_iteration": null,
+   "convergence_solves": null,
+   "final": 1.6744773022652,
+   "final_solves": 1999710.0,
+   "dim": 208
+  },
+  "psrf": {
+   "convergence_iteration": null,
+   "convergence_solves": null,
+   "final": 1.2057200686039113,
+   "final_solves": 1999710.0,
    "dim": 208
   }
  },
