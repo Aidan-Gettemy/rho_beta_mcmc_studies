@@ -21,7 +21,9 @@ Same workflow as run_curve_sampler.py:
 Requires results/e3_curve/curve_<field>.npz from the SAME study (same KLE,
 same truth: K* comes from the truth).
 Output: results/e5_soft/ (or results/e5_prior_test/)
---theta-innovation ms_white (E7) or block / block_random (E8, block pCN,
+--theta-innovation scale (E9, pCN on blocks of KLE modes by index,
+brho/scaleblocks.py; --scale-edges 20,60, --scale-probs; combines with
+--theta-repeat), ms_white (E7) or block / block_random (E8, block pCN,
 brho/blockpcn.py) writes to e5_soft_<innovation> / e5_prior_test_<innovation>.
 """
 import _common  # noqa: F401  (first: pins threads before NumPy loads)
@@ -100,6 +102,7 @@ def setup(pc, scfg, curve_field, curve_statistic, exp):
                            constant_field_residual=smp.c_resid,
                            multiscale=(smp.ms.summary() if smp.ms is not None else None),
                            block=(smp.bp.summary() if smp.bp is not None else None),
+                           scale=(smp.sc.summary() if smp.sc is not None else None),
                            solves_per_iteration=smp.solves_per_iteration,
                            moves=list(smp.move_names),
                            truth=syn.summary(), status="set up"))
@@ -124,6 +127,11 @@ def setup(pc, scfg, curve_field, curve_statistic, exp):
               f"{b['energy']} (dual {b['dual_energy']}), halo {b['halo']} (dual "
               f"{b['dual_halo']}); spans R^{b['r']}: {b['spans']}; coverage min "
               f"{b['coverage_min']:.3f}; {smp.solves_per_iteration} solves / iteration")
+    if smp.sc is not None:
+        sc = smp.sc.summary()
+        print(f"  scale-block pCN (E9): blocks {', '.join(f'{a}-{b}' for a, b in sc['blocks'])} "
+              f"(dims {sc['dims']}), visit probabilities {[round(x, 3) for x in sc['probs']]}, "
+              f"one adapted step per block")
     print(f"  soft prior at rho_true={rt}: beta_bar={prior_at_truth['beta_bar']:.3f}, "
           f"s={prior_at_truth['s']:.3f}; beta_true is {prior_at_truth['z_truth']:+.2f} s "
           f"from the curve; constant field outside the KLE span: "

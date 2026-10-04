@@ -93,11 +93,19 @@ def load_kept(exp, n_chains=None):
                 lab += ", no coarse"
             if (b.get("dual_halo") or 0) > (b.get("halo") or 0):
                 lab += f", dual halo {b['dual_halo']:g}"
+        elif innov == "scale":
+            k = sc.get("theta_repeat", 1)
+            sb = (man.get("scale") or {}).get("blocks") or []
+            lab = ("E9 soft-curve sampler, scale-block pCN θ"
+                   + (f" ({len(sb)} blocks)" if sb else "")
+                   + (f", {k} θ moves / it" if k > 1 else ""))
         elif innov == "global":
             k = sc.get("theta_repeat", 1)
             lab = "E5 soft-curve sampler (β free)" + (f", {k} θ moves / it" if k > 1 else "")
         else:
             lab = f"E7 soft-curve sampler, {innov.replace('ms_', 'multiscale ')} θ"
+        if sc.get("learn_noise"):
+            lab += ", learned σ"
         return dict(sets=dict(theta=theta, all=full),
                     extra=dict(theta=[], all=["logβ", "logρ"]),
                     its=its, m=len(paths), solves=man.get("solves_per_iteration", 3),
@@ -248,6 +256,8 @@ COLORS = {"e1_blocked": "#c0392b", "e1_global": "#e67e22", "e4_sampler": "#1f5fa
           "e5_soft_ms_white": "#7b3fa0", "e5_soft_ms_raw": "#999999",
           "e5_soft_block": "#2a78d6", "e5_soft_block_random": "#76d7c4",
           "e5_soft_block_3x3": "#eda100",
+          "e5_soft_scale": "#0f8a7a", "e5_soft_scale_noise": "#0f8a7a",
+          "e5_soft_a7_noise": "#8c564b",
           "e5_soft_a4": "#e87ba4", "e5_soft_a7": "#d55181", "e5_soft_a14": "#4a3aa7",
           "e5_soft_block_nocoarse": "#e87ba4", "e5_soft_block_nocoarse_dualhalo": "#4a3aa7"}
 

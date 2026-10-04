@@ -10,6 +10,9 @@ E7  ... theta_innovation="ms_white": whitened multiscale innovation in A
 E8  ... theta_innovation="block": A = block (subdomain) pCN sweep, coarse +
                         primal + dual local subspaces (brho/blockpcn.py), one
                         adapted step per block
+E9  ... theta_innovation="scale": A = pCN on one block of KLE modes by index
+                        (brho/scaleblocks.py), drawn at random each move, one
+                        adapted step per block; combines with theta_repeat
 
 E4  ThreeStepSampler    unknowns (theta, w), log rho = mu_rho + s_rho w,
                         beta eliminated by the offline curve beta_bar(rho):
@@ -283,7 +286,7 @@ class SoftCurveSampler:
             self.n_obs = int(prob.syn.n_obs)
             self.STATE = ("w", "lb", "s2")
         self.innovation = getattr(scfg, "theta_innovation", "global")
-        self.ms = self.bp = None
+        self.ms = self.bp = self.sc = None
         self.s_init, self.targets = tuple(scfg.s_init), tuple(scfg.targets)
         self.move_names = ("A", "B", "C", "D")
         self.theta_repeat = int(getattr(scfg, "theta_repeat", 1))
@@ -313,12 +316,24 @@ class SoftCurveSampler:
                 raise ValueError("theta_repeat applies to the global / multiscale move A, "
                                  "not to block pCN (E8 already makes many theta moves)")
             self.solves_per_iteration = self.bp.solves(self.schedule) + 2
+        elif self.innovation == "scale":
+            # E9: move A on one KLE-mode block per move (brho/scaleblocks.py).
+            # Step slots: 0 = block 1 (A's slot), 1-3 = B, C, D, 4.. = blocks 2..
+            from .scaleblocks import ScaleBlocks
+            self.sc = ScaleBlocks(self.r, getattr(scfg, "scale_edges", "20,60"),
+                                  getattr(scfg, "scale_probs", ""))
+            nb = self.sc.n
+            self.s_init += (scfg.s_init[0],) * (nb - 1)
+            self.targets += (scfg.targets[0],) * (nb - 1)
+            names = [f"A{j + 1} {nm}" for j, nm in enumerate(self.sc.names())]
+            self.move_names = (names[0], "B", "C", "D") + tuple(names[1:])
         elif self.innovation != "global":
             from .multiscale import from_problem
             self.ms = from_problem(prob, scfg.ms_blocks, scfg.ms_local_energy)
 
     def move_index(self, j):
-        """Step / acceptance slot of block move j (0 = coarse)."""
+        """Step / acceptance slot of block move j (E8: 0 = coarse; E9: 0 = first
+        scale block); B, C, D keep slots 1-3."""
         return 0 if j == 0 else 3 + j
 
     # ------------------------------------------------------------- model
@@ -423,6 +438,17 @@ class SoftCurveSampler:
             # solves spent on theta, plain global moves.
             for _ in range(self.theta_repeat):
                 th = st["theta"]
+                if self.sc is not None:
+                    # E9: one scale block, its own step (slot move_index(j))
+                    j = self.sc.choose(rng)
+                    k = self.move_index(j)
+                    th_p = self.sc.propose(th, j, ad.s[k], rng)
+                    phi_p, pobs_p, keff_p = self.potential(th_p, w, lb)
+                    a = np.log(rng.random()) < self.noise_c(st) * (st["phi"] - phi_p)
+                    if a:
+                        st.update(theta=th_p, phi=phi_p, pobs=pobs_p, keff=keff_p)
+                    ad.record(k, a)
+                    continue
                 if self.ms is None:
                     th_p = pcn(th, s_th, rng)
                 else:

@@ -834,3 +834,24 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
   E5 a 2x gain.  For the paper: theta-repeat pays only once the
   non-identifiability is fixed.
 
+## 2026-10-04 - E9: scale-block pCN for theta (`--theta-innovation scale`)
+
+- Move A on blocks of KLE modes by index (brho/scaleblocks.py): default
+  modes 1-20, 21-60, 61-r (`--scale-edges 20,60`; edges >= r dropped, so r = 57
+  gets 1-20, 21-57); one block per theta move, drawn with fixed probabilities
+  (`--scale-probs`, default equal), each block with its own adapted step;
+  combines with `--theta-repeat` (2 + k solves).  Exactly prior-preserving
+  (pCN on independent coordinates of N(0, I)); gradient-free; blocks fixed by
+  the prior alone.
+- Why: data informativeness falls steeply with KLE index (r = 208 surrogate:
+  mean diag H 879 for modes 1-20, 2.3 for 151-208), so scale blocks separate
+  stiff from soft directions; surrogate gain 1.7-1.8x on the slowest
+  direction (reports/linearized/spectral_split*.py, PR #84).  Target: the slow
+  learned-noise runs (rho build-up in the fine-scale modes under move A's
+  0.005 step).
+- Test: tests/test_core.py::test_scale_blocks (block parsing, proposal
+  touches one block only, step slots, 2 + k solves, prior preserved).  All 57
+  tests pass; smoke run through setup, chains, report_soft, report_mpsrf.
+- Runs: cluster/README.md "Scale-block pCN with learned noise" (r = 57 and
+  r = 208, theta-repeat 7, 2.0M solves, same budget as the a7_noise runs).
+
