@@ -783,3 +783,18 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
   (median; max 16.4k -> 18.6k): about 10% slower mixing, no extra solves.
 - Runs: cluster/README.md "Learned noise level" (r = 57 and r = 208, A x7).
 
+## 2026-10-03 - E1 gets theta-repeat; seed 2074 E5 completed
+
+- `--theta-repeat k` for E1 blocked (`brho/naive.py`): move A k times per
+  (xi_b, xi_r) move, 1 + k solves per iteration, run folder e1_blocked_<TAG>
+  (`--exp-tag`).  k = 1 is the original path.  The global move refuses k > 1.
+  Reports (report_e1, report_mpsrf) count the solves from the chain files.
+  Test: tests/test_naive.py::test_theta_repeat (resume exact, solves, refusal).
+  Why: the paper's efficiency claim is E5 x k vs E5; the reviewer's question
+  "did E1 get the same knob?" needs E1 x k.  Command: cluster/README.md.
+- Seed 2074 E5 (runs/cluster_l005_s2074, PR #79) completed to 2.0M solves:
+  theta MPSRF < 1.2 at 1.53M solves (final 1.15); E8 2x2 0.91M, 3x3 1.30M.
+  Posterior identical in all three: rho 1.34 [1.19, 1.53] (truth 1.5,
+  covered), beta 2.52 [2.06, 3.10] (2.3), level 0.90 [0.82, 0.96] (0.83).
+  rho matches the tempered-likelihood prediction for this truth (1.33).
+

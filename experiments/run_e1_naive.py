@@ -8,6 +8,10 @@ and rho drift and different chains end in different places.
     --move global    one pCN move on everything, one step size
 Each move writes its own run folder (results/e1_blocked, results/e1_global),
 so both can live in one study and report_e1.py compares them.
+    --theta-repeat k --exp-tag a<k>   blocked only: theta moved k times per
+                     iteration (k + 1 solves), folder results/e1_blocked_a<k>;
+                     the E1 counterpart of E5's --theta-repeat (pass the same
+                     --exp-tag with --resume)
 
 Cluster (see cluster/slurm/mpi_e1_naive.sbatch):
     mpirun -np 64 python experiments/run_e1_naive.py [--move global] [config flags]
@@ -140,7 +144,7 @@ def main():
     args = ap.parse_args()
     global EXP
     args.move_resolved = args.move or C.NaiveConfig().move
-    EXP = io.exp_e1(args.move_resolved)
+    EXP = io.exp_e1(args.move_resolved, args.exp_tag or "")
     t0 = time.time()
     n_chains = SIZE if COMM else args.local_chains
 

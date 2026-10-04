@@ -59,6 +59,15 @@ TAG=a7  E5_ARGS="--n-total 222300 --n-burn 18000 --thin 45 --theta-repeat 7"  sb
 TAG=a4  E5_ARGS="--n-total 333400 --n-burn 27000 --thin 67 --theta-repeat 4"  sbatch cluster/slurm/node_e5_soft.sbatch
 ```
 
+### E1 (naive) with theta-repeat, MPI job (r = 57)
+
+```bash
+BRHO_ROOT=$PWD/runs/cluster_kle PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3" TAG=a7 MOVE=blocked \
+  E1_ARGS_BLOCKED="--n-iter 250000 --n-burn 5000 --thin 50 --checkpoint-every 10000 --log-every 25000 --theta-repeat 7" \
+  sbatch --partition=cpu-preempt cluster/slurm/mpi_e1_naive.sbatch
+# resume: RESUME=1 TAG=a7 MOVE=blocked sbatch --partition=cpu-preempt cluster/slurm/mpi_e1_naive.sbatch
+```
+
 ## 2. Whole new study folder in one go (E3 curve -> setup -> node jobs)
 
 ```bash

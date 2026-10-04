@@ -20,11 +20,12 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXP_NAIVE = "e1_naive"          # legacy name (first E1 runs, global move)
 
 
-def exp_e1(move):
-    """E1 run folder per move: e1_blocked, e1_global."""
+def exp_e1(move, tag=""):
+    """E1 run folder per move: e1_blocked, e1_global; a tag (e.g. a7 for
+    --theta-repeat 7) gives its own folder, e1_blocked_a7."""
     if move not in ("blocked", "global"):
         raise ValueError(move)
-    return f"e1_{move}"
+    return f"e1_{move}" + (f"_{tag}" if tag else "")
 EXP_GRID = "e2_grid"
 EXP_CURVE = "e3_curve"
 EXP_SAMPLER = "e4_sampler"
