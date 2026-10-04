@@ -3,15 +3,15 @@
   "mpsrf": {
    "convergence_iteration": 509804.0,
    "convergence_solves": 1529412.0,
-   "final": 1.193359508608218,
-   "final_solves": 1587000.0,
+   "final": 1.1526527562591207,
+   "final_solves": 1996500.0,
    "dim": 208
   },
   "psrf": {
    "convergence_iteration": 173542.0,
    "convergence_solves": 520626.0,
-   "final": 1.046250523977737,
-   "final_solves": 1587000.0,
+   "final": 1.0372987868435704,
+   "final_solves": 1996500.0,
    "dim": 208
   }
  },
@@ -19,7 +19,7 @@
   "mpsrf": {
    "convergence_iteration": 57015.0,
    "convergence_solves": 912240.0,
-   "final": 1.0792241115574122,
+   "final": 1.079224111557412,
    "final_solves": 2000000.0,
    "dim": 208
   },
@@ -35,7 +35,7 @@
   "mpsrf": {
    "convergence_iteration": 46343.0,
    "convergence_solves": 1297604.0,
-   "final": 1.1274654925551357,
+   "final": 1.1274654925551355,
    "final_solves": 1996400.0,
    "dim": 208
   },
