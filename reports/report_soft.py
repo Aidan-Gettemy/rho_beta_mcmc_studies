@@ -237,6 +237,12 @@ def main(argv=None):
             row("theta_norm2/r", post["theta_norm2"].ravel() / r, 1.0,
                 tr=post["theta_norm2"] / r),
             row("xi_b", post["xi_b"].ravel(), None, tr=post["xi_b"])]
+    if "tr_sigma_rel" in ch:
+        # learned noise level (--learn-noise 1); 'truth' = the matched value
+        # sigma_p / |d|, the actual per-sensor noise in RE units
+        sr = ch["tr_sigma_rel"][:, ib:]
+        sr_match = float(syn.sigma_p / np.linalg.norm(syn.d_p))
+        rows.append(row("sigma_rel (learned)", sr.ravel(), sr_match, tr=sr))
     cols = ["quantity", "median", "q05", "q95", "mean", "sd", "truth", "z", "covered",
             "psrf", "split_rhat", "ess"]
     tdir = io.tables_dir(exp)

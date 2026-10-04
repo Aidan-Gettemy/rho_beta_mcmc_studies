@@ -763,3 +763,23 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
   sensors).  beta and the level are pinned directly by the data: unaffected.
   Confirmation: --likelihood absolute on r = 208, seed 2026 (predicted rho
   ~1.5).
+
+## 2026-10-03 - Learned noise level (`--learn-noise 1`, move E)
+
+- Option 2 of the likelihood fix: keep the relative likelihood, treat
+  s2 = sigma_rel^2 as unknown with an inverse-gamma prior IG(a0, b0)
+  (default a0 = 2, b0 = a0 x configured sigma_rel^2) and draw it exactly from
+  IG(a0 + n_obs/2, b0 + sigma_rel_cfg^2 Phi_cfg) once per iteration (move E,
+  after D).  No PDE solve: Phi at the configured sigma_rel is already known,
+  and every other move's misfit is rescaled by sigma_rel_cfg^2 / s2.
+  K_eff term unchanged.  Prior test: s2 drawn from its prior.
+- Check: tests/test_core.py::test_learned_noise_level (32x32, start at truth):
+  sigma_rel settles within 0.7-1.5x the matched value sigma_p / |d|.  All 55
+  tests pass.  report_soft adds a "sigma_rel (learned)" row (truth column =
+  matched value).
+- Expected cost: the posterior sharpens to the matched noise level.  On the
+  r = 57 Gaussian surrogate (reports/linearized) the global pCN step drops
+  0.0124 -> 0.0050 but the IACT per theta-solve only rises 5.7k -> 6.2k
+  (median; max 16.4k -> 18.6k): about 10% slower mixing, no extra solves.
+- Runs: cluster/README.md "Learned noise level" (r = 57 and r = 208, A x7).
+

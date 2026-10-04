@@ -750,3 +750,46 @@ def test_theta_repeat_control():
         pass
     from brho import io
     assert io.exp_soft(False, "global", "a14") == "e5_soft_a14"
+
+
+def test_learned_noise_level():
+    """learn_noise: s2 = sigma_rel^2 gets an exact inverse-gamma Gibbs draw.
+    Likelihood off: s2 follows its prior IG(a0, b0) and theta its prior.
+    Likelihood on: sigma_rel settles near the noise-matched value
+    sigma_p / |d| (the residuals pin it), whatever the configured sigma_rel."""
+    from brho.samplers import SoftCurveSampler
+    p = Problem(C.ProblemConfig(truth_mode="kle", likelihood="relative",
+                                sigma_rel=2e-3), log=lambda m: None)   # 32x32, 512 sensors
+    cfg = replace(C.SoftSamplerConfig(), prior_test=True, learn_noise=True,
+                  s_init=(0.5, 0.3, 0.12, 0.6))
+    s = SoftCurveSampler(p, _soft_curve(), cfg)
+    assert s.STATE == ("w", "lb", "s2") and abs(s.noise_b0 - 2 * 4e-6) < 1e-15
+    rng = np.random.default_rng(3)
+    st = s.init_state(rng)
+    ad = StepAdapter(s.s_init, targets=s.targets, every=10 ** 9)
+    prec = []
+    for _ in range(20000):
+        s.step(st, ad, rng)
+        prec.append(1.0 / st["s2"])
+    prec = np.array(prec)                       # 1/s2 ~ Gamma(a0, rate b0)
+    assert abs(prec.mean() / (s.noise_a0 / s.noise_b0) - 1) < 0.05
+    assert abs(prec.var() / (s.noise_a0 / s.noise_b0 ** 2) - 1) < 0.15
+    # likelihood on: the learned sigma_rel approaches the matched value
+    matched = p.syn.sigma_p / np.linalg.norm(p.syn.d_p)
+    cfg_on = replace(cfg, prior_test=False, s_init=(0.01, 0.05, 0.1, 0.1))
+    s_on = SoftCurveSampler(p, _soft_curve(), cfg_on)
+    th0 = p.kle.project(p.syn.G_true)                  # start at the truth
+    w0 = (np.log(p.syn.rho_true) - cfg.mu_rho) / cfg.s_rho
+    lb0 = float(np.log(p.syn.beta_true))
+    phi0, pobs0, keff0 = s_on.potential(th0, w0, lb0)
+    st = dict(theta=th0, w=w0, lb=lb0, phi=phi0, pobs=pobs0, keff=keff0, s2=s_on.s2_fixed)
+    ad = StepAdapter(s_on.s_init, targets=s_on.targets, every=50)
+    sig = []
+    for it in range(600):
+        s_on.step(st, ad, rng)
+        ad.tick(it, 10 ** 6)
+        if it >= 300:
+            sig.append(np.sqrt(st["s2"]))
+    ratio = np.median(sig) / matched
+    assert 0.7 < ratio < 1.5, (np.median(sig), matched, p.sigma_rel)
+    assert p.sigma_rel / matched > 1.5           # the configured value is tempered
