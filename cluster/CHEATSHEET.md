@@ -1,0 +1,138 @@
+# Ganymede cheat sheet: rho_beta_mcmc_studies
+
+Last updated: 2026-10-03
+
+## 0. Every session
+
+```bash
+cd /scratch/ganymede2/arg210006/rho_beta_mcmc_studies      # same as ~/scratch/...
+module purge; module load gnu9/9.4.0; module load conda/22.11.1
+source activate $HOME/.conda/envs/gd24_numba
+git switch main && git pull                                 # after merging PRs on GitHub
+```
+
+**Always set `BRHO_ROOT` to the study folder.** Without it, runs and reports write to the repo root.
+
+| study | `BRHO_ROOT` | `PROBLEM_ARGS` |
+|---|---|---|
+| main 2D, r = 57 (32x32) | `$PWD/runs/cluster_kle` | `--truth-mode kle --sigma-rel 2e-3` |
+| r = 208, seed 2026 | `$PWD/runs/cluster_l005` | `--n 64 --ell 0.05 --truth-mode kle --sigma-rel 2e-3` |
+| r = 208, seed 2074 (representative) | `$PWD/runs/cluster_l005_s2074` | same as above + `--truth-seed 2074` |
+| r = 208, stubs | `$PWD/runs/cluster_l005_s2063`, `_s2086` | + `--truth-seed 2063` / `2086` |
+
+Note: `l005` is a lowercase L ("ell 0.05"), not 1005.
+
+## 1. Submit a sampler run (one node, 64 chains)
+
+```bash
+export BRHO_ROOT=$PWD/runs/<study>
+export PROBLEM_ARGS="<from the table>"
+TAG=<name> INNOV=global E5_ARGS="--n-total N --n-burn B --thin T [flags]" \
+    sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
+```
+
+- **Output folder:** `results/e5_soft_<TAG>`. With no TAG it is `e5_soft`.
+- **`INNOV`:** `global` is E5 and `block` is E8 (block pCN).
+- **Prior test (likelihood off):** prefix with `PRIOR_TEST=1`.
+- **Sizing:** iterations = 2.0M solves / solves per iteration.
+  - E5 is 3 solves/it; E5 with `--theta-repeat k` is 2 + k; E8 2x2 is 16; E8 3x3 is 28.
+  - Rule of thumb: burn-in about 8% of iterations, thin so you keep about 5,000 samples.
+
+### Learned noise level (PR #76)
+
+```bash
+# r = 57
+BRHO_ROOT=$PWD/runs/cluster_kle PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3" TAG=a7_noise \
+    E5_ARGS="--n-total 222300 --n-burn 18000 --thin 45 --theta-repeat 7 --learn-noise 1" \
+    sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
+# r = 208, seed 2026
+BRHO_ROOT=$PWD/runs/cluster_l005 PROBLEM_ARGS="--n 64 --ell 0.05 --truth-mode kle --sigma-rel 2e-3" TAG=a7_noise \
+    E5_ARGS="--n-total 222200 --n-burn 10000 --thin 33 --theta-repeat 7 --learn-noise 1" \
+    sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
+```
+
+### Theta-repeat control (r = 57)
+
+```bash
+TAG=a14 E5_ARGS="--n-total 125000 --n-burn 10000 --thin 25 --theta-repeat 14" sbatch cluster/slurm/node_e5_soft.sbatch
+TAG=a7  E5_ARGS="--n-total 222300 --n-burn 18000 --thin 45 --theta-repeat 7"  sbatch cluster/slurm/node_e5_soft.sbatch
+TAG=a4  E5_ARGS="--n-total 333400 --n-burn 27000 --thin 67 --theta-repeat 4"  sbatch cluster/slurm/node_e5_soft.sbatch
+```
+
+## 2. Whole new study folder in one go (E3 curve -> setup -> node jobs)
+
+```bash
+BRHO_ROOT=$PWD/runs/<new_study> PROBLEM_ARGS="..." \
+  RUNS="e5 b2 b3" SOLVES=2000000 THETA_REPEAT=1 PART=cpu-preempt TIME=12:00:00 \
+  bash cluster/overnight_scaling.sh
+```
+
+- `RUNS`: any of `e5`, `b2`, `b3`. Use `SOLVES=500000` for stubs.
+- E5 extras: `E5_EXTRA="--learn-noise 1"` and `E5_TAG=a7_noise`.
+- **Only for NEW folders.** It reruns E3 and the setup.
+
+## 3. Resume after a time limit or preemption
+
+Use the same command plus `RESUME=1`. It continues from the checkpoints and nothing is redone.
+
+```bash
+BRHO_ROOT=$PWD/runs/<study> RESUME=1 INNOV=global TAG=<tag> \
+    sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
+```
+
+- Leave out `TAG` for the plain `e5_soft` run.
+- For E8 use `INNOV=block`, with `TAG=3x3` for the 3x3 run.
+- **Do not leave out `RESUME=1`:** a non-resume submit reruns setup and deletes the chains.
+
+## 4. Check on jobs
+
+```bash
+squeue -u $USER                                    # PD = waiting, R = running
+tail logs/brho-e5-<jobid>.out                      # job log (per-chain logs: logs/brho-e5-<jobid>-rank*.out)
+sacct -j <jobid> --format=JobID,State,Elapsed,MaxRSS   # finished jobs: state, time, memory
+scancel <jobid>
+python experiments/run_soft_sampler.py --status --theta-innovation global [--exp-tag <tag>]   # chain progress
+```
+
+## 5. Reports: as a job, NOT on the login node (it runs out of memory)
+
+```bash
+export BRHO_ROOT=$PWD/runs/<study>
+mkdir -p logs
+sbatch --partition=cpu-preempt --ntasks=1 --cpus-per-task=4 --mem=48G --time=01:00:00 \
+    -J brho-report -o logs/brho-report-%j.out --export=ALL \
+    --wrap "source cluster/env.sh; export OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 MKL_NUM_THREADS=4 NUMBA_NUM_THREADS=4; \
+            python reports/report_soft.py --exp e5_soft_<tag> && python reports/report_mpsrf.py"
+```
+
+- Expect about 10-20 minutes at 64x64.
+- `report_mpsrf.py` with no `--exp` redoes the MPSRF figure for every run in the study; `--exp e5_soft_<tag>` does just one.
+- If memory still runs out, check `sacct ... MaxRSS` and raise `--mem` to 64G.
+- Interactive alternative: `salloc --partition=cpu-preempt --cpus-per-task=4 --mem=48G --time=01:00:00`.
+- Block-pCN geometry figures: `python experiments/run_block_prior_test.py --from-exp e5_soft_block --blocks 2`.
+
+## 6. Send results to GitHub
+
+```bash
+git fetch origin
+git switch -c results-<what> origin/main           # new branch FIRST, never commit on main
+git add --sparse runs/<study>
+git commit -m "results: <what>"
+git push -u origin results-<what>
+```
+
+- Then open the PR on GitHub, or ask Claude to.
+- **Sparse clone:** after the first results commit of a study inside the repo, run `git sparse-checkout add runs/<study>`. Otherwise the next pull removes those files from your working tree. The same command brings them back if they've vanished.
+- **Accidentally committed on main:** `git switch -c results-<what>` (takes the commit with you), then `git branch -f main origin/main`.
+- **Study kept outside the repo (on scratch):** `bash cluster/export_results.sh /scratch/$USER/brho/<study> <study>` first, then the same git steps.
+
+## 7. Quick fixes
+
+| symptom | fix |
+|---|---|
+| `FileNotFoundError ... manifest.json` | wrong or missing `BRHO_ROOT` (or `1005` instead of `l005`) |
+| report killed / out of memory | run it as the job in section 5 |
+| `unrecognized arguments: --learn-noise` | merge PR #76 and `git pull` |
+| run stopped part-way | section 3 (`RESUME=1`) |
+| committed files vanished after a pull | `git sparse-checkout add runs/<study>` |
+| "branch already exists" | `git switch <branch>` instead of `-c`, or pick a new name |

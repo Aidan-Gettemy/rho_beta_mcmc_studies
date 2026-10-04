@@ -1,5 +1,7 @@
 # Running on a cluster
 
+Quick reference for day-to-day commands: [CHEATSHEET.md](CHEATSHEET.md).
+
 Every experiment splits into **setup → many independent tasks → collect**:
 
 | Step | Command | What it does |
