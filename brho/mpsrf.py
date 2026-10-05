@@ -40,9 +40,85 @@ def get_mpsrf(theta):
     return float(mpsrf), float(psrf_i.max()), psrf_i
 
 
+def _from_sums(S, Q, n, m, dim, shift):
+    """getMSPRF from running sums of one window: S (m, dim) per-chain sums and
+    Q (dim, dim) = sum over chains and samples of x x^T, of the samples x
+    shifted by each chain's own reference `shift` (m, dim); n samples per
+    chain.  The within-chain covariances do not see the shift; the chain
+    means get it added back before the between-chain part."""
+    mu_s = S / n                                      # shifted chain means
+    W = (Q - n * (mu_s.T @ mu_s)) / ((n - 1) * m)      # = 1/m sum_j cov_j
+    W = 0.5 * (W + W.T)
+    mu = mu_s + shift
+    D = mu - mu.mean(0)
+    Bn = (D.T @ D) / (m - 1)
+    lam = np.linalg.eigvals(np.linalg.solve(W, Bn))
+    lam1 = float(np.abs(lam[np.argmax(lam.real)]))
+    mpsrf = np.sqrt((n - 1) / n + (m + 1) / m * lam1)
+    V = (n - 1) / n * W + (m + 1) / m * Bn
+    psrf_i = np.sqrt(np.diag(V) / np.diag(W))
+    return float(mpsrf), float(psrf_i.max()), psrf_i
+
+
 def mpsrf_curve(samples, skip=2, step=15, iter_burn=10, chains=None,
                 dispiter=0, log=print):
     """computeMPSRFcurve.  samples: (m, n, dim) thinned samples.
+
+    MATLAB (1-based):  iter_step = (step + iter_burn):step:maxIter
+                       idx       = iter_burn:skip:iter_step(u)
+    i.e. a growing window that always starts at sample iter_burn and uses
+    every skip-th sample.  Returns k (= iter_step, 1-based thinned count),
+    mpsrf, psrf (max over components), psrf_i (len(k), dim).  A point whose
+    window is too short for W to be invertible is NaN (kept, so that the
+    'ignore the first 10 points' rule counts the same points as MATLAB).
+
+    The windows are nested, so W and the chain means come from running sums
+    (per-chain sums and one pooled sum of outer products), updated with only
+    the samples each point adds: one pass over the samples in total instead
+    of one per curve point.  Samples are shifted by each chain's first window
+    sample to keep the sums well conditioned (the shift cancels in the
+    within-chain covariances and is added back to the chain means).  Matches the direct computation (mpsrf_curve_direct) to
+    rounding (tests/test_naive.py)."""
+    s = np.asarray(samples, float)
+    if chains is not None:
+        s = s[list(chains)]
+    m, n, dim = s.shape
+    if m < 2:
+        raise ValueError("MPSRF needs at least 2 chains")
+    ks = np.arange(step + iter_burn, n + 1, step)
+    out = dict(k=[], mpsrf=[], psrf=[], psrf_i=[])
+    start = iter_burn - 1
+    shift = s[:, start, :].copy() if n > start else np.zeros((m, dim))
+    S = np.zeros((m, dim))
+    Q = np.zeros((dim, dim))
+    nw = 0                                            # samples per chain so far
+    nxt = start                                       # next sample index to add
+    for u, k in enumerate(ks, start=1):
+        idx = np.arange(nxt, k, skip)                 # new window samples (0-based)
+        if idx.size:
+            X = s[:, idx, :] - shift[:, None, :]      # (m, b, dim)
+            S += X.sum(1)
+            Xf = X.reshape(-1, dim)
+            Q += Xf.T @ Xf
+            nw += idx.size
+            nxt = int(idx[-1]) + skip
+        if nw < 2 or m * (nw - 1) <= dim:             # W singular
+            mp, pm, pi = np.nan, np.nan, np.full(dim, np.nan)
+        else:
+            mp, pm, pi = _from_sums(S, Q, nw, m, dim, shift)
+        out["k"].append(k)
+        out["mpsrf"].append(mp)
+        out["psrf"].append(pm)
+        out["psrf_i"].append(pi)
+        if dispiter and u % dispiter == 0:
+            log(f"Step {u} / {len(ks)} | MPSRF = {mp:.3f}")
+    return {key: np.asarray(v) for key, v in out.items()}
+
+
+def mpsrf_curve_direct(samples, skip=2, step=15, iter_burn=10, chains=None,
+                dispiter=0, log=print):
+    """Reference implementation (recomputes every window from scratch;
+    cost ~ points x samples x dim^2).  computeMPSRFcurve.  samples: (m, n, dim) thinned samples.
 
     MATLAB (1-based):  iter_step = (step + iter_burn):step:maxIter
                        idx       = iter_burn:skip:iter_step(u)

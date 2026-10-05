@@ -162,3 +162,21 @@ def test_theta_repeat():
         pass
     from brho import io
     assert io.exp_e1("blocked", "a7") == "e1_blocked_a7" and io.exp_e1("global") == "e1_global"
+
+
+def test_mpsrf_curve_incremental_matches_direct():
+    """The running-sum MPSRF curve equals the direct (window-by-window)
+    computation, including NaN points and chains with different means."""
+    from brho import mpsrf as M
+    rng = np.random.default_rng(3)
+    for m, n, dim, skip, step, ib in ((6, 500, 5, 2, 15, 10), (12, 900, 30, 1, 11, 3),
+                                      (64, 800, 57, 2, 15, 10)):
+        x = (rng.standard_normal((m, n, dim)).cumsum(1) * 0.05
+             + rng.standard_normal((m, 1, dim)) * 0.3 + 5.0)
+        a = M.mpsrf_curve(x, skip, step, ib)
+        b = M.mpsrf_curve_direct(x, skip, step, ib)
+        assert np.array_equal(a["k"], b["k"])
+        assert np.array_equal(np.isnan(a["mpsrf"]), np.isnan(b["mpsrf"]))
+        ok = np.isfinite(b["mpsrf"])
+        assert np.allclose(a["mpsrf"][ok], b["mpsrf"][ok], rtol=1e-10, atol=0)
+        assert np.allclose(a["psrf_i"][ok], b["psrf_i"][ok], rtol=1e-10, atol=0)
