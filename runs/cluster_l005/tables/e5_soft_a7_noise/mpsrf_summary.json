@@ -1,6 +1,6 @@
 {
  "exp": "e5_soft_a7_noise",
- "label": "E5 soft-curve sampler (\u03b2 free), 7 \u03b8 moves / it",
+ "label": "E5 soft-curve sampler (\u03b2 free), 7 \u03b8 moves / it, learned \u03c3",
  "n_chains": 64,
  "n_samples": 19897,
  "thinning": 33,
@@ -15,10 +15,10 @@
   "mpsrf_convergence_iteration": 661169.0,
   "psrf_convergence_iteration": 226668.0,
   "at_iteration": 10825.0,
-  "mpsrf_at": 32.956951392163454,
-  "psrf_max_at": 9.819017312643068,
-  "mpsrf_final": 1.1979846086174835,
-  "psrf_max_final": 1.069042230569819,
+  "mpsrf_at": 32.95695139216348,
+  "psrf_max_at": 9.819017312643076,
+  "mpsrf_final": 1.1979846086174826,
+  "psrf_max_final": 1.0690422305698195,
   "n_components_above_level_final": 0,
   "worst_components_final": [
    [
@@ -48,10 +48,10 @@
   "mpsrf_convergence_iteration": 662179.0,
   "psrf_convergence_iteration": 226668.0,
   "at_iteration": 10825.0,
-  "mpsrf_at": 33.17469231148239,
-  "psrf_max_at": 9.819017312643068,
-  "mpsrf_final": 1.1983870731034245,
-  "psrf_max_final": 1.069042230569819,
+  "mpsrf_at": 33.174692311482296,
+  "psrf_max_at": 9.819017312643076,
+  "mpsrf_final": 1.1983870731034223,
+  "psrf_max_final": 1.0690422305698195,
   "n_components_above_level_final": 0,
   "worst_components_final": [
    [

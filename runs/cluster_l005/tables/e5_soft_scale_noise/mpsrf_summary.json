@@ -1,0 +1,79 @@
+{
+ "exp": "e5_soft_scale_noise",
+ "label": "E9 soft-curve sampler, scale-block pCN \u03b8 (3 blocks), 7 \u03b8 moves / it, learned \u03c3",
+ "n_chains": 64,
+ "n_samples": 6431,
+ "thinning": 33,
+ "first_kept_iteration": 10000,
+ "solves_per_iteration": 9,
+ "skip": 2,
+ "step": 15,
+ "iter_burn": 10,
+ "level": 1.2,
+ "theta": {
+  "dim": 208,
+  "mpsrf_convergence_iteration": null,
+  "psrf_convergence_iteration": null,
+  "at_iteration": 10825.0,
+  "mpsrf_at": 28.68144700718182,
+  "psrf_max_at": 11.570896050897744,
+  "mpsrf_final": 1.464750124104167,
+  "psrf_max_final": 1.2550398225115775,
+  "n_components_above_level_final": 3,
+  "worst_components_final": [
+   [
+    "theta10",
+    1.255
+   ],
+   [
+    "theta16",
+    1.25
+   ],
+   [
+    "theta9",
+    1.232
+   ],
+   [
+    "theta17",
+    1.196
+   ],
+   [
+    "theta23",
+    1.195
+   ]
+  ]
+ },
+ "all": {
+  "dim": 210,
+  "mpsrf_convergence_iteration": null,
+  "psrf_convergence_iteration": null,
+  "at_iteration": 10825.0,
+  "mpsrf_at": 28.817014111648017,
+  "psrf_max_at": 11.570896050897744,
+  "mpsrf_final": 1.464789897511734,
+  "psrf_max_final": 1.2550398225115775,
+  "n_components_above_level_final": 3,
+  "worst_components_final": [
+   [
+    "\u03b810",
+    1.255
+   ],
+   [
+    "\u03b816",
+    1.25
+   ],
+   [
+    "\u03b89",
+    1.232
+   ],
+   [
+    "\u03b817",
+    1.196
+   ],
+   [
+    "\u03b823",
+    1.195
+   ]
+  ]
+ }
+}
