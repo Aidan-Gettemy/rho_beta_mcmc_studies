@@ -15,10 +15,10 @@
   "mpsrf_convergence_iteration": 37912.0,
   "psrf_convergence_iteration": 26734.0,
   "at_iteration": 10625.0,
-  "mpsrf_at": 6.588325391879722,
+  "mpsrf_at": 6.5883253918797315,
   "psrf_max_at": 4.245275049267874,
   "mpsrf_final": 1.039445814573914,
-  "psrf_max_final": 1.0231395128064735,
+  "psrf_max_final": 1.0231395128064733,
   "n_components_above_level_final": 0,
   "worst_components_final": [
    [
@@ -48,10 +48,10 @@
   "mpsrf_convergence_iteration": 37914.0,
   "psrf_convergence_iteration": 26734.0,
   "at_iteration": 10625.0,
-  "mpsrf_at": 6.594297666798328,
+  "mpsrf_at": 6.594297666798323,
   "psrf_max_at": 4.245275049267874,
-  "mpsrf_final": 1.0395833458186414,
-  "psrf_max_final": 1.0231395128064735,
+  "mpsrf_final": 1.0395833458186412,
+  "psrf_max_final": 1.0231395128064733,
   "n_components_above_level_final": 0,
   "worst_components_final": [
    [
