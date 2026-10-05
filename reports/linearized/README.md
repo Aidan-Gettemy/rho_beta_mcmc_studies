@@ -9,6 +9,7 @@ intermediate .npz / .npy files are written here and git-ignored.
 | `lin.py` | Jacobian at the truth (central differences, 2r+1 solves) for the main 2D study (r = 57) and the scaling study (r = 208); d_eff, predicted posterior Phi, truth's informed energy and predicted rho | ~1 min |
 | `sim.py global|2x2|3x3` | global / block pCN on the Gaussian surrogate (r = 208, beta and rho fixed), IACT per theta-solve | ~1.5-3 min each (needs lin.py first) |
 | `visit.py` | 3x3 with visits weighted ~1/s^2, and a second global seed | ~5 min (needs sim.py 3x3) |
+| `collapse_level.py` | how much theta stiffness is the overall pressure magnitude (integrating log beta out of theta moves) | ~7 min |
 | `spectral_split.py`, `spectral_split3.py` | pCN blocks by KLE index (scale) instead of space: budgets and simulated IACT vs global pCN | ~10 + 15 min |
 | `why_blocks.py` | why block pCN cannot beat global pCN: acceptance budget A(V) per block, per-direction speed predictions, likelihood-informed split | ~1 min |
 | `visit_adaptive.py` | importance-weighted random-scan visiting of the blocks (6 rules, 2x2 and 3x3) vs global pCN | ~25 min |
@@ -77,4 +78,13 @@ learned in burn-in and then frozen (a fixed random scan, so the kernel is exact)
 
 - **Properties.** Gradient-free, exactly prior-preserving (pCN on coordinate blocks of N(0, I)), and the blocks are fixed by the prior alone.
 - **Caveat.** The surrogate fixes beta and rho, and it missed the learned-noise slowdown. The real gain must be measured in the full sampler.
+
+## Integrating log beta out of theta moves (2026-10-05, `collapse_level.py`)
+
+- **The physics.** With a prescribed inflow flux and zero outflow pressure, p(beta K) = p(K) / beta exactly (checked to 3e-14). So for fixed theta and rho, the likelihood is a closed-form function of log beta, with no PDE solve.
+- **Where the stiffness is.** In the r = 208 linearization, 75% of trace(H) lies in the single data direction g = p_obs: the overall pressure magnitude.
+  - Largest H eigenvalue: 16,131 with log beta fixed. With log beta integrated out it is 1,405 (the next eigenvalue is 1,390).
+  - Acceptance budget A: 2.12e4 -> 5.27e3, so the global pCN step can double (0.0195 -> 0.0385).
+- **Simulated IACT (global pCN):** max 22.7k -> 11.4k, median 13.5k -> 6.5k. That is 2.0x on both the slowest and the median direction, at no extra solves.
+- **Why it matters for the full sampler.** In E5, every theta move (and move B, which changes rho) must keep the overall pressure magnitude fixed to within the data noise, because log beta stays fixed during the move. Updating log beta jointly, from its exact conditional, removes that constraint. The remaining stiffness is the pressure *shape*.
 
