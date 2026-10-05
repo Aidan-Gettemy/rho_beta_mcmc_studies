@@ -855,3 +855,19 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 - Runs: cluster/README.md "Scale-block pCN with learned noise" (r = 57 and
   r = 208, theta-repeat 7, 2.0M solves, same budget as the a7_noise runs).
 
+## 2026-10-05 - MPSRF curve: running sums instead of recomputing every window
+
+- report_mpsrf stalled on the extended r = 208 a7_noise run (1325 curve
+  points, about 20k kept samples per chain, dim 208): the curve rebuilt the
+  full within-chain covariance at every point, cost ~ points x samples x dim^2.
+- brho/mpsrf.mpsrf_curve now updates per-chain sums and one pooled sum of
+  outer products with only the samples each point adds (the windows are
+  nested), so the samples are read once; each point then costs one 208 x 208
+  solve and eigen-decomposition.  Samples are shifted by each chain's first
+  window sample for conditioning (the shift cancels in the within-chain
+  covariances and is added back to the chain means).
+- Same numbers as before: equal to the direct computation to 1e-15
+  (mpsrf_curve_direct kept as the reference; tests/test_naive.py::
+  test_mpsrf_curve_incremental_matches_direct).  7.5x faster at 266 points,
+  and the gap grows linearly with the run length.
+
