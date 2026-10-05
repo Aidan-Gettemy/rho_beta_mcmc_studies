@@ -871,6 +871,28 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
   test_mpsrf_curve_incremental_matches_direct).  7.5x faster at 266 points,
   and the gap grows linearly with the run length.
 
+## 2026-10-05 - E10: log beta collapsed into moves A and B (`--collapse-beta 1`)
+
+- Physics: with a prescribed inflow flux and zero outflow pressure,
+  p(beta K) = p(K) / beta exactly (checked to 3e-14).  For fixed (theta, rho)
+  the misfit is Phi(lb) = w/2 |d - e^{-lb} g|^2, g = pressures at beta = 1,
+  available from the current solve.
+- Move: propose theta' (A: global / multiscale / scale block) or w' (B) as
+  before, solve once, propose lb' ~ q = Laplace approximation of
+  exp(-c Phi(lb)) N(lb; m(rho), s(rho)^2) given the new pressures, accept
+  with the joint MH ratio (incl. q(lb | current) / q(lb' | new)).  Exact for
+  any q; no extra solve.  Not for block pCN (E8).
+- Tests (tests/test_core.py::test_collapse_beta_exact): closed form equals a
+  solve; with theta, w fixed the move samples the exact 1-D conditional
+  (quadrature) with the Laplace q (acceptance > 0.9) and with a deliberately
+  wrong q; prior preserved with scale blocks + theta-repeat; state stays
+  consistent with a fresh solve under learned noise.  All 59 tests pass.
+- Real-PDE check (16x16 test problem, learned noise, theta-repeat 3): move A's
+  adapted step 0.0195 -> 0.0307 (1.6x; about 2.5x in s^2); move B unchanged
+  (a rho change alters the pressure shape, not only its magnitude).
+  Surrogate (r = 208): step 2.0x, IACT 2.0x.
+- Runs: cluster/README.md "E10" (r = 57 to 4.0M, r = 208 to 6.0M solves, with
+  scale blocks, theta-repeat 7, learned noise).
 ## 2026-10-05 - E9 scale-block pCN with learned noise: results (PR #88)
 
 - Same budget and theta share as a7_noise (theta-repeat 7, 2.0M solves).

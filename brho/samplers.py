@@ -10,6 +10,12 @@ E7  ... theta_innovation="ms_white": whitened multiscale innovation in A
 E8  ... theta_innovation="block": A = block (subdomain) pCN sweep, coarse +
                         primal + dual local subspaces (brho/blockpcn.py), one
                         adapted step per block
+E10 ... collapse_beta=True: moves A and B propose log beta jointly with theta
+                        (or w) from its closed-form conditional given the new
+                        pressures (the flux-driven permeameter has
+                        p(beta K) = p(K) / beta exactly), MH-corrected; no
+                        extra solve.  Removes the overall-pressure-magnitude
+                        constraint from theta and rho moves.
 E9  ... theta_innovation="scale": A = pCN on one block of KLE modes by index
                         (brho/scaleblocks.py), drawn at random each move, one
                         adapted step per block; combines with theta_repeat
@@ -287,6 +293,9 @@ class SoftCurveSampler:
             self.STATE = ("w", "lb", "s2")
         self.innovation = getattr(scfg, "theta_innovation", "global")
         self.ms = self.bp = self.sc = None
+        self.collapse = bool(getattr(scfg, "collapse_beta", False))
+        self.d_p = np.asarray(prob.syn.d_p, float)
+        self.w_lik = float(prob._w)
         self.s_init, self.targets = tuple(scfg.s_init), tuple(scfg.targets)
         self.move_names = ("A", "B", "C", "D")
         self.theta_repeat = int(getattr(scfg, "theta_repeat", 1))
@@ -312,6 +321,9 @@ class SoftCurveSampler:
             self.move_names = ("A0 coarse" if self.bp.coarse else "A0 (off)",
                                "B", "C", "D") + tuple(
                 mv["name"] for mv in self.bp.moves[1:])
+            if self.collapse:
+                raise ValueError("collapse_beta is implemented for the global, multiscale "
+                                 "and scale innovations of move A, not block pCN")
             if self.theta_repeat != 1:
                 raise ValueError("theta_repeat applies to the global / multiscale move A, "
                                  "not to block pCN (E8 already makes many theta moves)")
@@ -373,6 +385,65 @@ class SoftCurveSampler:
     def noise_c(self, st):
         """Misfit scale: Phi(current sigma_rel) = noise_c * Phi(config sigma_rel)."""
         return self.s2_fixed / st["s2"] if self.learn_noise else 1.0
+
+    # ------------------------------------------- E10: log beta collapsed
+    # Flux-driven permeameter: p_obs(theta, rho, lb) = exp(-lb) g(theta, rho),
+    # g = pressures at beta = 1.  So, given g, Phi(lb) = w/2 |d - e^{-lb} g|^2
+    # in closed form (config sigma; the learned-noise factor c multiplies it).
+    def _phi_lb(self, g, lb):
+        r = self.d_p - np.exp(-lb) * g
+        return 0.5 * self.w_lik * float(r @ r)
+
+    def _q_lb(self, g, rho, c):
+        """Gaussian proposal for lb given g: Laplace approximation of
+        exp(-c Phi(lb)) N(lb; m(rho), s(rho)^2).  Returns (mean, precision).
+        No data (prior test) or a degenerate g: the curve prior itself."""
+        m, s = self.m(rho), self.s(rho)
+        Pp = 1.0 / (s * s)
+        if g is None or self.cfg.prior_test:
+            return m, Pp
+        a, bb = float(self.d_p @ g), float(g @ g)
+        if not (a > 0 and bb > 0):
+            return m, Pp
+        u = a / bb                                     # best e^{-lb}
+        Pd = c * self.w_lik * bb * u * u               # d^2 (c Phi) / d lb^2 at the optimum
+        P = Pd + Pp
+        return (Pd * (-np.log(u)) + Pp * m) / P, P
+
+    @staticmethod
+    def _log_q(lb, mu, P):
+        return -0.5 * P * (lb - mu) ** 2 + 0.5 * np.log(P)
+
+    def _joint_lb(self, st, theta_p, w_p, rng):
+        """Joint MH move to (theta_p, w_p, lb'), lb' ~ q(. | new pressures).
+        theta_p / w_p are the pCN proposals (their own prior terms cancel as
+        in moves A / B).  One PDE solve.  Returns accepted (and updates st)."""
+        c = self.noise_c(st)
+        lb, w = st["lb"], st["w"]
+        rho, rho_p = self.rho(w), self.rho(w_p)
+        if not np.isfinite(self.m(rho_p)):
+            return False
+        phi_raw, pobs_raw, keff_raw = self.potential(theta_p, w_p, lb)
+        if not np.isfinite(phi_raw):
+            return False
+        prior_only = self.cfg.prior_test or pobs_raw is None
+        g_p = None if prior_only else np.exp(lb) * np.asarray(pobs_raw, float)
+        g = None if prior_only else np.exp(lb) * np.asarray(st["pobs"], float)
+        mu_p, P_p = self._q_lb(g_p, rho_p, c)
+        lb_p = float(mu_p + rng.standard_normal() / np.sqrt(P_p))
+        mu, P = self._q_lb(g, rho, c)
+        phi_p = 0.0 if prior_only else self._phi_lb(g_p, lb_p)
+        lp_new, lp_old = self.log_p_lb(lb_p, rho_p), self.log_p_lb(lb, rho)
+        if not np.isfinite(lp_new):
+            return False
+        logA = (c * (st["phi"] - phi_p) + lp_new - lp_old
+                + self._log_q(lb, mu, P) - self._log_q(lb_p, mu_p, P_p))
+        if np.log(rng.random()) < logA:
+            st.update(theta=theta_p, w=float(w_p), lb=lb_p, phi=phi_p,
+                      pobs=None if prior_only else np.exp(-lb_p) * g_p,
+                      keff=keff_raw * np.exp(lb_p - lb) if np.isfinite(keff_raw) else keff_raw)
+            return True
+        return False
 
     def gibbs_noise(self, st, rng):
         """Exact draw of s2 = sigma_rel^2 from its conditional:
@@ -443,6 +514,9 @@ class SoftCurveSampler:
                     j = self.sc.choose(rng)
                     k = self.move_index(j)
                     th_p = self.sc.propose(th, j, ad.s[k], rng)
+                    if self.collapse:
+                        ad.record(k, self._joint_lb(st, th_p, st["w"], rng))
+                        continue
                     phi_p, pobs_p, keff_p = self.potential(th_p, w, lb)
                     a = np.log(rng.random()) < self.noise_c(st) * (st["phi"] - phi_p)
                     if a:
@@ -454,6 +528,9 @@ class SoftCurveSampler:
                 else:
                     th_p = (np.sqrt(1.0 - s_th * s_th) * th
                             + s_th * self.ms.draw(self.innovation, rng))
+                if self.collapse:
+                    ad.record(0, self._joint_lb(st, th_p, st["w"], rng))
+                    continue
                 phi_p, pobs_p, keff_p = self.potential(th_p, w, lb)
                 a = np.log(rng.random()) < self.noise_c(st) * (st["phi"] - phi_p)
                 if a:
@@ -464,6 +541,9 @@ class SoftCurveSampler:
         #    the curve prior of lb enters the ratio.
         th, lb = st["theta"], st["lb"]
         w_p = float(pcn(w, s_h, rng))
+        if self.collapse:
+            ad.record(1, self._joint_lb(st, th, w_p, rng))
+            return self._after_b(st, ad, rng, s_rg, s_lv)
         lp_new = self.log_p_lb(lb, self.rho(w_p))
         a = False
         if np.isfinite(lp_new):
@@ -473,6 +553,10 @@ class SoftCurveSampler:
             if a:
                 st.update(w=w_p, phi=phi_p, pobs=pobs_p, keff=keff_p)
         ad.record(1, a)
+        return self._after_b(st, ad, rng, s_rg, s_lv)
+
+    def _after_b(self, st, ad, rng, s_rg, s_lv):
+        """Moves C (ridge), D (level swap) and E (noise level)."""
         # C: ridge (rho, theta) with beta fixed -- log K unchanged, no solve
         th, w, lb = st["theta"], st["w"], st["lb"]
         eta = s_rg * rng.standard_normal()

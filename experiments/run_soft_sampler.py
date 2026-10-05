@@ -111,7 +111,9 @@ def setup(pc, scfg, curve_field, curve_statistic, exp):
           f"(burn {scfg.n_burn}, thin {scfg.thin}); r={prob.r}; truth={pc.truth_mode}; "
           f"K*={syn.keff_obs:.3f}; curve={curve.statistic}; "
           f"theta innovation={scfg.theta_innovation}"
-          f"{f', move A x{smp.theta_repeat} per iteration' if smp.theta_repeat > 1 else ''}; "
+          f"{f', move A x{smp.theta_repeat} per iteration' if smp.theta_repeat > 1 else ''}"
+          f"{', log beta collapsed into A and B' if smp.collapse else ''}"
+          f"{', learned sigma_rel' if smp.learn_noise else ''}; "
           f"{smp.solves_per_iteration} solves / iteration -> {exp}")
     if smp.ms is not None:
         ms = smp.ms.summary()
