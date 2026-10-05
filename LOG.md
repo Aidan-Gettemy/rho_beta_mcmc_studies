@@ -893,4 +893,27 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
   Surrogate (r = 208): step 2.0x, IACT 2.0x.
 - Runs: cluster/README.md "E10" (r = 57 to 4.0M, r = 208 to 6.0M solves, with
   scale blocks, theta-repeat 7, learned noise).
+## 2026-10-05 - E9 scale-block pCN with learned noise: results (PR #88)
+
+- Same budget and theta share as a7_noise (theta-repeat 7, 2.0M solves).
+- r = 57: theta MPSRF < 1.2 at 1.77M solves (a7_noise 1.78M); no gain.
+  Mid-run E9 is behind (equal-quality ratio 0.77-0.93), even at the end.
+  Hyperparameters mix better: ESS rho 13.1k (a7_noise 8.8k), log beta 46k
+  (23k), sigma_rel 90k (47k); level unchanged (948 vs 931).
+- r = 208, seed 2026: not converged at 2.0M (final 1.465; a7_noise 1.674 at
+  2.0M, reaching 1.465 only at 2.76M): about 1.4x.  Worst single component
+  PSRF slightly worse (1.255 vs 1.206).  a7_noise extended to 6.0M crosses
+  1.2 at 5.95M (final 1.198).
+- Posterior identical to a7_noise: r = 57 rho 1.65 [1.40, 1.97], sigma_rel
+  8.72e-4; r = 208 rho 1.457 [1.32, 1.61], sigma_rel 4.47e-4.
+- Steps: fine-scale blocks 0.0156 (r = 57) and 0.0124 / 0.0156 (r = 208), 3x
+  the global 0.005, as intended; the large-scale block (modes 1-20) stays at
+  0.005 and is now visited 1/2 (r = 57) or 1/3 (r = 208) of the theta moves,
+  so the large-scale modes, which carry the level (the slowest quantity,
+  level ESS about 950), get fewer moves.  Net: no gain where those dominate.
+- Root cause of the large-scale stiffness (reports/linearized/collapse_level.py):
+  p(beta K) = p(K) / beta exactly, and 75% of trace(H) is the single
+  pressure-magnitude direction.  Integrating log beta out of each theta move
+  (closed form, no solve) doubles the global pCN step and halves the IACT in
+  the surrogate (2.0x on the slowest direction).  Next: implement it.
 
