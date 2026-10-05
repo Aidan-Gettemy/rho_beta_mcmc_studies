@@ -104,6 +104,8 @@ def load_kept(exp, n_chains=None):
             lab = "E5 soft-curve sampler (β free)" + (f", {k} θ moves / it" if k > 1 else "")
         else:
             lab = f"E7 soft-curve sampler, {innov.replace('ms_', 'multiscale ')} θ"
+        if sc.get("collapse_beta"):
+            lab += ", β collapsed"
         if sc.get("learn_noise"):
             lab += ", learned σ"
         return dict(sets=dict(theta=theta, all=full),
@@ -256,6 +258,7 @@ COLORS = {"e1_blocked": "#c0392b", "e1_global": "#e67e22", "e4_sampler": "#1f5fa
           "e5_soft_ms_white": "#7b3fa0", "e5_soft_ms_raw": "#999999",
           "e5_soft_block": "#2a78d6", "e5_soft_block_random": "#76d7c4",
           "e5_soft_block_3x3": "#eda100",
+          "e5_soft_scale_noise_collapse": "#c2185b",
           "e5_soft_scale": "#0f8a7a", "e5_soft_scale_noise": "#0f8a7a",
           "e5_soft_a7_noise": "#8c564b",
           "e5_soft_a4": "#e87ba4", "e5_soft_a7": "#d55181", "e5_soft_a14": "#4a3aa7",

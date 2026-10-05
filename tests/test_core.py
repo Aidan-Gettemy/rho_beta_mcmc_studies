@@ -840,3 +840,84 @@ def test_scale_blocks():
     assert abs(th.mean()) < 0.05
     from brho import io
     assert io.exp_soft(False, "scale", "noise") == "e5_soft_scale_noise"
+
+
+def test_collapse_beta_exact():
+    """E10 (collapse_beta): the joint log-beta proposal is MH-exact.
+    (1) The closed form Phi(lb) = w/2 |d - e^{-lb} g|^2 equals a PDE solve.
+    (2) With theta and w held fixed the joint move is an MH chain on lb alone;
+        its draws match the exact conditional exp(-Phi(lb)) N(lb; m, s^2)
+        computed by quadrature, also with a deliberately wrong proposal q.
+    (3) Prior test with scale blocks + theta_repeat: prior preserved
+        (theta ~ N(0, I), xi_b = (lb - m(rho)) / s(rho) ~ N(0, 1)).
+    (4) Learned noise, theta_repeat and B all run through the joint path."""
+    from brho.samplers import SoftCurveSampler
+    p = prob()
+    cfg = replace(C.SoftSamplerConfig(), collapse_beta=True)
+    smp = SoftCurveSampler(p, _soft_curve(), cfg)
+    rng = np.random.default_rng(12)
+    st = smp.init_state(rng)
+    if getattr(p.syn, "theta_true", None) is not None:
+        st["theta"] = np.asarray(p.syn.theta_true, float).copy()
+    rho = smp.rho(st["w"])
+    phi0, pobs0, _ = smp.potential(st["theta"], st["w"], 0.0)
+    g = np.asarray(pobs0, float)
+    for lb in (-0.3, 0.4, 1.1):
+        phi_solve = smp.potential(st["theta"], st["w"], lb)[0]
+        assert abs(smp._phi_lb(g, lb) - phi_solve) < 1e-8 * max(1.0, phi_solve)
+    # exact conditional of lb on a grid
+    m, s = smp.m(rho), smp.s(rho)
+    a, bb = float(smp.d_p @ g), float(g @ g)
+    lb_hat = -np.log(a / bb)
+    sd_hat = 1.0 / np.sqrt(smp.w_lik * bb * (a / bb) ** 2 + 1 / s ** 2)
+    grid = np.linspace(lb_hat - 12 * sd_hat, lb_hat + 12 * sd_hat, 20001)
+    logp = np.array([-smp._phi_lb(g, x) for x in grid]) - 0.5 * ((grid - m) / s) ** 2
+    pw = np.exp(logp - logp.max()); pw /= pw.sum()
+    mean_ex = float(pw @ grid); sd_ex = float(np.sqrt(pw @ (grid - mean_ex) ** 2))
+    orig_q = smp._q_lb
+    for label, q in (("Laplace q", orig_q),
+                     ("wrong q", lambda gg, r_, c_: (lambda mu, P: (mu + 0.8 / np.sqrt(P), 0.3 * P))(*orig_q(gg, r_, c_)))):
+        smp._q_lb = q
+        st2 = dict(st)
+        st2["lb"] = float(lb_hat)
+        st2["phi"], st2["pobs"], st2["keff"] = smp.potential(st2["theta"], st2["w"], st2["lb"])
+        draws, acc = [], 0
+        for _ in range(3000):
+            acc += smp._joint_lb(st2, st2["theta"], st2["w"], rng)
+            draws.append(st2["lb"])
+        d = np.array(draws[300:])
+        assert abs(d.mean() - mean_ex) < 0.15 * sd_ex, (label, d.mean(), mean_ex, sd_ex)
+        assert abs(d.std() / sd_ex - 1) < 0.15, (label, d.std(), sd_ex)
+        if label == "Laplace q":
+            assert acc / 3000 > 0.9          # the proposal is nearly the exact conditional
+    smp._q_lb = orig_q
+    # (3) prior test: scale blocks + theta_repeat + collapse
+    base = replace(C.SoftSamplerConfig(), prior_test=True, collapse_beta=True,
+                   s_init=(0.5, 0.3, 0.12, 0.6), theta_innovation="scale",
+                   scale_edges="5,10", theta_repeat=2)
+    sk = SoftCurveSampler(p, _soft_curve(), base)
+    out, xb = [], []
+    for c_ in range(1000):
+        s0 = sk.init_state(rng)
+        ad = StepAdapter(sk.s_init, targets=sk.targets, every=10 ** 9)
+        for _ in range(5):
+            sk.step(s0, ad, rng)
+        out.append(s0["theta"]); xb.append(sk.extra_traces(s0)["xi_b"])
+    th = np.array(out)
+    frob = np.linalg.norm(np.cov(th.T) - np.eye(p.r)) / np.sqrt(p.r)
+    ref = np.linalg.norm(np.cov(rng.standard_normal(th.shape).T) - np.eye(p.r)) / np.sqrt(p.r)
+    assert frob < 1.3 * ref, (frob, ref)
+    xb = np.array(xb)
+    assert abs(xb.mean()) < 0.1 and abs(xb.std() - 1) < 0.1, (xb.mean(), xb.std())
+    # (4) likelihood on, learned noise: runs, state stays consistent with a fresh solve
+    sl = SoftCurveSampler(p, _soft_curve(), replace(C.SoftSamplerConfig(), collapse_beta=True,
+                                                     learn_noise=True, theta_repeat=3,
+                                                     s_init=(0.02, 0.02, 0.1, 0.2)))
+    s1 = sl.init_state(rng)
+    ad = StepAdapter(sl.s_init, targets=sl.targets, every=10 ** 9)
+    for _ in range(40):
+        sl.step(s1, ad, rng)
+    phi_chk, pobs_chk, keff_chk = sl.potential(s1["theta"], s1["w"], s1["lb"])
+    assert abs(phi_chk - s1["phi"]) < 1e-6 * max(1.0, phi_chk)
+    assert np.allclose(pobs_chk, s1["pobs"]) and abs(keff_chk / s1["keff"] - 1) < 1e-9
+    assert ad.n[0] == 120 and ad.n[1] == 40
