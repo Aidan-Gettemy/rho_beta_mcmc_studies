@@ -960,3 +960,38 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 - Repointed reports/linearized (lin.py, screen.py, da_eval.py, da_test.py) and
   the README; `runs/cluster_kle/STUDY.md` lists the runs and their status and
   says what to do with old references to `e5_kle_2026-09`.
+
+## 2026-10-05 - β upgrade: post-processing of 3-move (E4) runs, no PDE solves
+
+- Decision (Aidan): the current project keeps the 3-move hard-curve sampler;
+  the soft sampler, learned noise and derived samplers move to a later paper.
+  beta coverage comes from post-processing the E4 output.
+- brho/beta_upgrade.py, reports/report_beta_upgrade.py.  For each saved
+  (rho, theta): delta ~ N(mu, 1/P), P = |c|^2/rho^2 + 1/s(rho)^2,
+  mu = (theta . c / rho) / P; log beta = log beta_bar(rho) + delta,
+  theta' = theta - (delta/rho) c, so log K is unchanged (up to the 3.4% of the
+  constant field outside the KLE span).  Importance weight
+  w = exp(a^2/(2 rho^2 P)) / (s sqrt(P)) makes it exact for the model with the
+  curve scatter restored.  Derivation in the module docstring.
+- Test test_beta_upgrade_level_swap_exact (likelihood off: theta', xi_b, rho
+  laws; log K unchanged when T c = 1; detects a dropped weight or a sign error).
+  61 tests pass.
+- Local validation (not for publication): E4 on the cluster_kle truth (kle,
+  sigma_rel 2e-3), 8 chains x 100k iterations (300k solves each), 36,000 kept
+  samples:
+
+  | | beta | 90% interval | covers 2.3 |
+  |---|---|---|---|
+  | hard curve | 2.20 | [2.14, 2.29] | no |
+  | upgraded | 2.21 | [1.48, 3.28] | yes |
+  | E5 reference (cluster, 64 chains) | 2.14 | [1.43, 3.21] | yes |
+
+  sd(log beta) 0.021 -> 0.242 (E5 0.247).  rho 1.44 [1.21, 1.73] and the
+  level 0.870 unchanged (max level shift 1.7e-3).  Weight ESS 99.9%
+  (sd log w 0.03): the weights are negligible here, because the data pin
+  a = theta . c given rho.  Re-solving 200 upgraded samples changes Phi by
+  0.03 +- 0.30 (posterior Phi sd ~ 7): the KLE-span residual is harmless.
+  Freezing at one sample (the highest-posterior one, rho 1.92) gives
+  2.36 [1.39, 3.98]: covers, but wider and dependent on which sample;
+  per-sample is as cheap and preferred.
+- To publish: run E4 on runs/cluster_kle (cheat sheet), then the report.

@@ -25,6 +25,7 @@ results and dead ends are logged in `LOG.md`.
 | E3 | offline β̄(ρ) curve from global-KLE Monte Carlo | `experiments/run_beta_curve.py` | `reports/report_curve.py` |
 | E4 | 3-step sampler (A pCN θ, B pCN w, C ridge) with β = β̄(ρ) | `experiments/run_curve_sampler.py` | `reports/report_sampler.py` |
 | E4 check | the same sampler with the likelihood off (prior test) | `run_curve_sampler.py --prior-test 1` | `reports/report_prior_test.py` |
+| E4 β upgrade | post-processing of an E4 run: level-swap draw of β from the curve scatter, θ shifted along the constant field so log K is unchanged; no PDE solve (`brho/beta_upgrade.py`) | (any finished E4 run) | `reports/report_beta_upgrade.py [--exp e4_sampler] [--solve-check 200]` |
 | E5 | **the corrected sampler**: β free with the soft curve prior log β \| ρ ~ N(log β̄(ρ), s(ρ)²) from K_eff; moves A pCN θ, B pCN w (β fixed), C ridge ρθ (no solve), D level swap (β, θ along the constant field) | `experiments/run_soft_sampler.py` | `reports/report_soft.py` |
 | E5 check | the same sampler with the likelihood off | `run_soft_sampler.py --prior-test 1` | `reports/report_soft_prior_test.py` |
 | E7 check 1 | multiscale prior test, pure pCN, no PDE: raw / whitened / per-sample-normalized local-KLE innovation vs direct draws, including pointwise field maps | `experiments/run_ms_prior_test.py` | (writes its own figures and tables) |

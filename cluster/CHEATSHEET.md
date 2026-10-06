@@ -152,6 +152,31 @@ sbatch --partition=cpu-preempt --ntasks=1 --cpus-per-task=4 --mem=48G --time=01:
 - Interactive alternative: `salloc --partition=cpu-preempt --cpus-per-task=4 --mem=48G --time=01:00:00`.
 - Block-pCN geometry figures: `python experiments/run_block_prior_test.py --from-exp e5_soft_block --blocks 2`.
 
+### 3-move (E4) run on the main 2D truth, for the β-upgrade validation (2.0M solves)
+
+```bash
+BRHO_ROOT=$PWD/runs/cluster_kle PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3" \
+    E4_ARGS="--n-total 667000 --n-burn 30000 --thin 200" \
+    sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e4_sampler.sbatch
+# continue after a time limit: BRHO_ROOT=$PWD/runs/cluster_kle RESUME=1 sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e4_sampler.sbatch
+# reports (as a job, section 5): python reports/report_sampler.py && python reports/report_beta_upgrade.py --solve-check 200
+```
+
+Same truth and σ_rel as the E5 reference in `runs/cluster_kle/tables/e5_soft` (β 2.14 [1.43, 3.21]), so the upgraded β can be checked against it.
+
+### β upgrade of a 3-move (E4) run: honest β interval, no PDE solves
+
+```bash
+export BRHO_ROOT=$PWD/runs/<study>      # the study holding results/e4_sampler/chain*.npz
+sbatch --partition=cpu-preempt --ntasks=1 --cpus-per-task=2 --mem=16G --time=00:30:00 \
+    -J brho-upgrade -o logs/brho-upgrade-%j.out --export=ALL \
+    --wrap "source cluster/env.sh; python reports/report_beta_upgrade.py --exp e4_sampler --solve-check 200"
+```
+
+- Output: `tables/e4_sampler/beta_upgrade.{md,json}`, `figures/e4_sampler/fig_beta_upgrade.png`.
+- `--solve-check 200` re-solves 200 upgraded samples (seconds) to measure the misfit change from the part of the constant field outside the KLE span; leave it out for zero solves.
+- Check the weight ESS line: a small ESS (a few %) means the weights are dominated by a few samples; report it.
+
 ## 6. Send results to GitHub
 
 ```bash
