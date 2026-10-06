@@ -37,5 +37,5 @@ def run(root, lab, s, n=4000, seed=0):
 
 if __name__ == "__main__":
     R = os.path.join(REPO, "runs")
-    for root, lab, s in ((f"{R}/e5_kle_2026-09", "2d_r57", 0.0124), (f"{R}/cluster_l005", "2d_r208", 0.0245)):
+    for root, lab, s in ((f"{R}/cluster_kle", "2d_r57", 0.0124), (f"{R}/cluster_l005", "2d_r208", 0.0245)):
         print(json.dumps(run(root, lab, s)), flush=True)

@@ -22,6 +22,8 @@ git switch main && git pull                                 # after merging PRs 
 
 Note: `l005` is a lowercase L ("ell 0.05"), not 1005.
 
+**Confused about where the 2D results are?** `runs/cluster_kle` is the only 2D (32x32) folder: live study on the cluster and results in the repo. `runs/e5_kle_2026-09` was retired on 2026-10-05; read its name as `cluster_kle`. Run status: `runs/cluster_kle/STUDY.md`.
+
 ## 1. Submit a sampler run (one node, 64 chains)
 
 ```bash

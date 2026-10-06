@@ -7,7 +7,7 @@ import os, json, numpy as np
 from lin import load, REPO
 
 R = os.path.join(REPO, "runs")
-prob, _ = load(f"{R}/e5_kle_2026-09")
+prob, _ = load(f"{R}/cluster_kle")
 syn, kle = prob.syn, prob.kle
 b, r_ = syn.beta_true, syn.rho_true
 w = prob._w; d = syn.d_p
