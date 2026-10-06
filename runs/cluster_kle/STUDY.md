@@ -33,5 +33,7 @@ relative likelihood with σ_rel = 2e-3 (fixed) or learned.
 | `e1_blocked`, `e1_blocked_a7` | E1 naive sampler | done |
 | `e4_sampler` | E4 (3-move, hard curve), sigma_rel matched 8.98e-4, + beta upgrade | 450k solves (150k it.), not converged (theta MPSRF 2.86): extend |
 
+Same truth, other settings: `runs/cluster_kle_sig2e3` (E4 at sigma_rel 2e-3, 2.0M solves, converged, + beta upgrade; LOG 2026-10-06).
+
 The other studies: `runs/cluster_l005` (64×64, r = 208, seed 2026), `runs/cluster_l005_s2074`
 (and the `_s2063` / `_s2086` stubs), `runs/e5_3d_2026-10` (3D).

@@ -1013,3 +1013,19 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
   (posterior Phi sd 10).
 - Next: extend to 667k iterations (2.0M solves) with experiments/extend_run.py
   and RESUME=1, then rerun report_sampler and report_beta_upgrade.
+
+## 2026-10-06 - E4 (3-move) at sigma_rel 2e-3, 2.0M solves: converged; beta upgrade (PR #97)
+
+- runs/cluster_kle_sig2e3 (store and E3 curve copied from cluster_kle: same KLE
+  basis, curve and kle truth).  64 chains, 667k iterations (150k first, then
+  extend_run.py: the cluster's E4_ARGS had overridden the command line),
+  burn 30k, thin 100, 407,680 kept samples.
+- theta MPSRF < 1.2 at iteration 390,807 (1.17M solves), final 1.116; worst
+  single-theta PSRF 1.064; level PSRF 1.03.
+- rho 1.469 [1.229, 1.783] (truth 1.5, z = -0.10): no visible low bias on this
+  truth at 2e-3 (the linearized prediction was -5 to -10%; seed 2026 at
+  r = 57 sits at the mild end).  level 0.867 [0.754, 0.942] (0.835).  log K 90%
+  coverage 94.6%; mean Phi 69.6 vs floor 51.7 (tempered likelihood).
+- beta: hard curve 2.208 [2.146, 2.317] (covers at the upper edge, sd 0.054);
+  upgraded 2.175 [1.442, 3.264], sd log beta 0.249 (per-sample theory median
+  0.240); weight ESS 99.8%; re-solving 200 samples: dPhi 0.004 +- 0.42.
