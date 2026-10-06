@@ -15,6 +15,22 @@
    "dim": 57
   }
  },
+ "e4_sampler": {
+  "mpsrf": {
+   "convergence_iteration": null,
+   "convergence_solves": null,
+   "final": 2.864949921200961,
+   "final_solves": 448500.0,
+   "dim": 57
+  },
+  "psrf": {
+   "convergence_iteration": null,
+   "convergence_solves": null,
+   "final": 2.001400436843101,
+   "final_solves": 448500.0,
+   "dim": 57
+  }
+ },
  "e5_soft": {
   "mpsrf": {
    "convergence_iteration": 418847.0,
