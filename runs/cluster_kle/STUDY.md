@@ -29,7 +29,7 @@ relative likelihood with σ_rel = 2e-3 (fixed) or learned.
 | `e5_soft_a7_noise` | θ-repeat 7, learned σ_rel | done |
 | `e5_soft_scale_noise` | E9, scale blocks, learned σ_rel | done |
 | `e5_soft_scale_noise_collapse` | E10, first run | **superseded: about 13 of 64 chains froze (LOG 2026-10-05). Do not use or resume.** |
-| `e5_soft_scale_noise_collapse2` | E10 with the log β slice refresh (PR #92) | to run |
+| `e5_soft_scale_noise_collapse2` | E10 with the log β slice refresh (PR #92) | not planned (next-steps line, realignment 2026-10-05) |
 | `e1_blocked`, `e1_blocked_a7` | E1 naive sampler | done |
 | `e4_sampler` | E4 (3-move, hard curve), sigma_rel matched 8.98e-4, + beta upgrade | 450k solves (150k it.), not converged (theta MPSRF 2.86): extend |
 
