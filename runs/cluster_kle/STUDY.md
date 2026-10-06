@@ -31,6 +31,7 @@ relative likelihood with σ_rel = 2e-3 (fixed) or learned.
 | `e5_soft_scale_noise_collapse` | E10, first run | **superseded: about 13 of 64 chains froze (LOG 2026-10-05). Do not use or resume.** |
 | `e5_soft_scale_noise_collapse2` | E10 with the log β slice refresh (PR #92) | to run |
 | `e1_blocked`, `e1_blocked_a7` | E1 naive sampler | done |
+| `e4_sampler` | E4 (3-move, hard curve), sigma_rel matched 8.98e-4, + beta upgrade | 450k solves (150k it.), not converged (theta MPSRF 2.86): extend |
 
 The other studies: `runs/cluster_l005` (64×64, r = 208, seed 2026), `runs/cluster_l005_s2074`
 (and the `_s2063` / `_s2086` stubs), `runs/e5_3d_2026-10` (3D).

@@ -995,3 +995,21 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
   2.36 [1.39, 3.98]: covers, but wider and dependent on which sample;
   per-sample is as cheap and preferred.
 - To publish: run E4 on runs/cluster_kle (cheat sheet), then the report.
+
+## 2026-10-06 - E4 (3-move) with sigma_rel matched, cluster_kle truth (PR #95)
+
+- 64 chains, sigma_rel = 8.98e-4 (= sigma_p / ||d||, the matched value), but
+  150k iterations (450k solves, burn 30k, thin 100), not the planned 667k:
+  the job got `--n-total 150000` (an exported E4_ARGS, presumably).
+- Not converged: theta MPSRF 2.86, worst PSRF 2.0 (56 of 57 above 1.2); level
+  PSRF 1.43.  Phi reaches the noise floor (256) only around 60-75k
+  iterations, after the 30k burn-in.  rho and beta PSRF 1.05.
+- Posterior so far: rho 1.54 [1.31, 1.82] (truth 1.5, z = 0.33; with 2e-3 the
+  r = 57 rho was biased 5-10% low); level 0.866 [0.78, 0.92] (0.835); log K
+  90% coverage 88.6%; mean Phi 243 vs floor 256.
+- beta: hard curve 2.23 [2.165, 2.33] (covers, at the upper edge, sd 0.05);
+  upgraded 2.13 [1.39, 3.25], sd log beta 0.259 (per-sample theory 0.253);
+  weight ESS 99.9% again; re-solving 200 samples changes Phi by 0.12 +- 1.07
+  (posterior Phi sd 10).
+- Next: extend to 667k iterations (2.0M solves) with experiments/extend_run.py
+  and RESUME=1, then rerun report_sampler and report_beta_upgrade.
