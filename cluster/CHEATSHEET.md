@@ -53,16 +53,18 @@ BRHO_ROOT=$PWD/runs/cluster_l005 PROBLEM_ARGS="--n 64 --ell 0.05 --truth-mode kl
 
 ### E10: scale blocks + log beta collapsed + theta-repeat 7 + learned noise, to convergence
 
+TAG `noise_collapse2` = with the lb slice refresh (PR after #91). The first run (TAG `noise_collapse`) froze 13 of 64 chains; do not resume it.
+
 ```bash
 # r = 57, 4.0M solves
-BRHO_ROOT=$PWD/runs/cluster_kle PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3" TAG=noise_collapse INNOV=scale \
+BRHO_ROOT=$PWD/runs/cluster_kle PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3" TAG=noise_collapse2 INNOV=scale \
     E5_ARGS="--n-total 444400 --n-burn 18000 --thin 90 --theta-repeat 7 --learn-noise 1 --scale-edges 20,60 --collapse-beta 1" \
     sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
-# r = 208, 6.0M solves (resume with RESUME=1 TAG=noise_collapse INNOV=scale)
-BRHO_ROOT=$PWD/runs/cluster_l005 PROBLEM_ARGS="--n 64 --ell 0.05 --truth-mode kle --sigma-rel 2e-3" TAG=noise_collapse INNOV=scale \
+# r = 208, 6.0M solves (resume with RESUME=1 TAG=noise_collapse2 INNOV=scale)
+BRHO_ROOT=$PWD/runs/cluster_l005 PROBLEM_ARGS="--n 64 --ell 0.05 --truth-mode kle --sigma-rel 2e-3" TAG=noise_collapse2 INNOV=scale \
     E5_ARGS="--n-total 666600 --n-burn 10000 --thin 99 --theta-repeat 7 --learn-noise 1 --scale-edges 20,60 --collapse-beta 1" \
     sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
-# report: python reports/report_soft.py --exp e5_soft_scale_noise_collapse   (as a job, section 5)
+# report: python reports/report_soft.py --exp e5_soft_scale_noise_collapse2   (as a job, section 5)
 ```
 
 ### Scale-block pCN with learned noise (E9; compare with a7_noise)

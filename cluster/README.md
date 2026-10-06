@@ -281,17 +281,18 @@ scale blocks, theta-repeat 7 and learned noise, run to convergence (budgets
 above the a7_noise crossings: r = 57 1.78M, r = 208 5.95M):
 ```bash
 # r = 57: 4.0M solves (444,400 iterations at 9 solves / it)
-BRHO_ROOT=$PWD/runs/cluster_kle PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3" TAG=noise_collapse INNOV=scale \
+BRHO_ROOT=$PWD/runs/cluster_kle PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3" TAG=noise_collapse2 INNOV=scale \
     E5_ARGS="--n-total 444400 --n-burn 18000 --thin 90 --theta-repeat 7 --learn-noise 1 --scale-edges 20,60 --collapse-beta 1" \
     sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
 # r = 208, seed 2026: 6.0M solves (666,600 iterations)
-BRHO_ROOT=$PWD/runs/cluster_l005 PROBLEM_ARGS="--n 64 --ell 0.05 --truth-mode kle --sigma-rel 2e-3" TAG=noise_collapse INNOV=scale \
+BRHO_ROOT=$PWD/runs/cluster_l005 PROBLEM_ARGS="--n 64 --ell 0.05 --truth-mode kle --sigma-rel 2e-3" TAG=noise_collapse2 INNOV=scale \
     E5_ARGS="--n-total 666600 --n-burn 10000 --thin 99 --theta-repeat 7 --learn-noise 1 --scale-edges 20,60 --collapse-beta 1" \
     sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
 # continue (r = 208 needs several 12 h rounds):
-#   BRHO_ROOT=... RESUME=1 TAG=noise_collapse INNOV=scale sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
+#   BRHO_ROOT=... RESUME=1 TAG=noise_collapse2 INNOV=scale sbatch --partition=cpu-preempt --time=12:00:00 cluster/slurm/node_e5_soft.sbatch
 ```
-Run folders e5_soft_scale_noise_collapse.  The coarser thinning keeps about
+Run folders e5_soft_scale_noise_collapse2 (the slice-refresh fix; the first
+E10 run, TAG noise_collapse, froze 13 of 64 chains and is superseded, see LOG).  The coarser thinning keeps about
 5k-7k samples per chain, so the reports stay light.
 
 To continue a node job after a time limit, resubmit it the same way, e.g.

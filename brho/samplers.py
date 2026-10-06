@@ -445,6 +445,74 @@ class SoftCurveSampler:
             return True
         return False
 
+    def _slice_lb(self, st, rng, max_doublings=30):
+        """E10 lb refresh at fixed (theta, w): exact slice-sampling update of
+        lb from exp(-c Phi(lb)) p(lb | rho), with Phi(lb) in closed form from
+        the current pressures (no PDE solve).
+
+        Why it is needed: the joint moves propose lb' from a Laplace (Gaussian)
+        approximation.  Above its optimum Phi(lb) saturates at w |d|^2 / 2
+        (predicted pressures -> 0), so the exact conditional has a plateau
+        that the Gaussian q cannot reach back into: a chain whose lb sits more
+        than ~0.5 above the optimum has q(lb | .) ~ 0 in the reverse ratio and
+        every joint move is rejected (E10 r = 57: 13 of 64 chains frozen at
+        Phi ~ 1e4-1e5).  Slice sampling has no proposal density to vanish.
+        The bracket width depends on (g, rho, c) only, never on lb, so the
+        update leaves the conditional exactly invariant (Neal 2003)."""
+        if self.cfg.prior_test or st.get("pobs") is None:
+            return
+        lb0 = st["lb"]
+        rho = self.rho(st["w"])
+        c = self.noise_c(st)
+        g = np.exp(lb0) * np.asarray(st["pobs"], float)
+        _, P = self._q_lb(g, rho, c)
+        width = 2.0 / np.sqrt(P)
+
+        def logf(x):
+            lp = self.log_p_lb(x, rho)
+            return -c * self._phi_lb(g, x) + lp if np.isfinite(lp) else -np.inf
+
+        # Neal (2003) doubling + shrinkage with the acceptance test: the
+        # bracket grows geometrically, so a chain far up the plateau reaches
+        # the optimum in one update however narrow the conditional is.
+        y = logf(lb0) + np.log(rng.random())
+        lo = lb0 - width * rng.random()
+        hi = lo + width
+        for _ in range(max_doublings):
+            if not (y < logf(lo) or y < logf(hi)):
+                break
+            if rng.random() < 0.5:
+                lo -= hi - lo
+            else:
+                hi += hi - lo
+
+        def acceptable(x1):
+            l, h, diff = lo, hi, False
+            while h - l > 1.1 * width:
+                mid = 0.5 * (l + h)
+                if (lb0 < mid) != (x1 < mid):
+                    diff = True
+                if x1 < mid:
+                    h = mid
+                else:
+                    l = mid
+                if diff and y >= logf(l) and y >= logf(h):
+                    return False
+            return True
+
+        a, b = lo, hi
+        while True:
+            x = a + (b - a) * rng.random()
+            if y < logf(x) and acceptable(x):
+                break
+            if x < lb0:
+                a = x
+            else:
+                b = x
+        keff = st.get("keff")
+        st.update(lb=float(x), phi=self._phi_lb(g, x), pobs=np.exp(-x) * g,
+                  keff=keff * np.exp(x - lb0) if keff is not None and np.isfinite(keff) else keff)
+
     def gibbs_noise(self, st, rng):
         """Exact draw of s2 = sigma_rel^2 from its conditional:
         prior IG(a0, b0); likelihood (s2)^(-n/2) exp(-|d - G|^2 / (2 s2 |d|^2))
@@ -487,6 +555,8 @@ class SoftCurveSampler:
     # ------------------------------------------------------------ one sweep
     def step(self, st, ad, rng):
         s_th, s_h, s_rg, s_lv = ad.s[:4]
+        if self.collapse:
+            self._slice_lb(st, rng)        # E10: lb to its conditional first (no solve)
         th, w, lb = st["theta"], st["w"], st["lb"]
         rho = self.rho(w)
         # A: pCN on theta (global innovation: unchanged code path, so existing

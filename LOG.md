@@ -917,3 +917,32 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
   (closed form, no solve) doubles the global pCN step and halves the IACT in
   the surrogate (2.0x on the slowest direction).  Next: implement it.
 
+
+## 2026-10-05 - E10 first run (r = 57): 13 of 64 chains frozen; fix (lb slice refresh)
+
+- runs/cluster_kle/.../e5_soft_scale_noise_collapse (PR #91), 4.0M solves:
+  theta MPSRF final 10.6, level PSRF 10.4.  About 13 chains froze during
+  burn-in at Phi 5e3-1.1e5 (config scale; the healthy chains sit at 47) with
+  learned sigma_rel up to 0.03 and the level at 1.2-3.4 (truth 0.83): log K
+  too high, predicted pressures too small.  Moves A and B never accepted
+  again in those chains (their steps adapted to the 1e-3 floor); only C, D
+  and E moved them.  The posterior summaries of this run are not usable.
+- Cause: the joint move proposes lb' from a Laplace (Gaussian) approximation
+  q of its conditional.  Above the optimum Phi(lb) = w/2 |d - e^{-lb} g|^2
+  saturates at w |d|^2 / 2 (1/(2 sigma_rel^2) = 1.25e5: the frozen chains'
+  ceiling), so the conditional has a plateau but q has Gaussian tails: with
+  lb more than ~0.5 above its optimum, q(lb | .) in the reverse ratio is ~0
+  and every joint move is rejected.  The chain is still exact, but trapped.
+  Reproduced on the 16x16 test problem: start lb_hat + 0.5 ... + 4: 0 of 300
+  joint moves accepted; start lb_hat - 1 or lb_hat: 96%.  The exactness test
+  of PR #90 started at lb_hat, so it never saw this.
+- Fix: before move A, an exact slice-sampling update of lb at fixed (theta,
+  w) from exp(-c Phi(lb)) p(lb | rho), closed form, no PDE solve (Neal 2003,
+  doubling + shrinkage with the acceptance test; bracket width 2/sqrt(P)
+  from (g, rho, c), never from lb).  Slice sampling has no proposal density
+  that can vanish.  Same starts: 286-292 of 300 joint moves accepted.
+- Test test_collapse_beta_slice_refresh: draws match the exact conditional
+  (quadrature) from lb_hat and from lb_hat + 3; the trap (0 of 200) and its
+  release after one refresh (> 100 of 200).  60 tests pass.
+- Reruns: TAG noise_collapse2 (cluster/README.md "E10").  The r = 208
+  noise_collapse run has the same flaw: stop it rather than resume.
