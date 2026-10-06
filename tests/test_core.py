@@ -966,3 +966,43 @@ def test_collapse_beta_slice_refresh():
     assert sum(smp._joint_lb(s3, s3["theta"], s3["w"], rng) for _ in range(200)) == 0
     smp._slice_lb(s3, rng)
     assert sum(smp._joint_lb(s3, s3["theta"], s3["w"], rng) for _ in range(200)) > 100
+
+
+def test_beta_upgrade_level_swap_exact():
+    """Level-swap upgrade of hard-curve samples (brho/beta_upgrade.py).
+    Likelihood off: hard-curve 'posterior' = prior, theta ~ N(0, I), rho ~
+    lognormal.  The weighted, shifted samples must follow the restored model:
+    theta' ~ N(0, I) (checked along c, the direction that moves), xi =
+    (lb - m(rho)) / s(rho) ~ N(0, 1), rho keeps its prior; and log K is
+    unchanged by the shift when T c = 1 exactly."""
+    from brho.beta_upgrade import level_swap, constant_coords, summarize
+    rng = np.random.default_rng(5)
+    n, r = 400_000, 12
+    theta = rng.standard_normal((n, r))
+    # keep rho / s > |c| so the importance weights have finite variance (the
+    # prior is the worst case; under the data a = theta . c is pinned)
+    rho = 1.5 * np.exp(0.3 * rng.standard_normal(n))
+    c = rng.standard_normal(r) * 0.2
+    m = 0.7 + 0.2 * rho
+    s = 0.25 + 0.1 * rho
+    up = level_swap(theta, rho, c, m, s, rng)
+    w = up["w"]
+    xi = (up["lb"] - m) / s
+    assert abs(w @ xi) < 0.02 and abs(np.sqrt(w @ xi ** 2) - 1) < 0.02, (w @ xi, w @ xi ** 2)
+    u = up["theta"] @ (c / np.linalg.norm(c))
+    assert abs(w @ u) < 0.02 and abs(np.sqrt(w @ u ** 2) - 1) < 0.02, (w @ u, w @ u ** 2)
+    lr = np.log(rho) - np.log(1.5)
+    assert abs(w @ lr) < 0.01 and abs(np.sqrt(w @ lr ** 2) - 0.3) < 0.01
+    assert up["ess"] > 0.5 * n, up["ess"] / n
+    # T c = 1 exactly -> log K = lb + rho T theta unchanged
+    T = rng.standard_normal((30, r))
+    c2, resid = constant_coords(np.column_stack([T[:, :-1], np.ones(30)]))
+    assert resid < 1e-12
+    T2 = np.column_stack([T[:, :-1], np.ones(30)])
+    th, rh = theta[:50], rho[:50]
+    up2 = level_swap(th, rh, c2, m[:50], s[:50], rng)
+    logK0 = m[:50, None] + rh[:, None] * (th @ T2.T)
+    logK1 = up2["lb"][:, None] + rh[:, None] * (up2["theta"] @ T2.T)
+    assert np.allclose(logK0, logK1)
+    q = summarize(np.arange(101.0), truth=50.0)
+    assert abs(q["median"] - 50) < 1e-9 and q["covered"]
