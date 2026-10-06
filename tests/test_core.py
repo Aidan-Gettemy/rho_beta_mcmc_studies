@@ -921,3 +921,48 @@ def test_collapse_beta_exact():
     assert abs(phi_chk - s1["phi"]) < 1e-6 * max(1.0, phi_chk)
     assert np.allclose(pobs_chk, s1["pobs"]) and abs(keff_chk / s1["keff"] - 1) < 1e-9
     assert ad.n[0] == 120 and ad.n[1] == 40
+
+
+def test_collapse_beta_slice_refresh():
+    """E10 lb refresh (_slice_lb): (1) exact -- at fixed theta, w its draws
+    match the conditional exp(-Phi(lb)) N(lb; m, s^2) by quadrature, also
+    started on the plateau far above the optimum; (2) it frees the trap the
+    E10 r = 57 run hit: with lb 2 above its optimum the Laplace joint move
+    alone is never accepted, after one refresh it is."""
+    from brho.samplers import SoftCurveSampler
+    p = prob()
+    smp = SoftCurveSampler(p, _soft_curve(), replace(C.SoftSamplerConfig(), collapse_beta=True))
+    rng = np.random.default_rng(3)
+    st = smp.init_state(rng)
+    rho = smp.rho(st["w"])
+    g = np.asarray(smp.potential(st["theta"], st["w"], 0.0)[1], float)
+    m, s = smp.m(rho), smp.s(rho)
+    a, bb = float(smp.d_p @ g), float(g @ g)
+    lb_hat = -np.log(a / bb)
+    sd_hat = 1.0 / np.sqrt(smp.w_lik * bb * (a / bb) ** 2 + 1 / s ** 2)
+    grid = np.linspace(lb_hat - 12 * sd_hat, lb_hat + 12 * sd_hat, 20001)
+    logp = np.array([-smp._phi_lb(g, x) for x in grid]) - 0.5 * ((grid - m) / s) ** 2
+    pw = np.exp(logp - logp.max()); pw /= pw.sum()
+    mean_ex = float(pw @ grid); sd_ex = float(np.sqrt(pw @ (grid - mean_ex) ** 2))
+
+    def at(lb):
+        s2 = dict(st); s2["lb"] = float(lb)
+        s2["phi"], s2["pobs"], s2["keff"] = smp.potential(s2["theta"], s2["w"], s2["lb"])
+        return s2
+
+    for start in (lb_hat, lb_hat + 3.0):
+        s2, draws = at(start), []
+        for _ in range(4000):
+            smp._slice_lb(s2, rng)
+            draws.append(s2["lb"])
+        d = np.array(draws[200:])
+        assert abs(d.mean() - mean_ex) < 0.1 * sd_ex, (start - lb_hat, d.mean(), mean_ex, sd_ex)
+        assert abs(d.std() / sd_ex - 1) < 0.1, (start - lb_hat, d.std(), sd_ex)
+    phi_chk, pobs_chk, keff_chk = smp.potential(s2["theta"], s2["w"], s2["lb"])
+    assert abs(phi_chk - s2["phi"]) < 1e-6 * max(1.0, phi_chk)
+    assert np.allclose(pobs_chk, s2["pobs"]) and abs(keff_chk / s2["keff"] - 1) < 1e-9
+    # (2) the trap and its release
+    s3 = at(lb_hat + 2.0)
+    assert sum(smp._joint_lb(s3, s3["theta"], s3["w"], rng) for _ in range(200)) == 0
+    smp._slice_lb(s3, rng)
+    assert sum(smp._joint_lb(s3, s3["theta"], s3["w"], rng) for _ in range(200)) > 100
