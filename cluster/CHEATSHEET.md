@@ -177,6 +177,20 @@ sbatch --partition=cpu-preempt --ntasks=1 --cpus-per-task=2 --mem=16G --time=00:
 - `--solve-check 200` re-solves 200 upgraded samples (seconds) to measure the misfit change from the part of the constant field outside the KLE span; leave it out for zero solves.
 - Check the weight ESS line: a small ESS (a few %) means the weights are dominated by a few samples; report it.
 
+### Baseline: freeze (ρ*, θ*) at the lowest-Φ sample, pCN on β with PDE solves
+
+The "obvious" fix, run so it can be shown next to the level swap. It uses about 80k PDE solves, roughly 3 minutes at 32×32.
+
+```bash
+export BRHO_ROOT=$PWD/runs/<study>
+sbatch --partition=g1mig --ntasks=1 --cpus-per-task=2 --mem=32G --time=01:00:00 \
+    -J brho-frozen -o logs/brho-frozen-%j.out --export=ALL \
+    --wrap "source cluster/env.sh; python reports/frozen_beta_pcn.py --exp e4_sampler"
+```
+
+- Output: `tables/e4_sampler/frozen_beta_pcn.{md,json}`, `figures/e4_sampler/fig_frozen_beta_pcn.png`.
+- The table also gives the exact 1D posterior on a grid (no MCMC). Its sd(log β) should be about σ_rel.
+
 ## 6. Send results to GitHub
 
 ```bash
