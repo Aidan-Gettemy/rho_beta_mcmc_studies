@@ -72,7 +72,7 @@ def analyse(root, label, rho_post=None, phi_post=None):
 
 if __name__ == "__main__":
     R = os.path.join(REPO, "runs") + ""
-    res = [analyse(f"{R}/e5_kle_2026-09", "2d_r57", [1.473, 1.23, 1.79], 69.54),
+    res = [analyse(f"{R}/cluster_kle", "2d_r57", [1.473, 1.23, 1.79], 69.54),
            analyse(f"{R}/cluster_l005", "2d_r208", [1.204, 1.05, 1.38], 108.3)]
     for o in res:
         print(json.dumps(o, indent=1))

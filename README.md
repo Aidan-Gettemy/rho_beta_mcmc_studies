@@ -65,8 +65,8 @@ Settings: 32×32, ℓ = 0.1, r = 57 (95.2% energy), relative likelihood with
 standardized field projected on the 57 modes; the deliberate inverse crime is
 stated, and the full-rank runs are the robustness check). β† = 2.3, ρ† = 1.5.
 64 chains each, 2.0M PDE solves per chain (E5: 667k iterations × 3 solves;
-E1: 1M × 2). Study folder on the cluster: `runs/cluster_kle`; exported results:
-`runs/e5_kle_2026-09/`.
+E1: 1M × 2). Study folder: `runs/cluster_kle/` (the live study on the cluster and its results
+in the repo; see its `STUDY.md`).
 
 | | E5 (soft curve prior + moves C, D) | E1 (naive blocked pCN) |
 |---|---|---|
@@ -302,9 +302,12 @@ but no chains (those stay on the cluster). Export a study with
 `bash cluster/export_results.sh $BRHO_ROOT <study folder name>`; the second
 argument is the folder under `runs/`, not the git branch.
 
-- `runs/e5_kle_2026-09/`: **the main study** (truth `kle`, σ_rel = 2e-3): E3 curve, E1
-  and E5 at 2.0M solves, their MPSRF comparison, the θ spectra, the E5 prior test, and
-  the multiscale prior tests (standalone, `ms_raw`, `ms_white`).
+- `runs/cluster_kle/`: **the main 2D study** (32×32, r = 57, truth `kle`, σ_rel = 2e-3):
+  E3 curve, E1 and E5 at 2.0M solves, θ-repeat, E7 (whitened multiscale), E8 blocks,
+  learned noise, E9, E10, their MPSRF comparison, θ spectra, prior tests and the
+  multiscale prior tests. Like `cluster_l005` it is both the live study (chains,
+  git-ignored) and its export. It replaced `runs/e5_kle_2026-09/` on 2026-10-05
+  (see `runs/cluster_kle/STUDY.md`).
 - `runs/e5_3d_2026-10/`: **the 3D study** (unit cube 16³, ℓ = 0.2, r = 78, truth `kle`,
   σ_rel = 2e-3): E3 curve, E5 prior test, E1 and E5 at 2.0M solves, MPSRF comparison.
 - `runs/cluster_l005/`: **the scaling study** (64×64, ℓ = 0.05, r = 208, truth `kle`,
@@ -312,8 +315,6 @@ argument is the folder under `runs/`, not the git branch.
   2.0M solves, MPSRF comparison. Unlike the other studies it ran *inside* the repo
   folder on the cluster, so this folder is both the live study (chains, git-ignored)
   and its export.
-- `runs/e3_kle_2026-09/`, `runs/e5_prior_test_kle_2026-09/`: the E3 curve and E5 prior
-  test of the main study as first exported.
 - `runs/e1_blocked_2026-09/`, `runs/e2_grid_2026-09/`, `runs/e3_curve_2026-09/`,
   `runs/e4_sampler_2026-09/`, `runs/e4_prior_test_2026-09/`: the full-rank-truth
   (`standardized`) study, 32×32: E1, E2, E3, E4 (the robustness check).

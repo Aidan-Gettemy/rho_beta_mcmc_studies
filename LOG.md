@@ -946,3 +946,17 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
   release after one refresh (> 100 of 200).  60 tests pass.
 - Reruns: TAG noise_collapse2 (cluster/README.md "E10").  The r = 208
   noise_collapse run has the same flaw: stop it rather than resume.
+
+## 2026-10-05 - housekeeping: one folder for the 2D study
+
+- PR #91 committed `runs/cluster_kle` (the live 2D study) for the first time.
+  It is a superset of the old export `runs/e5_kle_2026-09`; the only
+  differences were the MPSRF summaries and comparison figures, recomputed with
+  the incremental MPSRF code (PR #87).  `runs/e3_kle_2026-09` and
+  `runs/e5_prior_test_kle_2026-09` were byte-identical copies of files in it.
+- Removed those three folders (about 38 MB).  `runs/cluster_kle` stays: the
+  cluster's sparse checkout reads the frozen kle / truth / curve inputs from
+  it, so deleting it would break the runs.
+- Repointed reports/linearized (lin.py, screen.py, da_eval.py, da_test.py) and
+  the README; `runs/cluster_kle/STUDY.md` lists the runs and their status and
+  says what to do with old references to `e5_kle_2026-09`.

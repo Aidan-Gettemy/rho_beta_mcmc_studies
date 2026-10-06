@@ -5,7 +5,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, REPO)
 from lin import load
 for lab, root in (("2d_r208", os.path.join(REPO, "runs") + "/cluster_l005"),
-                  ("2d_r57", os.path.join(REPO, "runs") + "/e5_kle_2026-09")):
+                  ("2d_r57", os.path.join(REPO, "runs") + "/cluster_kle")):
     prob, man = load(root); pc, kle = prob.pc, prob.kle
     z = np.load(f"lin_{lab}.npz"); lam, V = z["lam"], z["V"]
     w = (lam / (1 + lam)) ** 2; w /= w.sum()

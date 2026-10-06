@@ -15,7 +15,7 @@ set -euo pipefail
 src="${1:?study root (its BRHO_ROOT)}"; name="${2:?name for runs/<name>}"
 if [[ "$name" == results-* || "$name" == */* ]]; then
     echo "WARNING: '$name' looks like a branch name or a path; the second argument is"
-    echo "  the study folder under runs/ (e.g. e5_kle_2026-09), not the git branch."
+    echo "  the study folder under runs/ (e.g. cluster_kle), not the git branch."
     echo "  Continuing in 5 s -- Ctrl-C to stop."; sleep 5
 fi
 cd "$(dirname "$0")/.."
