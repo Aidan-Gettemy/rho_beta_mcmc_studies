@@ -3,7 +3,7 @@ E1 naive (log beta ~ N(0,1), log rho ~ N(0,0.75^2)) vs E4 3-move on the curve (h
 | | E1 naive | E4 3-move | truth |
 |---|---|---|---|
 | Solves per chain | 2.0M | 2.0M |  |
-| θ MPSRF, final | 1.21 | 1.12 |  |
+| θ MPSRF, final | 1.23 | 1.12 |  |
 | log β PSRF | 1.21 | — (β on the curve) |  |
 | ρ | 1.50 [1.25, 1.83] | 1.47 [1.23, 1.78] | 1.5 |
 | Level | 0.862 [0.736, 0.938] | 0.867 [0.754, 0.942] | 0.835 |
