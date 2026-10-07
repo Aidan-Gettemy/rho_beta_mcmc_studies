@@ -19,6 +19,14 @@ runs live in different study folders, so both roots are arguments (no BRHO_ROOT)
      fig_e1_psrf.png         E1: PSRF of every entry (57 theta modes, log beta, log rho)
      fig_e1_mpsrf.png        E1: MPSRF of theta and of all entries
      fig_e1_vs_e4_mpsrf.png  MPSRF of theta, E4 on top of E1
+   Burn-in: E4 keeps theta only after its burn-in (30k iterations = 90k solves),
+   so its curves start at ~93k solves; E1 keeps everything from iteration 0.
+   With --burn-match solves (default) E1's curves are recomputed from its chain
+   files with the window starting at the same number of forward solves as E4's
+   (--burn-match iterations: the same iteration; none: the committed E1 curves).
+   Written to <e1-root>/tables/<e1-exp>/mpsrf_{theta,all}_burn_matched.csv and
+   used for the figures when present.  Also fig_e4_psrf.png: E4's PSRF of
+   every entry (57 theta modes, log rho).
 3. <out-root>/tables/e1_vs_e4/e1_vs_e4.{md,json}: the side-by-side table (E4
    intervals from its beta_upgrade.json; E1 from step 1, or chain-mean
    summaries if step 1 has not been run).
@@ -34,6 +42,7 @@ import matplotlib.pyplot as plt
 from _common import io, C, load_problem
 from brho import plotting as P
 from brho import diagnostics as D
+from brho import mpsrf as MP
 from brho.beta_upgrade import summarize
 
 E1C, E4C, GR = "#c08a2e", "#2a6f97", "#9aa5ae"
@@ -148,6 +157,61 @@ def e1_field(root, exp):
             os.environ["BRHO_ROOT"] = old
 
 
+def e1_matched_curves(e1_root, e1_exp, e4_root, e4_exp, mode):
+    """Recompute E1's MPSRF / PSRF curves with the window starting where E4's
+    does (in forward solves, or in iterations).  Needs the E1 chain files."""
+    s4 = read_json(os.path.join(e4_root, "tables", e4_exp, "mpsrf_summary.json"))
+    s1 = read_json(os.path.join(e1_root, "tables", e1_exp, "mpsrf_summary.json"))
+    it4 = s4["first_kept_iteration"] + (s4["iter_burn"] - 1) * s4["thinning"]
+    target_it = (it4 * s4["solves_per_iteration"] / s1["solves_per_iteration"]
+                 if mode == "solves" else it4)
+    old = os.environ.get("BRHO_ROOT")
+    os.environ["BRHO_ROOT"] = os.path.abspath(e1_root)
+    try:
+        import report_mpsrf
+        try:
+            run_ = report_mpsrf.load_kept(e1_exp)
+        except FileNotFoundError as e:
+            print(f"{e1_exp}: {e}; burn-matched curves skipped")
+            return None
+    finally:
+        if old is None:
+            os.environ.pop("BRHO_ROOT", None)
+        else:
+            os.environ["BRHO_ROOT"] = old
+    its = run_["its"]
+    thin = int(its[1] - its[0])
+    idx = int(np.searchsorted(its, target_it))       # first window sample (0-based)
+    iter_burn = idx + 1                              # MATLAB 1-based
+    info = dict(mode=mode, e4_window_start_iteration=int(it4),
+                e4_window_start_solves=int(it4 * s4["solves_per_iteration"]),
+                e1_window_start_iteration=int(its[idx]),
+                e1_window_start_solves=int(its[idx] * s1["solves_per_iteration"]),
+                e1_iter_burn=iter_burn, skip=s4["skip"], step=s4["step"])
+    td = tdir(e1_root, "tables", e1_exp)
+    for name, arr in run_["sets"].items():
+        cur = MP.mpsrf_curve(arr, skip=s4["skip"], step=s4["step"], iter_burn=iter_burn)
+        x = its[cur["k"] - 1].astype(float) + thin
+        extra = run_["extra"][name]
+        r = arr.shape[2]
+        labels = ([f"θ{i + 1}" for i in range(r - len(extra))] + extra) if extra \
+            else [f"theta{i + 1}" for i in range(r)]
+        np.savetxt(os.path.join(td, f"mpsrf_{name}_burn_matched.csv"),
+                   np.column_stack([x, cur["mpsrf"], cur["psrf"], cur["psrf_i"]]),
+                   delimiter=",", header="iteration,mpsrf,psrf_max," + ",".join(labels),
+                   comments="", fmt="%.6g")
+        conv = MP.convergence_iteration(x, cur["mpsrf"], LEVEL)
+        info[name] = dict(mpsrf_final=float(cur["mpsrf"][-1]),
+                          psrf_max_final=float(cur["psrf"][-1]),
+                          mpsrf_convergence_iteration=conv)
+    with open(os.path.join(td, "mpsrf_burn_matched.json"), "w", encoding="utf-8") as f:
+        json.dump(info, f, indent=1)
+    print(f"E1 burn-matched ({mode}): window starts at iteration {info['e1_window_start_iteration']} "
+          f"({info['e1_window_start_solves']} solves; E4: {info['e4_window_start_solves']}); "
+          f"theta MPSRF final {info['theta']['mpsrf_final']:.3f}")
+    return info
+
+
 def solves_axis(root, exp, data):
     s = read_json(os.path.join(root, "tables", exp, "mpsrf_summary.json"))
     return data[:, 0] * s["solves_per_iteration"], s
@@ -166,6 +230,8 @@ def main():
     ap.add_argument("--e4-exp", default="e4_sampler")
     ap.add_argument("--out-root", default=None, help="default: --e4-root")
     ap.add_argument("--stride", type=int, default=10, help="pool every n-th E1 iteration")
+    ap.add_argument("--burn-match", default="solves", choices=("solves", "iterations", "none"),
+                    help="start E1's convergence window where E4's starts (default: same solves)")
     a = ap.parse_args()
     out_root = a.out_root or a.e4_root
 
@@ -183,8 +249,19 @@ def main():
 
     # ---------------------------------------------------------- 2. convergence
     fd = tdir(out_root, "figures", "e1_vs_e4")
-    h1, all1 = read_curve(a.e1_root, a.e1_exp, "all")
-    _, th1 = read_curve(a.e1_root, a.e1_exp, "theta")
+    bm = None
+    if a.burn_match != "none":
+        bm = e1_matched_curves(a.e1_root, a.e1_exp, a.e4_root, a.e4_exp, a.burn_match)
+        if bm is None:
+            p = os.path.join(a.e1_root, "tables", a.e1_exp, "mpsrf_burn_matched.json")
+            bm = read_json(p) if os.path.exists(p) else None
+    suf = "_burn_matched" if bm else ""
+    if a.burn_match != "none" and not bm:
+        print("WARNING: E1 curves NOT burn-matched (no E1 chains here); figures use the "
+              "committed E1 curves, which start at iteration 1800")
+    h1, all1 = read_curve(a.e1_root, a.e1_exp, "all" + suf)
+    _, th1 = read_curve(a.e1_root, a.e1_exp, "theta" + suf)
+    h4, all4 = read_curve(a.e4_root, a.e4_exp, "all")
     _, th4 = read_curve(a.e4_root, a.e4_exp, "theta")
     x1, s1 = solves_axis(a.e1_root, a.e1_exp, all1)
     x4, s4 = solves_axis(a.e4_root, a.e4_exp, th4)
@@ -204,29 +281,37 @@ def main():
             ax.spines[sp].set_visible(False)
         ax.set_title(title, fontsize=11, loc="left")
 
-    # (a) E1, PSRF of every entry
-    fig, ax = plt.subplots(figsize=(8, 4.6))
-    names = h1[3:]
-    ith = [i for i, n in enumerate(names) if n.startswith("θ")]
-    for i in ith:
-        ax.plot(x1 / M, all1[:, 3 + i], color=GR, lw=0.6, alpha=0.7)
-    ax.plot([], [], color=GR, lw=1, label="θ modes 1–57 (each)")
-    for name, col in (("logβ", "#b0563f"), ("logρ", E4C)):
-        if name in names:
-            ax.plot(x1 / M, all1[:, 3 + names.index(name)], color=col, lw=2,
-                    label="log β" if name == "logβ" else "log ρ")
-    ax.plot(x1 / M, all1[:, 2], color="k", lw=1, ls=":", label="max over entries")
-    ax.legend(fontsize=9, frameon=False)
-    finish(ax, f"E1 naive sampler: PSRF of every entry, {s1['n_chains']} chains")
-    ax.set_ylabel("PSRF (log scale)")
-    fig.tight_layout(); fig.savefig(os.path.join(fd, "fig_e1_psrf.png"), dpi=150); plt.close(fig)
+    burn_note = (f", window from {bm['e1_window_start_solves'] / M:.3f}M solves" if bm else "")
+
+    def psrf_fig(head, data, x, title, fname):
+        fig, ax = plt.subplots(figsize=(8, 4.6))
+        names = head[3:]
+        for i, nm in enumerate(names):
+            if nm.startswith("θ"):
+                ax.plot(x / M, data[:, 3 + i], color=GR, lw=0.6, alpha=0.7)
+        ax.plot([], [], color=GR, lw=1, label="θ modes 1–57 (each)")
+        for nm, col, lab in (("logβ", "#b0563f", "log β"), ("logρ", E4C, "log ρ")):
+            if nm in names:
+                ax.plot(x / M, data[:, 3 + names.index(nm)], color=col, lw=2, label=lab)
+        ax.plot(x / M, data[:, 2], color="k", lw=1, ls=":", label="max over entries")
+        ax.legend(fontsize=9, frameon=False)
+        finish(ax, title)
+        ax.set_ylabel("PSRF (log scale)")
+        fig.tight_layout(); fig.savefig(os.path.join(fd, fname), dpi=150); plt.close(fig)
+
+    # (a) PSRF of every entry: E1, and E4 for reference
+    psrf_fig(h1, all1, x1, f"E1 naive sampler: PSRF of every entry, {s1['n_chains']} chains"
+             + burn_note, "fig_e1_psrf.png")
+    x4a = all4[:, 0] * s4["solves_per_iteration"]
+    psrf_fig(h4, all4, x4a, f"E4 3-move sampler: PSRF of every entry, {s4['n_chains']} chains",
+             "fig_e4_psrf.png")
 
     # (b) E1, MPSRF
     fig, ax = plt.subplots(figsize=(8, 4.6))
     ax.plot(x1 / M, th1[:, 1], color=E1C, lw=2, label="θ (57 modes)")
     ax.plot(x1 / M, all1[:, 1], color=E1C, lw=1.2, ls="--", label="θ, log β, log ρ (nearly on top)")
     ax.legend(fontsize=9, frameon=False)
-    finish(ax, f"E1 naive sampler: MPSRF, final {th1[-1, 1]:.2f} (θ)")
+    finish(ax, f"E1 naive sampler: MPSRF, final {th1[-1, 1]:.2f} (θ)" + burn_note)
     ax.set_ylabel("MPSRF (log scale)")
     fig.tight_layout(); fig.savefig(os.path.join(fd, "fig_e1_mpsrf.png"), dpi=150); plt.close(fig)
 
@@ -236,6 +321,9 @@ def main():
             label=f"E1 naive (2 solves/it), final {th1[-1, 1]:.2f}")
     ax.plot(x4 / M, th4[:, 1], color=E4C, lw=2,
             label=f"E4 3-move on the curve (3 solves/it), final {th4[-1, 1]:.2f}")
+    if bm:
+        ax.axvline(bm["e4_window_start_solves"] / M, color="0.5", lw=0.8, ls="--",
+                   label="burn-in end, both runs")
     it_c = s4["theta"].get("mpsrf_convergence_iteration")
     if it_c:
         xc = it_c * s4["solves_per_iteration"] / M
@@ -243,7 +331,9 @@ def main():
         ax.text(xc, 0.97, f" E4 below {LEVEL}\n at {xc:.2f}M solves", color=E4C,
                 fontsize=9, va="top", transform=ax.get_xaxis_transform())
     ax.legend(fontsize=9, frameon=False)
-    finish(ax, "MPSRF of θ at equal cost: same truth, data and σ_rel")
+    finish(ax, "MPSRF of θ at equal cost: same truth, data and σ_rel"
+           + (" · same burn-in (solves)" if bm and bm["mode"] == "solves" else
+              " · same burn-in (iterations)" if bm else ""))
     ax.set_ylabel("MPSRF of θ (log scale)")
     fig.tight_layout(); fig.savefig(os.path.join(fd, "fig_e1_vs_e4_mpsrf.png"), dpi=150)
     plt.close(fig)
