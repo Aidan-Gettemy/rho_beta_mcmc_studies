@@ -10,6 +10,9 @@ runs live in different study folders, so both roots are arguments (no BRHO_ROOT)
 1. Intervals (needs the E1 chain files, i.e. run on the cluster): pooled
    post-burn-in median and 90% interval of beta, rho, the level and Phi from
    E1's per-iteration traces -> <e1-root>/tables/<e1-exp>/e1_intervals.{json,md}.
+   Also <e1-root>/figures/<e1-exp>/fig_e1_field.png, the E1 counterpart of
+   fig_e4_field.png (true log K | posterior mean | posterior sd | slice with
+   90% band), from E1's kept samples after burn-in.
    Skipped, with a message, when the chains are not there.
 2. Convergence (from the committed mpsrf_*.csv tables; runs anywhere), against
    forward solves per chain, into <out-root>/figures/e1_vs_e4/:
@@ -28,7 +31,9 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from _common import io, C
+from _common import io, C, load_problem
+from brho import plotting as P
+from brho import diagnostics as D
 from brho.beta_upgrade import summarize
 
 E1C, E4C, GR = "#c08a2e", "#2a6f97", "#9aa5ae"
@@ -102,6 +107,47 @@ def e1_intervals(root, exp, stride):
     return res
 
 
+def e1_field(root, exp):
+    """fig_e1_field.png: same panels as report_sampler.py's fig_e4_field.png."""
+    old = os.environ.get("BRHO_ROOT")
+    os.environ["BRHO_ROOT"] = os.path.abspath(root)
+    try:
+        prob, man = load_problem(exp)
+        cfg = C.from_dict(C.NaiveConfig, man["configs"]["NaiveConfig"])
+        syn, kle, n = prob.syn, prob.kle, prob.pc.n
+        LB, RH, TH = [], [], []
+        for p in io.chain_files(io.results_dir(exp)):
+            with np.load(p) as z:
+                keep = np.asarray(z["kept_it"]) >= cfg.n_burn
+                LB.append(np.asarray(z["kept_logbeta"], float)[keep])
+                RH.append(np.asarray(z["kept_rho"], float)[keep])
+                TH.append(np.asarray(z["kept_theta"], float).reshape(len(keep), -1)[keep])
+        lb, rh, th = np.concatenate(LB), np.concatenate(RH), np.concatenate(TH)
+        fs = D.logK_summaries(lb, rh, th, kle, syn.logK_true)
+        m_lk, sd_lk, lo_lk, hi_lk, cov90 = fs["mean"], fs["sd"], fs["lo"], fs["hi"], fs["coverage"]
+        fig, ax = plt.subplots(1, 4, figsize=(17, 3.9))
+        v0 = min(syn.logK_true.min(), m_lk.min()); v1 = max(syn.logK_true.max(), m_lk.max())
+        P.field(ax[0], syn.logK_true, n, r"true $\log K$", vmin=v0, vmax=v1)
+        P.field(ax[1], m_lk, n, r"posterior mean $\log K$ (E1)", vmin=v0, vmax=v1)
+        P.field(ax[2], sd_lk, n, r"posterior sd $\log K$ (E1)", cmap="magma")
+        jr = P.slice_row(n); xs = prob.phys.xc
+        ax[3].fill_between(xs, P.line(lo_lk, n, jr), P.line(hi_lk, n, jr), color=P.C_BAND,
+                           alpha=0.5, label="5–95%")
+        ax[3].plot(xs, P.line(m_lk, n, jr), "b-", label="posterior mean")
+        ax[3].plot(xs, P.line(syn.logK_true, n, jr), "k-", lw=2, label="truth")
+        ax[3].set_xlabel(f"x (y = {xs[jr]:.2f})")
+        ax[3].set_title(f"slice; pointwise 90% coverage {cov90:.0%}")
+        ax[3].legend()
+        P.save(fig, exp, "fig_e1_field")
+        return dict(coverage90_logK=float(cov90), n_samples=int(len(rh)),
+                    sd_logK_median=float(np.median(sd_lk)))
+    finally:
+        if old is None:
+            os.environ.pop("BRHO_ROOT", None)
+        else:
+            os.environ["BRHO_ROOT"] = old
+
+
 def solves_axis(root, exp, data):
     s = read_json(os.path.join(root, "tables", exp, "mpsrf_summary.json"))
     return data[:, 0] * s["solves_per_iteration"], s
@@ -125,6 +171,12 @@ def main():
 
     # ---------------------------------------------------------- 1. E1 intervals
     iv = e1_intervals(a.e1_root, a.e1_exp, a.stride)
+    if iv is not None:
+        iv["field"] = e1_field(a.e1_root, a.e1_exp)
+        with open(os.path.join(a.e1_root, "tables", a.e1_exp, "e1_intervals.json"), "w",
+                  encoding="utf-8") as f:
+            json.dump(iv, f, indent=1)
+        print(f"E1 field: pointwise 90% coverage of log K {iv['field']['coverage90_logK']:.1%}")
     if iv is None:
         p = os.path.join(a.e1_root, "tables", a.e1_exp, "e1_intervals.json")
         iv = read_json(p) if os.path.exists(p) else None
@@ -221,7 +273,7 @@ def main():
         ("β", e1_cells["beta"], f"{fmt_q(up['beta_hard'])} → {fmt_q(up['beta_upgraded'])}", "2.3"),
         ("sd of log β", e1_cells["sd"],
          f"{up['log_beta_sd']['hard']:.3f} → {up['log_beta_sd']['upgraded']:.3f}", ""),
-        ("Mean Φ (floor 51.7)", e1_cells["phi"], f"{e4s['mean_phi']:.1f}", ""),
+        (f"Mean Φ (floor {e4s['noise_floor']:.1f})", e1_cells["phi"], f"{e4s['mean_phi']:.1f}", ""),
     ]
     with open(os.path.join(td, "e1_vs_e4.md"), "w", encoding="utf-8") as f:
         f.write("E1 naive (log beta ~ N(0,1), log rho ~ N(0,0.75^2)) vs E4 3-move on the curve "

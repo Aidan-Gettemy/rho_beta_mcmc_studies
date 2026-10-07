@@ -203,6 +203,7 @@ sbatch --partition=g1mig --ntasks=1 --cpus-per-task=2 --mem=32G --time=01:00:00 
 ```
 
 - `runs/cluster_kle/tables/e1_blocked/e1_intervals.{md,json}`: E1's pooled medians and 90% intervals (needs the E1 chain files).
+- `runs/cluster_kle/figures/e1_blocked/fig_e1_field.png`: the E1 counterpart of `fig_e4_field.png` (needs the E1 chain files).
 - `runs/cluster_kle_sig2e3/figures/e1_vs_e4/`: `fig_e1_psrf.png`, `fig_e1_mpsrf.png`, `fig_e1_vs_e4_mpsrf.png` (drawn from the committed `mpsrf_*.csv`).
 - `runs/cluster_kle_sig2e3/tables/e1_vs_e4/e1_vs_e4.{md,json}`: the side-by-side table.
 
