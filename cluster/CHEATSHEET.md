@@ -190,6 +190,7 @@ sbatch --partition=g1mig --ntasks=1 --cpus-per-task=2 --mem=32G --time=01:00:00 
 
 - Output: `tables/e4_sampler/frozen_beta_pcn.{md,json}`, `figures/e4_sampler/fig_frozen_beta_pcn.png`.
 - The table also gives the exact 1D posterior on a grid (no MCMC). Its sd(log β) should be about σ_rel.
+- Then `python reports/plot_beta_methods.py --exp e4_sampler` (seconds, no solves): `fig_beta_methods.png`, the five β estimates side by side, read from `frozen_beta_pcn.json`.
 
 ## 6. Send results to GitHub
 
