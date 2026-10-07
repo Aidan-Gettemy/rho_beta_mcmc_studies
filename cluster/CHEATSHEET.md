@@ -192,6 +192,21 @@ sbatch --partition=g1mig --ntasks=1 --cpus-per-task=2 --mem=32G --time=01:00:00 
 - The table also gives the exact 1D posterior on a grid (no MCMC). Its sd(log β) should be about σ_rel.
 - Then `python reports/plot_beta_methods.py --exp e4_sampler` (seconds, no solves): `fig_beta_methods.png`, the five β estimates side by side, read from `frozen_beta_pcn.json`.
 
+### Naive (E1) vs 3-move (E4) at equal cost
+
+E1 is `runs/cluster_kle/results/e1_blocked` and E4 is `runs/cluster_kle_sig2e3/results/e4_sampler`. Both use the same truth, data and σ_rel 2e-3, with 2.0M solves per chain. Run it from the repo root; it needs no BRHO_ROOT and takes a few minutes, mostly reading the E1 traces.
+
+```bash
+sbatch --partition=g1mig --ntasks=1 --cpus-per-task=2 --mem=32G --time=01:00:00 \
+    -J brho-e1e4 -o logs/brho-e1e4-%j.out --export=ALL \
+    --wrap "source cluster/env.sh; python reports/report_e1_vs_e4.py"
+```
+
+- `runs/cluster_kle/tables/e1_blocked/e1_intervals.{md,json}`: E1's pooled medians and 90% intervals (needs the E1 chain files).
+- `runs/cluster_kle/figures/e1_blocked/fig_e1_field.png`: the E1 counterpart of `fig_e4_field.png` (needs the E1 chain files).
+- `runs/cluster_kle_sig2e3/figures/e1_vs_e4/`: `fig_e1_psrf.png`, `fig_e1_mpsrf.png`, `fig_e1_vs_e4_mpsrf.png` (drawn from the committed `mpsrf_*.csv`).
+- `runs/cluster_kle_sig2e3/tables/e1_vs_e4/e1_vs_e4.{md,json}`: the side-by-side table.
+
 ## 6. Send results to GitHub
 
 ```bash
