@@ -122,6 +122,8 @@ class SamplerConfig:
     n_workers: int = 4
     prior_test: bool = False       # likelihood switched off (Phi = 0)
     trace_every: int = 1           # record per-iteration traces every k its
+    moves: str = "ABC"             # "AB": ablation without the ridge move C
+    exp_tag: str = ""              # run folder e4_sampler_<tag> (keeps runs apart)
 
 
 def chain_seed(seed0, k, scheme="spawn", legacy_stride=13):

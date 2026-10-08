@@ -28,6 +28,7 @@ E4  ThreeStepSampler    unknowns (theta, w), log rho = mu_rho + s_rho w,
       A  pCN on theta                         1 solve, accept e^{Phi-Phi'}
       B  pCN on w                             1 solve, accept e^{Phi-Phi'}
       C  ridge move  rho' = rho e^eta,  theta' = e^{-eta} theta
+         (moves="AB" switches C off: the A+B ablation, 2 solves / iteration)
          rho*theta is preserved, but beta_bar(rho') != beta_bar(rho), so the
          field level changes and Phi MUST be re-evaluated (1 solve) -- unlike
          the hierarchical model, where C is free.  Acceptance (method eq. 11):
@@ -155,6 +156,10 @@ class ThreeStepSampler:
         self.prob, self.curve, self.cfg = prob, curve, scfg
         self.r = prob.r
         self.Kstar = prob.syn.keff_obs
+        moves = getattr(scfg, "moves", "ABC")
+        if moves not in ("ABC", "AB"):
+            raise ValueError(f"moves must be 'ABC' or 'AB' (ablation), not {moves!r}")
+        self.use_ridge = "C" in moves
 
     # ------------------------------------------------------------- model
     def rho(self, w):
@@ -223,6 +228,8 @@ class ThreeStepSampler:
             st.update(w=w_p, phi=phi_p, pobs=pobs_p, keff=keff_p)
         ad.record(1, a)
         # C: ridge move, rho*theta preserved; beta_bar(rho) changes -> solve
+        if not self.use_ridge:                       # A+B ablation (moves="AB")
+            return st
         eta = s_rg * rng.standard_normal()
         th_p = np.exp(-eta) * st["theta"]
         w_p = st["w"] + eta / self.cfg.s_rho

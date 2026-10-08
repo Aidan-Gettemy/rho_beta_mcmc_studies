@@ -15,6 +15,8 @@
 #   3. reports  convergence, posteriors, fields, tables
 # Submit from the repo root:   sbatch cluster/slurm/node_e4_sampler.sbatch
 # Likelihood-off check first:  PRIOR_TEST=1 sbatch cluster/slurm/node_e4_sampler.sbatch
+# A variant in its own folder:  E4_TAG=ab E4_ARGS="--moves AB ..." sbatch ...
+#                               (results/e4_sampler_ab; RESUME=1 needs E4_TAG too)
 #
 # Time limit: chains checkpoint every `chunk` iterations.  If the job hits the
 # limit, submit it again with RESUME=1: the setup step is skipped and every
@@ -25,23 +27,29 @@ source cluster/env.sh
 export NUMBA_CACHE_DIR=/tmp/numba_cache_$SLURM_JOB_ID
 PT="${PRIOR_TEST:-0}"
 NCH="${E4_CHAINS:-$SLURM_NTASKS}"
-echo "BRHO_ROOT=$BRHO_ROOT  tasks=$SLURM_NTASKS  chains=$NCH  prior_test=$PT"
+TAG="${E4_TAG:-}"
+TAGARG=(); [[ -n "$TAG" ]] && TAGARG=(--exp-tag "$TAG")
+EXP="e4_sampler${TAG:+_$TAG}"
+echo "BRHO_ROOT=$BRHO_ROOT  tasks=$SLURM_NTASKS  chains=$NCH  prior_test=$PT  exp=$EXP"
 
 if [[ "${RESUME:-0}" != 1 ]]; then
     OMP_NUM_THREADS=$SLURM_NTASKS MKL_NUM_THREADS=$SLURM_NTASKS OPENBLAS_NUM_THREADS=$SLURM_NTASKS \
         python experiments/run_curve_sampler.py --setup-only --n-chains "$NCH" \
-        --prior-test "$PT" $PROBLEM_ARGS $E4_ARGS
+        --prior-test "$PT" "${TAGARG[@]}" $PROBLEM_ARGS $E4_ARGS
 else    # resuming: keep the run, only compile numba into this job's cache
-    python experiments/run_curve_sampler.py --warmup-only --prior-test "$PT"
+    python experiments/run_curve_sampler.py --warmup-only --prior-test "$PT" "${TAGARG[@]}"
 fi
 
 srun --ntasks="$SLURM_NTASKS" --cpu-bind=cores --output="logs/brho-e4-%j-rank%t.out" \
-    python experiments/run_curve_sampler.py --chain-id env --prior-test "$PT"
+    python experiments/run_curve_sampler.py --chain-id env --prior-test "$PT" "${TAGARG[@]}"
 # mpirun --bind-to core --map-by core -np "$SLURM_NTASKS" \
 #     python experiments/run_curve_sampler.py --chain-id env --prior-test "$PT"
 
-python experiments/run_curve_sampler.py --status --prior-test "$PT" || true
+python experiments/run_curve_sampler.py --status --prior-test "$PT" "${TAGARG[@]}" || true
 if [[ "$PT" == 1 ]]; then python reports/report_prior_test.py
+elif [[ -n "$TAG" ]]; then
+     python reports/report_sampler.py --exp "$EXP" && python reports/report_mpsrf.py --exp "$EXP"
+     python reports/report_beta_upgrade.py --exp "$EXP"
 else python reports/report_sampler.py && python reports/report_combined.py
      python reports/report_mpsrf.py        # MPSRF/PSRF, MATLAB style; E1 vs E4 if E1 is here
 fi

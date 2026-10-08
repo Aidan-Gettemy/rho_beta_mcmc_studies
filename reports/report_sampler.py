@@ -262,4 +262,7 @@ def main(exp=EXP):
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    _ap = argparse.ArgumentParser(description=__doc__)
+    _ap.add_argument("--exp", default=EXP, help="e4_sampler, or e4_sampler_<tag>")
+    main(_ap.parse_args().exp)

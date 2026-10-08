@@ -164,6 +164,22 @@ BRHO_ROOT=$PWD/runs/cluster_kle PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3"
 
 Same truth and σ_rel as the E5 reference in `runs/cluster_kle/tables/e5_soft` (β 2.14 [1.43, 3.21]), so the upgraded β can be checked against it.
 
+### Ablation: the 3-move sampler without move C (A+B only), 2.0M solves
+
+Same study, truth, data and σ_rel as the 2e-3 E4 run, in its own folder `results/e4_sampler_ab` (the E4 chains are untouched). Two solves per iteration, so 1M iterations = 2.0M solves; burn-in 45k iterations = 90k solves and thinning 150 put the convergence window at the same solve count (92.7k) as E4 and the burn-matched E1. Same seeds as E4, so chain k starts from the same prior draw.
+
+```bash
+BRHO_ROOT=$PWD/runs/cluster_kle_sig2e3 PROBLEM_ARGS="--truth-mode kle --sigma-rel 2e-3" \
+    E4_TAG=ab E4_ARGS="--moves AB --n-total 1000000 --n-burn 45000 --thin 150" \
+    sbatch --partition=g1mig --time=12:00:00 cluster/slurm/node_e4_sampler.sbatch
+# continue after a time limit (keep E4_TAG):
+# BRHO_ROOT=$PWD/runs/cluster_kle_sig2e3 E4_TAG=ab RESUME=1 sbatch --partition=g1mig --time=12:00:00 cluster/slurm/node_e4_sampler.sbatch
+```
+
+- The job ends with `report_sampler.py`, `report_mpsrf.py` and `report_beta_upgrade.py` for `e4_sampler_ab`.
+- Then `python reports/report_e1_vs_e4.py` overlays it on the MPSRF comparison, adds `fig_e4ab_psrf.png` and an "E4 A+B only" column to the table.
+- Status: `BRHO_ROOT=$PWD/runs/cluster_kle_sig2e3 python experiments/run_curve_sampler.py --status --exp-tag ab`.
+
 ### β upgrade of a 3-move (E4) run: honest β interval, no PDE solves
 
 ```bash

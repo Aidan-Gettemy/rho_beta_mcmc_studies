@@ -29,6 +29,12 @@ def exp_e1(move, tag=""):
 EXP_GRID = "e2_grid"
 EXP_CURVE = "e3_curve"
 EXP_SAMPLER = "e4_sampler"
+
+
+def exp_sampler(tag=""):
+    """E4 run folder: e4_sampler, or e4_sampler_<tag> for a variant (e.g. the
+    A+B ablation, --moves AB --exp-tag ab)."""
+    return f"{EXP_SAMPLER}_{tag}" if tag else EXP_SAMPLER
 EXP_PRIOR = "e4_prior_test"
 EXP_SOFT = "e5_soft"             # E5: soft curve prior, beta free
 EXP_SOFT_PRIOR = "e5_prior_test"

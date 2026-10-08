@@ -230,6 +230,8 @@ def main():
     ap.add_argument("--e4-exp", default="e4_sampler")
     ap.add_argument("--out-root", default=None, help="default: --e4-root")
     ap.add_argument("--stride", type=int, default=10, help="pool every n-th E1 iteration")
+    ap.add_argument("--e4ab-exp", default="e4_sampler_ab",
+                    help="A+B ablation run in --e4-root, overlaid when its tables exist")
     ap.add_argument("--burn-match", default="solves", choices=("solves", "iterations", "none"),
                     help="start E1's convergence window where E4's starts (default: same solves)")
     a = ap.parse_args()
@@ -265,6 +267,13 @@ def main():
     _, th4 = read_curve(a.e4_root, a.e4_exp, "theta")
     x1, s1 = solves_axis(a.e1_root, a.e1_exp, all1)
     x4, s4 = solves_axis(a.e4_root, a.e4_exp, th4)
+    have_ab = os.path.exists(os.path.join(a.e4_root, "tables", a.e4ab_exp, "mpsrf_theta.csv"))
+    if have_ab:
+        hab, allab = read_curve(a.e4_root, a.e4ab_exp, "all")
+        _, thab = read_curve(a.e4_root, a.e4ab_exp, "theta")
+        xab, sab = solves_axis(a.e4_root, a.e4ab_exp, thab)
+        print(f"overlaying the A+B ablation {a.e4ab_exp} "
+              f"(window from {xab[0] / 1e6:.3f}M solves; E4 {x4[0] / 1e6:.3f}M)")
     M = 1e6
 
     def finish(ax, title):
@@ -305,6 +314,10 @@ def main():
     x4a = all4[:, 0] * s4["solves_per_iteration"]
     psrf_fig(h4, all4, x4a, f"E4 3-move sampler: PSRF of every entry, {s4['n_chains']} chains",
              "fig_e4_psrf.png")
+    if have_ab:
+        psrf_fig(hab, allab, allab[:, 0] * sab["solves_per_iteration"],
+                 f"E4 moves A+B only (no C): PSRF of every entry, {sab['n_chains']} chains",
+                 "fig_e4ab_psrf.png")
 
     # (b) E1, MPSRF
     fig, ax = plt.subplots(figsize=(8, 4.6))
@@ -321,6 +334,9 @@ def main():
             label=f"E1 naive (2 solves/it), final {th1[-1, 1]:.2f}")
     ax.plot(x4 / M, th4[:, 1], color=E4C, lw=2,
             label=f"E4 3-move on the curve (3 solves/it), final {th4[-1, 1]:.2f}")
+    if have_ab:
+        ax.plot(xab / M, thab[:, 1], color="#7a8691", lw=2, ls="--",
+                label=f"E4 moves A+B only, no C (2 solves/it), final {thab[-1, 1]:.2f}")
     if bm:
         ax.axvline(bm["e4_window_start_solves"] / M, color="0.5", lw=0.8, ls="--",
                    label="burn-in end, both runs")
@@ -365,10 +381,21 @@ def main():
          f"{up['log_beta_sd']['hard']:.3f} → {up['log_beta_sd']['upgraded']:.3f}", ""),
         (f"Mean Φ (floor {e4s['noise_floor']:.1f})", e1_cells["phi"], f"{e4s['mean_phi']:.1f}", ""),
     ]
+    if have_ab:
+        upab = read_json(os.path.join(a.e4_root, "tables", a.e4ab_exp, "beta_upgrade.json"))
+        e4ab = read_json(os.path.join(a.e4_root, "tables", a.e4ab_exp, "e4_summary.json"))
+        ab = ["", f"{e4ab['n_total'] * sab['solves_per_iteration'] / M:.1f}M",
+              f"{thab[-1, 1]:.2f}", "— (β on the curve)", fmt_q(upab["rho_hard"]),
+              fmt_q(upab["level_hard"], 3),
+              f"{fmt_q(upab['beta_hard'])} → {fmt_q(upab['beta_upgraded'])}",
+              f"{upab['log_beta_sd']['hard']:.3f} → {upab['log_beta_sd']['upgraded']:.3f}",
+              f"{e4ab['mean_phi']:.1f}"]
+        rows = [r[:3] + (ab[i + 1],) + r[3:] for i, r in enumerate(rows)]
     with open(os.path.join(td, "e1_vs_e4.md"), "w", encoding="utf-8") as f:
         f.write("E1 naive (log beta ~ N(0,1), log rho ~ N(0,0.75^2)) vs E4 3-move on the curve "
                 "(hard -> level swap). Same KLE truth, data, sigma_rel 2e-3, 64 chains.\n\n"
-                "| | E1 naive | E4 3-move | truth |\n|---|---|---|---|\n")
+                + ("| | E1 naive | E4 3-move | E4 A+B only | truth |\n|---|---|---|---|---|\n"
+                   if have_ab else "| | E1 naive | E4 3-move | truth |\n|---|---|---|---|\n"))
         for r in rows:
             f.write("| " + " | ".join(r) + " |\n")
     with open(os.path.join(td, "e1_vs_e4.json"), "w", encoding="utf-8") as f:
