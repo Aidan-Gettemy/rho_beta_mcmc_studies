@@ -199,6 +199,18 @@ sbatch --partition=g1mig --ntasks=1 --cpus-per-task=2 --mem=32G --time=02:00:00 
 - Outputs: `figures/e4_sampler_ab/fig_e4_joint_full.png`, `fig_frozen_beta_pcn.png`, `fig_beta_methods.png`, `fig_beta_upgrade.png` (+ solve check in `tables/e4_sampler_ab/beta_upgrade.md`), and `figures/e1_vs_e4_ab/` (naive vs curve sampler; the 3-move comparison in `e1_vs_e4/` is kept).
 - Already in the repo from the A+B job: `fig_e4_posteriors.png`, `fig_e4_ppc.png`, `fig_e4_field.png`, `fig_psrf_all.png`, `fig_mpsrf_all.png` in `figures/e4_sampler_ab/`.
 
+### Frozen-ρ baseline for the level split (64 chains, 1M solves each)
+
+Fix ρ at the best-fit (lowest-Φ) state of the curve-sampler run and sample (θ, log β) with pCN on each, full solves; then redo the frozen (ρ, θ) pCN on β with the same 64 chains and remake `fig_beta_methods.png` with both. One node job (about 1-2 h):
+
+```bash
+BRHO_ROOT=$PWD/runs/cluster_kle_sig2e3 sbatch cluster/slurm/node_frozen_rho.sbatch
+# time limit: BRHO_ROOT=$PWD/runs/cluster_kle_sig2e3 RESUME=1 sbatch cluster/slurm/node_frozen_rho.sbatch
+```
+
+- Chains: `runs/cluster_kle_sig2e3/results/e4_sampler_ab/frozen_rho/` (git-ignored).
+- Push: `tables/e4_sampler_ab/frozen_rho.{md,json}`, `tables/e4_sampler_ab/frozen_beta_pcn.{md,json}`, `figures/e4_sampler_ab/fig_frozen_rho.png`, `fig_frozen_beta_pcn.png`, `fig_beta_methods.png`.
+
 ### β upgrade of a 3-move (E4) run: honest β interval, no PDE solves
 
 ```bash
