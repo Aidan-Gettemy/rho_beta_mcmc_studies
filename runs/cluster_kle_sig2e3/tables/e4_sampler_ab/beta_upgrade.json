@@ -93,5 +93,11 @@
    "truth": 2.3,
    "covered": true
   }
+ },
+ "solve_check": {
+  "n": 200,
+  "dphi_median": 0.022379184334347713,
+  "dphi_abs_max": 1.6489353035448175,
+  "dphi_sd": 0.3487961910402552
  }
 }

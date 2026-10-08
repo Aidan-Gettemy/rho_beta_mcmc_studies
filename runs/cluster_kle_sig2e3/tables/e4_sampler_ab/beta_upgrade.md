@@ -10,3 +10,5 @@
 | level, upgraded | 0.866 | [0.743, 0.939] | 0.061 | 0.835 | True |
 
 weight ESS 406718 of 407488 (99.8%); sd(log w) 0.041; max level shift 1.72e-03; |c| 4.646, constant-field residual 0.034
+
+solve check (200 samples): Phi_new - Phi_old median 0.0224, sd 0.349, max |.| 1.65
