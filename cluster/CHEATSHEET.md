@@ -180,6 +180,25 @@ BRHO_ROOT=$PWD/runs/cluster_kle_sig2e3 PROBLEM_ARGS="--truth-mode kle --sigma-re
 - Then `python reports/report_e1_vs_e4.py` overlays it on the MPSRF comparison, adds `fig_e4ab_psrf.png` and an "E4 A+B only" column to the table.
 - Status: `BRHO_ROOT=$PWD/runs/cluster_kle_sig2e3 python experiments/run_curve_sampler.py --status --exp-tag ab`.
 
+### Paper figures for the curve sampler (the A+B run, 2026-10-08)
+
+The paper now uses the A+B run (`e4_sampler_ab`) as "the curve sampler"; move C is parked. Three paper figures need its chains (run from the repo root; frozen pCN is about 80k solves):
+
+```bash
+export BRHO_ROOT=$PWD/runs/cluster_kle_sig2e3
+sbatch --partition=g1mig --ntasks=1 --cpus-per-task=2 --mem=32G --time=02:00:00 \
+    -J brho-curve-figs -o logs/brho-curve-figs-%j.out --export=ALL \
+    --wrap "source cluster/env.sh; \
+            python reports/report_e4_joint.py --exp e4_sampler_ab --rho-max 5 && \
+            python reports/frozen_beta_pcn.py --exp e4_sampler_ab && \
+            python reports/plot_beta_methods.py --exp e4_sampler_ab && \
+            python reports/report_beta_upgrade.py --exp e4_sampler_ab --solve-check 200 && \
+            python reports/report_e1_vs_e4.py --e4-exp e4_sampler_ab --e4ab-exp none"
+```
+
+- Outputs: `figures/e4_sampler_ab/fig_e4_joint_full.png`, `fig_frozen_beta_pcn.png`, `fig_beta_methods.png`, `fig_beta_upgrade.png` (+ solve check in `tables/e4_sampler_ab/beta_upgrade.md`), and `figures/e1_vs_e4_ab/` (naive vs curve sampler; the 3-move comparison in `e1_vs_e4/` is kept).
+- Already in the repo from the A+B job: `fig_e4_posteriors.png`, `fig_e4_ppc.png`, `fig_e4_field.png`, `fig_psrf_all.png`, `fig_mpsrf_all.png` in `figures/e4_sampler_ab/`.
+
 ### β upgrade of a 3-move (E4) run: honest β interval, no PDE solves
 
 ```bash

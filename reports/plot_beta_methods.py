@@ -32,7 +32,7 @@ def main():
     pcn_solves = R["pde_solves"]
     rows = [  # label, summary, sd(log beta), colour, solves
         ("Curve prior at $\\rho^*$", R["prior_at_rho_star"], fs["prior_log_beta_sd"], GRAY, "—"),
-        ("Hard curve (3-move run)", R["hard_curve"], R["hard_curve"]["log_beta_sd"], RED, "0"),
+        ("Sampler output, β on the curve", R["hard_curve"], R["hard_curve"]["log_beta_sd"], RED, "0"),
         ("Frozen $(\\rho^*,\\theta^*)$, pCN on $\\beta$", R["frozen_pcn"],
          R["frozen_pcn"]["log_beta_sd"], RED, f"{pcn_solves:,}"),
         ("Frozen $(\\rho^*,\\theta^*)$, level swap", R["level_swap_frozen"],
