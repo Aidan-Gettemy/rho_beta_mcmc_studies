@@ -250,7 +250,12 @@ def main():
         iv = read_json(p) if os.path.exists(p) else None
 
     # ---------------------------------------------------------- 2. convergence
-    fd = tdir(out_root, "figures", "e1_vs_e4")
+    tag = a.e4_exp.replace("e4_sampler", "e4")            # e4, e4_ab
+    fd = tdir(out_root, "figures", f"e1_vs_{tag}")
+    e4_moves = read_json(os.path.join(a.e4_root, "results", a.e4_exp, "manifest.json")
+                         )["configs"]["SamplerConfig"].get("moves", "ABC")
+    e4_name = "curve sampler (A+B)" if e4_moves == "AB" else "E4 3-move on the curve"
+    e4_short = "curve sampler" if e4_moves == "AB" else "E4 3-move"
     bm = None
     if a.burn_match != "none":
         bm = e1_matched_curves(a.e1_root, a.e1_exp, a.e4_root, a.e4_exp, a.burn_match)
@@ -312,7 +317,7 @@ def main():
     psrf_fig(h1, all1, x1, f"E1 naive sampler: PSRF of every entry, {s1['n_chains']} chains"
              + burn_note, "fig_e1_psrf.png")
     x4a = all4[:, 0] * s4["solves_per_iteration"]
-    psrf_fig(h4, all4, x4a, f"E4 3-move sampler: PSRF of every entry, {s4['n_chains']} chains",
+    psrf_fig(h4, all4, x4a, f"{e4_short}: PSRF of every entry, {s4['n_chains']} chains",
              "fig_e4_psrf.png")
     if have_ab:
         psrf_fig(hab, allab, allab[:, 0] * sab["solves_per_iteration"],
@@ -331,20 +336,20 @@ def main():
     # (c) MPSRF of theta, E4 on top of E1
     fig, ax = plt.subplots(figsize=(8, 4.6))
     ax.plot(x1 / M, th1[:, 1], color=E1C, lw=2,
-            label=f"E1 naive (2 solves/it), final {th1[-1, 1]:.2f}")
+            label=f"naive block-pCN (2 solves/it), final {th1[-1, 1]:.2f}")
     ax.plot(x4 / M, th4[:, 1], color=E4C, lw=2,
-            label=f"E4 3-move on the curve (3 solves/it), final {th4[-1, 1]:.2f}")
+            label=f"{e4_name} ({len(e4_moves)} solves/it), final {th4[-1, 1]:.2f}")
     if have_ab:
         ax.plot(xab / M, thab[:, 1], color="#7a8691", lw=2, ls="--",
                 label=f"E4 moves A+B only, no C (2 solves/it), final {thab[-1, 1]:.2f}")
     if bm:
         ax.axvline(bm["e4_window_start_solves"] / M, color="0.5", lw=0.8, ls="--",
-                   label="burn-in end, both runs")
+                   label="burn-in end, all runs")
     it_c = s4["theta"].get("mpsrf_convergence_iteration")
     if it_c:
         xc = it_c * s4["solves_per_iteration"] / M
         ax.axvline(xc, color=E4C, lw=0.8, ls=":")
-        ax.text(xc, 0.97, f" E4 below {LEVEL}\n at {xc:.2f}M solves", color=E4C,
+        ax.text(xc, 0.97, f" {e4_short} below {LEVEL}\n at {xc:.2f}M solves", color=E4C,
                 fontsize=9, va="top", transform=ax.get_xaxis_transform())
     ax.legend(fontsize=9, frameon=False)
     finish(ax, "MPSRF of θ at equal cost: same truth, data and σ_rel"
@@ -358,7 +363,7 @@ def main():
     up = read_json(os.path.join(a.e4_root, "tables", a.e4_exp, "beta_upgrade.json"))
     e4s = read_json(os.path.join(a.e4_root, "tables", a.e4_exp, "e4_summary.json"))
     e1s = read_json(os.path.join(a.e1_root, "tables", a.e1_exp, "e1_summary.json"))
-    td = tdir(out_root, "tables", "e1_vs_e4")
+    td = tdir(out_root, "tables", f"e1_vs_{tag}")
     if iv:
         e1_cells = dict(beta=fmt_q(iv["beta"]), rho=fmt_q(iv["rho"]),
                         level=fmt_q(iv["level"], 3), sd=f"{iv['log_beta']['sd']:.3f}",
@@ -392,10 +397,10 @@ def main():
               f"{e4ab['mean_phi']:.1f}"]
         rows = [r[:3] + (ab[i + 1],) + r[3:] for i, r in enumerate(rows)]
     with open(os.path.join(td, "e1_vs_e4.md"), "w", encoding="utf-8") as f:
-        f.write("E1 naive (log beta ~ N(0,1), log rho ~ N(0,0.75^2)) vs E4 3-move on the curve "
+        f.write("E1 naive (log beta ~ N(0,1), log rho ~ N(0,0.75^2)) vs " + e4_name + " "
                 "(hard -> level swap). Same KLE truth, data, sigma_rel 2e-3, 64 chains.\n\n"
-                + ("| | E1 naive | E4 3-move | E4 A+B only | truth |\n|---|---|---|---|---|\n"
-                   if have_ab else "| | E1 naive | E4 3-move | truth |\n|---|---|---|---|\n"))
+                + (f"| | E1 naive | {e4_short} | E4 A+B only | truth |\n|---|---|---|---|---|\n"
+                   if have_ab else f"| | E1 naive | {e4_short} | truth |\n|---|---|---|---|\n"))
         for r in rows:
             f.write("| " + " | ".join(r) + " |\n")
     with open(os.path.join(td, "e1_vs_e4.json"), "w", encoding="utf-8") as f:
