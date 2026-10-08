@@ -1,0 +1,19 @@
+{
+ "exp": "e4_sampler_ab",
+ "n_chains": 64,
+ "solves_per_chain": 1000000,
+ "iterations": 500000,
+ "burn": 50000,
+ "thin": 10,
+ "checkpoint": 50000,
+ "seed": 7,
+ "use_keff": false,
+ "targets": [
+  0.25,
+  0.44
+ ],
+ "rho_star": 1.5577014103227893,
+ "m": 0.8046600451454125,
+ "s": 0.39408681317402533,
+ "phi_star": 51.88041869939639
+}
