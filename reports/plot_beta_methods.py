@@ -30,18 +30,29 @@ def main():
     R = json.load(open(path))
     fs = R["frozen_state"]
     pcn_solves = R["pde_solves"]
+
+    def solves(n):
+        return f"{n / 1e6:.1f}M" if n >= 1e6 else f"{n:,}"
     rows = [  # label, summary, sd(log beta), colour, solves
         ("Curve prior at $\\rho^*$", R["prior_at_rho_star"], fs["prior_log_beta_sd"], GRAY, "—"),
         ("Sampler output, β on the curve", R["hard_curve"], R["hard_curve"]["log_beta_sd"], RED, "0"),
         ("Frozen $(\\rho^*,\\theta^*)$, pCN on $\\beta$", R["frozen_pcn"],
-         R["frozen_pcn"]["log_beta_sd"], RED, f"{pcn_solves:,}"),
+         R["frozen_pcn"]["log_beta_sd"], RED, solves(pcn_solves)),
         ("Frozen $(\\rho^*,\\theta^*)$, level swap", R["level_swap_frozen"],
          R["level_swap_frozen"]["log_beta_sd"], BLUE, "0"),
         ("Level swap, all samples", R["level_swap_all"], R["level_swap_all"]["log_beta_sd"], BLUE, "0"),
     ]
+    fr_path = os.path.join(io.tables_dir(args.exp), "frozen_rho.json")
+    if os.path.exists(fr_path):                       # frozen-rho baseline (frozen_rho_pcn.py)
+        F = json.load(open(fr_path))
+        if abs(F["rho_star"] - fs["rho"]) > 1e-9:
+            print(f"warning: frozen-rho run uses rho* = {F['rho_star']:.4f}, "
+                  f"frozen pCN uses {fs['rho']:.4f}")
+        rows.insert(3, ("Frozen $\\rho^*$, pCN on $\\theta$ and $\\beta$", F["beta"],
+                        F["log_beta_sd"], RED, solves(F["pde_solves_total"])))
     truth = R["truth"]["beta"]
 
-    fig, ax = plt.subplots(figsize=(11, 4.2))
+    fig, ax = plt.subplots(figsize=(11, 0.75 * len(rows) + 0.45))
     n = len(rows)
     for i, (lab, q, sd, col, ns) in enumerate(rows):
         y = n - 1 - i
@@ -54,7 +65,7 @@ def main():
                 color="#1f2933", fontweight="normal" if q["covered"] else "bold")
         ax.text(1.31, y, ns, transform=ax.get_yaxis_transform(), va="center",
                 fontsize=10, color="#1f2933")
-    for x, h in ((1.02, "sd(log β)"), (1.17, "truth"), (1.31, "extra PDE solves")):
+    for x, h in ((1.02, "sd(log β)"), (1.17, "truth"), (1.31, "extra PDE solves (all chains)")):
         ax.text(x, n - 0.35, h, transform=ax.get_yaxis_transform(), fontsize=9,
                 color="#6b7785", va="bottom")
     ax.axvline(truth, color="k", lw=1.2, ls="--", zorder=0)
@@ -71,7 +82,7 @@ def main():
     ax.grid(axis="x", color="0.9", lw=0.8); ax.set_axisbelow(True)
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
-    ax.set_title(f"Five ways to get β · frozen state: lowest-Φ sample, ρ* = {fs['rho']:.3f} · "
+    ax.set_title(f"{len(rows)} ways to get β · frozen state: lowest-Φ sample, ρ* = {fs['rho']:.3f} · "
                  f"σ_rel = {R['sigma_rel']:.3g}", fontsize=11, loc="left", pad=22)
     fig.tight_layout(); fig.subplots_adjust(right=0.66)
     out = os.path.join(io.figures_dir(args.exp), "fig_beta_methods.png")
