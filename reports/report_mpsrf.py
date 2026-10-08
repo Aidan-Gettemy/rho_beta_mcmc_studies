@@ -56,7 +56,7 @@ def load_kept(exp, n_chains=None):
         sets theta and all = (theta, log beta, log rho); 2 / 1 solves per it.
     E4 (e4_sampler): kept after burn-in only (the sampler's own layout);
         beta = beta_bar(rho) is not a free parameter, so all = (theta, log rho);
-        3 solves per iteration."""
+        one solve per move: 3 (A, B, C), or 2 for the A+B ablation."""
     paths = _chain_paths(exp, n_chains)
     zs = [np.load(p) for p in paths]
     if "kept_it" in zs[0].files:                                   # E1
@@ -114,9 +114,11 @@ def load_kept(exp, n_chains=None):
                     label=lab)
     sc = cfgs["SamplerConfig"]
     its = sc["n_burn"] + sc["thin"] * np.arange(L)
+    moves = sc.get("moves", "ABC")                 # one solve per move
+    lab = "E4 3-step curve sampler" if moves == "ABC" else f"E4 curve sampler, moves {moves} only"
     return dict(sets=dict(theta=theta, all=np.concatenate([theta, lr[..., None]], axis=2)),
                 extra=dict(theta=[], all=["logρ"]),
-                its=its, m=len(paths), solves=3, label="E4 3-step curve sampler")
+                its=its, m=len(paths), solves=len(moves), label=lab)
 
 
 def style(ax, fs=20):

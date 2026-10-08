@@ -111,6 +111,32 @@ def test_sampler_prior_invariance():
     assert abs(np.mean(w) + 0.041) < 0.08 and abs(np.std(w) - 0.955) < 0.08
 
 
+def test_sampler_ab_ablation():
+    """moves="AB": move C is never proposed, A+B alone still keep the prior."""
+    p = prob()
+    rhos = np.linspace(0.05, 5, 6)
+    curve = BetaCurve(rhos, np.ones((6, 4)))
+    cfg = replace(C.SamplerConfig(), prior_test=True, s_init=(0.5, 0.5, 0.3), moves="AB")
+    s = ThreeStepSampler(p, curve, cfg)
+    rng = np.random.default_rng(2)
+    st = s.init_state(rng)
+    ad = StepAdapter(cfg.s_init, targets=cfg.targets, every=10 ** 9)
+    w = []
+    for it in range(20000):
+        s.step(st, ad, rng)
+        if it > 1000 and it % 5 == 0:
+            w.append(st["w"])
+    assert ad.n[2] == 0 and ad.n[0] == 20000 and ad.n[1] == 20000
+    assert abs(np.mean(w)) < 0.1 and abs(np.std(w) - 1) < 0.1
+    try:
+        ThreeStepSampler(p, curve, replace(cfg, moves="AC"))
+        raise AssertionError("moves='AC' should be rejected")
+    except ValueError:
+        pass
+    from brho import io as _io
+    assert _io.exp_sampler("ab") == "e4_sampler_ab" and _io.exp_sampler() == "e4_sampler"
+
+
 def test_task_indices_from_launchers():
     """Array index, srun rank and mpirun rank all map to the right tasks."""
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(

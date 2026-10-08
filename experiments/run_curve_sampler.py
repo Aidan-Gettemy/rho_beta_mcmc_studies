@@ -13,6 +13,9 @@ Cluster (one chain per array task; see cluster/):
     python experiments/run_curve_sampler.py --setup-only --n-chains 64 [...]
     python experiments/run_curve_sampler.py --chain-id env # in each task
     python experiments/run_curve_sampler.py --status
+A+B ablation (no ridge move C), in its own folder e4_sampler_ab:
+    python experiments/run_curve_sampler.py --moves AB --exp-tag ab [...]
+    (every later call, --chain-id / --status / --warmup-only, needs --exp-tag ab)
 
 Requires results/e3_curve/curve_<field>.npz (run_beta_curve.py first).
 Output: results/e4_sampler/  (or results/e4_prior_test/ with --prior-test 1)
@@ -37,8 +40,10 @@ from _common import kle_summary
 from brho.samplers import ThreeStepSampler, run_chunk
 
 
-def exp_name(prior_test):
-    return io.EXP_PRIOR if prior_test else io.EXP_SAMPLER
+def exp_name(prior_test, tag=""):
+    if prior_test:
+        return f"{io.EXP_PRIOR}_{tag}" if tag else io.EXP_PRIOR
+    return io.exp_sampler(tag)
 
 
 def chain_path(exp, cid):
@@ -103,7 +108,7 @@ def setup(pc, scfg, curve_field, curve_statistic, exp):
                            curve=dict(source=src, statistic=curve.statistic,
                                       rho_max=curve.rho_max),
                            truth=prob.syn.summary(), status="set up"))
-    print(f"E4{' PRIOR TEST' if scfg.prior_test else ''}: {scfg.n_chains} chains "
+    print(f"E4{' PRIOR TEST' if scfg.prior_test else ''} [{exp}, moves {scfg.moves}]: {scfg.n_chains} chains "
           f"x {scfg.n_total} it (burn {scfg.n_burn}, thin {scfg.thin}); "
           f"r={prob.r}; K*={prob.syn.keff_obs:.3f}; curve={curve.statistic}; "
           f"seeds={scfg.seed_scheme}")
@@ -136,7 +141,7 @@ def main():
                     help="(pool mode) discard existing chains and start over")
     args = ap.parse_args()
     prior_test = bool(args.prior_test) if args.prior_test is not None else False
-    exp = exp_name(prior_test)
+    exp = exp_name(prior_test, args.exp_tag or "")
 
     if args.status:
         sys.exit(0 if status(exp) else 1)
