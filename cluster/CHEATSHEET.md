@@ -211,20 +211,20 @@ BRHO_ROOT=$PWD/runs/cluster_kle_sig2e3 sbatch cluster/slurm/node_frozen_rho.sbat
 - Chains: `runs/cluster_kle_sig2e3/results/e4_sampler_ab/frozen_rho/` (git-ignored).
 - Push: `tables/e4_sampler_ab/frozen_rho.{md,json}`, `tables/e4_sampler_ab/frozen_beta_pcn.{md,json}`, `figures/e4_sampler_ab/fig_frozen_rho.png`, `fig_frozen_beta_pcn.png`, `fig_beta_methods.png`.
 
-### Best-case importance sampling: Gaussian proposal fitted to the posterior (500 solves)
+### Best-case importance sampling: Gaussian proposal fitted to the posterior
 
-How much ESS per full forward solve a Gaussian proposal N(m, 1.2 S), fitted to the curve-sampler posterior itself, gives. It is the upper bound for any Gaussian proposal built from cheaper (local) samplers. About 500 PDE solves, a minute or two.
+How much ESS per full forward solve a Gaussian proposal N(m, 1.2 S), fitted to the curve-sampler posterior itself, gives, in θ coordinates and in field coordinates u = ρθ. It is the upper bound for any Gaussian proposal built from cheaper (local) samplers. 500 PDE solves per coordinate system, a minute or two.
 
 ```bash
 export BRHO_ROOT=$PWD/runs/cluster_kle_sig2e3
 sbatch --partition=g1mig --ntasks=1 --cpus-per-task=2 --mem=32G --time=00:30:00 \
     -J brho-is -o logs/brho-is-%j.out --export=ALL \
-    --wrap "source cluster/env.sh; python reports/is_gaussian_test.py --exp e4_sampler_ab --n 500 --inflate 1.2"
+    --wrap "source cluster/env.sh; python reports/is_gaussian_test.py --exp e4_sampler_ab --coords theta u --n 500 --inflate 1.2"
 ```
 
-- Output: `tables/e4_sampler_ab/is_gaussian.{md,json}`, `figures/e4_sampler_ab/fig_is_gaussian.png`.
-- Read ESS / solve against the run's own line below the table, and the Pareto k̂ (< 0.5 good, 0.5-0.7 usable, > 0.7 unreliable).
-- `--inflate 1.0 1.2 1.5` runs three proposals (500 solves each).
+- Output: `tables/e4_sampler_ab/is_gaussian.{md,json}`, `figures/e4_sampler_ab/fig_is_gaussian.png` (the weights) and `fig_is_gaussian_fit.png` (how well each Gaussian describes the posterior samples; no solves).
+- Read the fit table first: its predicted ESS / N comes from the posterior samples alone and should agree with the IS row.
+- Pareto k̂ < 0.5 good, 0.5-0.7 usable, > 0.7 unreliable (the table then prints "unreliable" instead of a rate).
 
 ### β upgrade of a 3-move (E4) run: honest β interval, no PDE solves
 
