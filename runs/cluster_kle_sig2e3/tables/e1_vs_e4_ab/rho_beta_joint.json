@@ -1,0 +1,71 @@
+{
+ "e1": {
+  "exp": "e1_blocked",
+  "root": "runs/cluster_kle",
+  "n_chains": 64,
+  "iterations": 1000000,
+  "burn": 20000,
+  "stride": 10,
+  "n": 6272000,
+  "prior": "log beta ~ N(0.0, 1.0^2), log rho ~ N(0.0, 0.75^2)"
+ },
+ "e4": {
+  "exp": "e4_sampler_ab",
+  "root": "runs/cluster_kle_sig2e3",
+  "n_chains": 64,
+  "n": 407488,
+  "level_split_weight_ess": 406718.03015686834
+ },
+ "truth": {
+  "beta": 2.3,
+  "rho": 1.5
+ },
+ "summaries": {
+  "naive block-pCN (E1)": {
+   "corr_logrho_logbeta": -0.12731416252716296,
+   "sd_log_beta": 0.3418291006945917,
+   "sd_log_rho": 0.11637573180281051,
+   "rho": {
+    "median": 1.504199504852295,
+    "lo": 1.2508175373077393,
+    "hi": 1.834007155895233,
+    "mean": 1.5183015926249563,
+    "sd": 0.17866940041087417,
+    "truth": 1.5,
+    "covered": true
+   },
+   "beta": {
+    "median": 1.9162809524002409,
+    "lo": 1.1503376476477487,
+    "hi": 3.4722791335513348,
+    "mean": 2.061851663121553,
+    "sd": 0.739557590936443,
+    "truth": 2.3,
+    "covered": true
+   }
+  },
+  "curve sampler (A+B) + level split": {
+   "corr_logrho_logbeta": -0.027251600860077944,
+   "sd_log_beta": 0.25004504549845824,
+   "sd_log_rho": 0.11432596675769015,
+   "rho": {
+    "median": 1.4727829544741258,
+    "lo": 1.2307050928455887,
+    "hi": 1.7936945999790794,
+    "mean": 1.4869071720852167,
+    "sd": 0.17227540056446053,
+    "truth": 1.5,
+    "covered": true
+   },
+   "beta": {
+    "median": 2.1698663192954193,
+    "lo": 1.4362281990383745,
+    "hi": 3.2609939922032303,
+    "mean": 2.236002830112802,
+    "sd": 0.5676895675472137,
+    "truth": 2.3,
+    "covered": true
+   }
+  }
+ }
+}
