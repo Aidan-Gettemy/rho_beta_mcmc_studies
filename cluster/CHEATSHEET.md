@@ -211,6 +211,18 @@ BRHO_ROOT=$PWD/runs/cluster_kle_sig2e3 sbatch cluster/slurm/node_frozen_rho.sbat
 - Chains: `runs/cluster_kle_sig2e3/results/e4_sampler_ab/frozen_rho/` (git-ignored).
 - Push: `tables/e4_sampler_ab/frozen_rho.{md,json}`, `tables/e4_sampler_ab/frozen_beta_pcn.{md,json}`, `figures/e4_sampler_ab/fig_frozen_rho.png`, `fig_frozen_beta_pcn.png`, `fig_beta_methods.png`.
 
+### Joint (ρ, β) posterior: naive block-pCN vs curve sampler + level split (no solves)
+
+Scatter + KDE (50% and 90% regions) of (ρ, β) for E1 and for the A+B curve sampler after the level split, with the curve β̄(ρ) and its scatter band. Needs both runs' chain files.
+
+```bash
+sbatch --partition=g1mig --ntasks=1 --cpus-per-task=2 --mem=32G --time=00:30:00 \
+    -J brho-joint -o logs/brho-joint-%j.out --export=ALL \
+    --wrap "source cluster/env.sh; python reports/plot_rho_beta_joint.py --e1-root runs/cluster_kle --e1-exp e1_blocked --e4-root runs/cluster_kle_sig2e3 --e4-exp e4_sampler_ab"
+```
+
+- Output: `runs/cluster_kle_sig2e3/figures/e1_vs_e4_ab/fig_rho_beta_joint.png`, `runs/cluster_kle_sig2e3/tables/e1_vs_e4_ab/rho_beta_joint.{md,json}`.
+
 ### Best-case importance sampling: Gaussian proposal fitted to the posterior
 
 How much ESS per full forward solve a Gaussian proposal N(m, 1.2 S), fitted to the curve-sampler posterior itself, gives, in θ coordinates and in field coordinates u = ρθ. It is the upper bound for any Gaussian proposal built from cheaper (local) samplers. 500 PDE solves per coordinate system, a minute or two.
