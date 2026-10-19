@@ -1029,3 +1029,43 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 - beta: hard curve 2.208 [2.146, 2.317] (covers at the upper edge, sd 0.054);
   upgraded 2.175 [1.442, 3.264], sd log beta 0.249 (per-sample theory median
   0.240); weight ESS 99.8%; re-solving 200 samples: dPhi 0.004 +- 0.42.
+
+## 2026-10-18 - External Darcy solver on Juno: validation and pilot for the 3D beta(rho) curve
+
+- New (this branch): `brho/darcy_external.py` (driver for a solver kept outside the repo, contract in
+  `external/README.md`), `brho/multiscale_mat.py` (multiscale whitened fields from the `.mat`
+  matrices), `brho/curvefit.py` (even polynomials of degree 2, 4, 6 and PCHIP of mean log K_eff,
+  leave-one-out errors), `experiments/run_external_curve.py`, `cluster/slurm/node_e3_external.sbatch`.
+  Tested against a mock solver (`tests/test_external.py`); the numbers below were produced on Juno with
+  the same code before it was moved into the package, so a short pilot of the repo version is still to
+  be run there.
+- Problem: 38x38x45, ell = 2 cells, cylinder plug (49,140 of 64,980 cells active), flux boundary
+  7.6313e-6 m/s on the bottom face, pressure on the top, mu = 1e-3 Pa s. Solver: darcy_solver (C + PETSc
+  3.18.1 module, CG + GAMG, rtol 1e-8), one MPI rank per solve, 64 solves at a time on one node.
+- Solver self-check (Juno): uniform K0 gives Keff/K0 = 1.000000; Keff(3.7 K)/Keff(K) = 3.700000;
+  reference field Keff = 1.0360e-13 against K* = 1.0360e-13 from the observed 0.480757 psi (ratio
+  1.0000). Kexp = 1.036016e-13 m^2.
+- Fields: the 12 subdomain files (500 local modes each) with the SP1 whitening operator (4699 modes,
+  matches PHI; the SP2 file has 5313 and does not). Mean per-draw std 0.967, neighbour correlations
+  0.88 / 0.88 / 0.88 along x / y / z against 0.89 / 0.89 / 0.88 for log Kref: same smoothness, cell
+  ordering consistent. The 3% variance deficit is the truncated basis; the curve and the sampler must
+  use the same operator so that rho means the same in both.
+- Pilot (64 realizations x 6 rho, 0 failed solves, 14 s on 64 cores). Mean log(Keff/K0) (se):
+  0.0002 (3e-4) at rho 0.05, 0.099 (0.007) at 1.04, 0.256 (0.016) at 2.03, -0.285 (0.066) at 3.02,
+  -2.14 (0.14) at 4.01, -4.53 (0.22) at 5.0. c0 = 0 within 3e-4 in every fit. A pure quadratic does
+  not fit (chi2/dof 286); degree 6 gives a = 0.128, close to the 0.1269 of the production
+  beta = 1.84e-14 exp(-0.1269 rho^2) at small rho.
+- Finding: for rho above about 3, log Keff is controlled by the inlet face. The boundary condition
+  imposes the same flux in every bottom-face cell, so the face-average inlet pressure is dominated by the
+  lowest-permeability cells. On the 6 saved fields, log Keff correlates 0.96 / 0.99 / 0.99 (rho = 3, 4, 5)
+  with the log of the harmonic-mean permeability of the inlet face, against -0.33 to 0.37 for the outlet
+  face (control); the offset is about 4 (ln 90 = 4.5 expected from Lz / (dz/2)). The drop of h(rho) is
+  therefore a property of this flux-boundary model, not a solver artifact; it matters if the experiment
+  injects differently (nozzle, injection mask).
+- Solver cost: 0.5 s and 43 iterations for the uniform field; one solve at large rho took 661
+  iterations and 3.1 s (CG + GAMG).
+- Pre-existing, unrelated: `tests/test_core.py::test_collapse_beta_slice_refresh` fails on `main` in the
+  environment used here (checked on a clean checkout).
+- Next: tolerance check (`--rtol 1e-11`, `compare_external_runs.py`), then the full study (2048
+  realizations x 40 rho; SE of the mean log Keff at rho = 5 is 0.038 at 2048); keep the PCHIP table as the
+  baseline for the sampler and compare with the polynomials by leave-one-out error.

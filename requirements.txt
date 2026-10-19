@@ -5,3 +5,5 @@ numpy>=1.24
 scipy>=1.11
 matplotlib>=3.7
 numba>=0.58
+# h5py is needed only to read the cluster's v7.3 .mat matrices (external-solver runs):
+#   h5py>=3.8

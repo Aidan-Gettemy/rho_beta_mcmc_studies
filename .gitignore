@@ -17,3 +17,10 @@ logs/*
 reports/linearized/*.npz
 reports/linearized/*.npy
 reports/linearized/out_*.txt
+
+# external solver, its inputs and matrices stay out of git (external/README.md)
+external/solver.local
+external/solver/
+external/matrices/
+external/data/
+external/fields/
