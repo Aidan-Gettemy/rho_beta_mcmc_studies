@@ -63,6 +63,9 @@ def worker(i, args, rhos, out):
         os.environ[v] = "1"
     res = os.path.join(out, "keff_parts", f"keff_{i:05d}.npy")
     if os.path.exists(res):
+        if np.load(res, mmap_mode="r").shape != (len(rhos),):
+            raise SystemExit(f"{res} does not have {len(rhos)} values: it belongs to a run with a different rho "
+                             "grid. Use a new --exp-tag (or the same --n-rho/--rho-min/--rho-max).")
         return i, 0.0
     t0 = time.time()
     YP = get_field(args).sample(np.random.default_rng([args.seed, i]))
@@ -79,6 +82,8 @@ def worker(i, args, rhos, out):
 def collect(args, rhos, out):
     keff = np.stack([np.load(os.path.join(out, "keff_parts", f"keff_{i:05d}.npy"))
                      for i in range(args.n_real)], axis=1)            # (n_rho, N)
+    assert keff.shape[0] == len(rhos), (f"saved parts have {keff.shape[0]} rho values but the grid has "
+                                         f"{len(rhos)}: pass the --n-rho/--rho-min/--rho-max of the run (see manifest.json)")
     # Same layout as BetaCurve.save.  Written directly: BetaCurve builds its interpolators on
     # construction and refuses NaN, but a run with failed solves must still be saved and inspectable.
     np.savez_compressed(os.path.join(out, "curve_external.npz"), rhos=rhos, keff1=keff / args.K0,

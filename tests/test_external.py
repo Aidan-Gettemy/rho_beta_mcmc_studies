@@ -195,3 +195,7 @@ def test_runner_end_to_end_with_mock():
         assert r3.returncode == 0, r3.stdout + r3.stderr
         z3 = np.load(os.path.join(res, "curve_external.npz"))
         assert np.isnan(z3["keff"]).sum() == 1 and "fits skipped" in r3.stdout
+        # parts from a different rho grid are refused, not silently mixed
+        r4 = subprocess.run([a for a in cmd if a != "8"] + ["--n-rho", "5", "--fit"], env=env, capture_output=True, text=True)
+        assert r4.returncode != 0 and "rho" in (r4.stdout + r4.stderr)
+

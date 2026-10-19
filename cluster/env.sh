@@ -83,4 +83,9 @@ export EXT_REF_FIELD="${EXT_REF_FIELD:-external/data/Kref.dat}"
 export EXT_REF_PDROP="${EXT_REF_PDROP:-external/data/Syn_2mm_pDrop.dat}"
 # Kexp = |v| mu Lz / dP_observed[Pa] = 7.6313e-6 * 1e-3 * 0.045 / (0.480757 psi * 6894.757) = 1.036e-13
 export EXT_KEXP="${EXT_KEXP:-1.036016e-13}"
+# PETSc options for every solve (read by the solver through PETSC_OPTIONS).  The solver's default
+# (CG + GAMG) breaks down on the high-contrast fields at large rho (DIVERGED_INDEFINITE_PC after a few
+# iterations, mostly rho >= 4); Jacobi-preconditioned CG converges (about 1 s per solve) and agrees
+# with GAMG to < 1e-7 where GAMG converges.  Set EXT_PETSC_OPTIONS="" to use the solver's own defaults.
+export EXT_PETSC_OPTIONS="${EXT_PETSC_OPTIONS--pc_type jacobi -ksp_max_it 100000}"
 export E3EXT_ARGS="${E3EXT_ARGS:---n-real 2048 --n-rho 40}"
