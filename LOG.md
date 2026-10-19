@@ -1093,3 +1093,11 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 - Solver checks: Jacobi agrees with the default GAMG to <= 6.5e-8 where GAMG converges; rtol 1e-11 changes no Keff by more than 4.7e-8 (relative).
 - Correction: the first flat-script pilot accepted diverged GAMG solves (DIVERGED_INDEFINITE_PC) at rho >= 4 (41 of 384 solves, none below). Do not use its large-rho numbers; the curve here has every solve converged.
 - Not in git: keff_parts (raw per-realization results, on Juno scratch), saved fields.
+
+## 2026-10-19 - Uncertainty figure for the external-solver curve (`runs/juno_external_2026-10/`)
+
+- `experiments/plot_external_uncertainty.py` (2000 bootstrap resamples over the 2048 realizations): `figures/e3_external/fit_uncertainty.png` and `tables/e3_external/fit_uncertainty.csv` (median and 90% interval of h and beta per model).
+
+## 2026-10-19 - Uncertainty figure for the external-solver curve (`runs/juno_external_2026-10/`)
+
+- `experiments/plot_external_uncertainty.py` (2000 bootstrap resamples over the 2048 realizations): `figures/e3_external/fit_uncertainty.png` and `tables/e3_external/fit_uncertainty.csv` (median and 90% interval of h and beta per model).
