@@ -42,7 +42,6 @@ import _common  # noqa: F401  (first: pins threads before NumPy loads)
 import numpy as np
 
 from brho import io
-from brho.curve import BetaCurve
 from brho.curvefit import fit_all, summary_lines, write_fit
 from brho.darcy_external import DarcyRunner, physics_from_cfg, selfcheck, solver_exe
 
@@ -80,12 +79,19 @@ def worker(i, args, rhos, out):
 def collect(args, rhos, out):
     keff = np.stack([np.load(os.path.join(out, "keff_parts", f"keff_{i:05d}.npy"))
                      for i in range(args.n_real)], axis=1)            # (n_rho, N)
-    BetaCurve(rhos, keff / args.K0, "ratio_of_mean").save(
-        os.path.join(out, "curve_external.npz"), keff=keff, K0=args.K0)
+    # Same layout as BetaCurve.save.  Written directly: BetaCurve builds its interpolators on
+    # construction and refuses NaN, but a run with failed solves must still be saved and inspectable.
+    np.savez_compressed(os.path.join(out, "curve_external.npz"), rhos=rhos, keff1=keff / args.K0,
+                        statistic="ratio_of_mean", keff=keff, K0=args.K0)
     return keff
 
 
 def do_fit(args, rhos, keff, out):
+    nbad = int(np.isnan(keff).sum())
+    if nbad:
+        print(f"{nbad} failed solves (NaN) in {int(np.isnan(keff).any(axis=1).sum())} of {len(rhos)} rho values: "
+              "fits skipped (dropping failures would bias the curve, most at large rho)")
+        return
     if args.Kexp is None:
         print("no --Kexp given: fits skipped (Kexp = |v| mu Lz / dP_observed[Pa])")
         return
