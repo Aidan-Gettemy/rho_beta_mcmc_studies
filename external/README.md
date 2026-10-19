@@ -102,6 +102,13 @@ the empty string for the solver's own defaults; extra options exported at submit
 win). Jacobi agrees with GAMG to < 1e-7 where GAMG converges. Run `--selfcheck` and any manual solves
 with the same `PETSC_OPTIONS`.
 
+**Uncertainty figure.** `python experiments/plot_external_uncertainty.py --Kexp 1.036016e-13` (no solves;
+reads `curve_external.npz`; about a minute for 2000 bootstrap resamples) writes
+`figures/e3_external/fit_uncertainty.png` and `tables/e3_external/fit_uncertainty.csv`: one panel per
+model with every realization's log(Keff/K0), the MC mean, the median fit and its 90% bootstrap interval
+(median, lo, hi of h and of beta on a 400-point grid in the csv). The interval is the sampling
+uncertainty of the fitted curve; the spread of single realizations is the grey scatter.
+
 **Recovery.** The raw results are the per-realization files `results/e3_external*/keff_parts/` (one
 vector of Keff over the rho grid each); everything else is derived. If the collection or the fits fail
 or need changing, no solve is repeated: rerun the command with `--fit` (same `--n-real`, `--n-rho`,
