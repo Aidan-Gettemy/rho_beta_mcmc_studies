@@ -199,3 +199,31 @@ def test_runner_end_to_end_with_mock():
         r4 = subprocess.run([a for a in cmd if a != "8"] + ["--n-rho", "5", "--fit"], env=env, capture_output=True, text=True)
         assert r4.returncode != 0 and "rho" in (r4.stdout + r4.stderr)
 
+
+def test_bootstrap_interval_and_uncertainty_script():
+    from brho.curvefit import bootstrap_fits, synthetic_data
+    rhos, keff, K0, h_true = synthetic_data(seed=2, n_rho=20, n=600)
+    boot = bootstrap_fits(rhos, keff, K0, degrees=(2, 4), n_boot=200, seed=1, grid=rhos)
+    assert boot["names"] == ["poly2", "poly4", "pchip"]
+    for nm in boot["names"]:
+        b = boot[nm]
+        assert np.all(b["lo"] <= b["median"] + 1e-12) and np.all(b["median"] <= b["hi"] + 1e-12)
+        assert np.all(b["hi"] > b["lo"])
+    b4 = boot["poly4"]                       # the true h is an even degree-4 polynomial: the 90% band covers it
+    cover = np.mean((b4["lo"] <= h_true) & (h_true <= b4["hi"]))
+    assert cover > 0.6, cover
+    assert np.max(np.abs(boot["poly2"]["median"] - h_true)) > 5 * np.max(b4["hi"] - b4["lo"])   # misfit is not noise
+    # script: figure + table from a curve file; NaN is refused
+    with tempfile.TemporaryDirectory() as d:
+        np.savez(os.path.join(d, "c.npz"), rhos=rhos, keff=keff, K0=K0)
+        out = os.path.join(d, "f.png")
+        cmd = [sys.executable, os.path.join(REPO, "experiments", "plot_external_uncertainty.py"),
+               "--curve", os.path.join(d, "c.npz"), "--out", out, "--n-boot", "40", "--degrees", "2", "4"]
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert os.path.getsize(out) > 20000 and os.path.exists(os.path.join(d, "f.csv"))
+        bad = keff.copy(); bad[3, 5] = np.nan
+        np.savez(os.path.join(d, "bad.npz"), rhos=rhos, keff=bad, K0=K0)
+        r2 = subprocess.run(cmd[:3] + [os.path.join(d, "bad.npz")] + cmd[4:], capture_output=True, text=True)
+        assert r2.returncode != 0 and "NaN" in (r2.stdout + r2.stderr)
+
