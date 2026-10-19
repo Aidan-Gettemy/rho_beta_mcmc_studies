@@ -1,6 +1,7 @@
 """beta(rho) figures for the paper (no statistics text).  Reads curve_external.npz; runs no solver.
 
-  beta_overlay.png      the fitted beta(rho) of every model, overlaid (poly2/4/6, PCHIP)
+  beta_overlay.png      the fitted beta(rho) of every model, overlaid (poly2/4/6, PCHIP), with the simulations'
+                        mean (beta at the MC mean of h) and central 90% interval
   beta_<model>.png      one per model: scatter of the single realizations at each rho, their central 90%
                         interval, and the model's median fit with its 90% bootstrap interval
 
@@ -67,6 +68,7 @@ def main():
     q = 100 * (1 - a.level) / 2
     d_lo, d_hi = np.percentile(beta_i, [q, 100 - q], axis=1)
     grid = boot["grid"]
+    mean_beta = a.Kexp * np.exp(-np.log(keff / K0).mean(1)) / S      # beta at the MC mean of h (what the fits target)
     fit = {}
     for nm in boot["names"]:
         b = boot[nm]
@@ -77,11 +79,14 @@ def main():
 
     # --- overlay of the fitted curves
     fig, ax = plt.subplots(figsize=(6.2, 4.4), facecolor=SURFACE)
+    ax.plot(rhos, d_lo, color=INK2, lw=0.9, ls=(0, (4, 3)), zorder=2, label=f"{level}% interval of simulations")
+    ax.plot(rhos, d_hi, color=INK2, lw=0.9, ls=(0, (4, 3)), zorder=2)
     for nm in boot["names"]:
         ax.plot(grid, fit[nm][0], color=SLOTS[nm], ls=DASH[nm], lw=2, label=LABEL[nm], zorder=3)
+    ax.scatter(rhos, mean_beta, s=14, color=INK, edgecolor=SURFACE, linewidth=0.8, zorder=5, label="mean of simulations")
     ax.set_yscale(scale)
     _style(ax)
-    ax.legend(frameon=False, fontsize=9.5, labelcolor=INK2)
+    ax.legend(frameon=False, fontsize=9.5, labelcolor=INK2, loc="upper left")
     fig.tight_layout()
     fig.savefig(os.path.join(a.outdir, "beta_overlay.png"), dpi=200, facecolor=SURFACE)
     plt.close(fig)
