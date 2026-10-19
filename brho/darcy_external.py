@@ -81,11 +81,18 @@ def physics_from_cfg(path):
 
 # ----------------------------------------------------------------------------- solver
 class DarcyRunner:
-    def __init__(self, exe, cfg, work, launcher="", rtol=1e-8, timeout=900, extra=""):
+    def __init__(self, exe, cfg, work, launcher="", rtol=1e-8, timeout=900, extra="", keep_velocity=False):
         self.exe, self.cfg, self.work = os.path.abspath(exe), os.path.abspath(cfg), os.path.abspath(work)
         self.launcher, self.rtol, self.timeout, self.extra = launcher, rtol, timeout, extra
         self.phys = physics_from_cfg(cfg)
         os.makedirs(self.work, exist_ok=True)
+        if not keep_velocity:
+            # The solver ignores "-output_velocity false" when the cfg says *DUMP_VELOCITY 1 (needed by the
+            # tracer / GLAM). Keff-only users (E3 curve) run a copy with the dump switched off.
+            txt = open(self.cfg).read()
+            txt = re.sub(r"(\*DUMP_VELOCITY[ \t]*\n)\s*\d+", r"\g<1>0", txt, count=1)
+            self.cfg = os.path.join(self.work, "DATA_keff_only.cfg")
+            open(self.cfg, "w").write(txt)
 
     def keff(self, K, tag="solve"):
         """K: (N,) array of permeabilities in solver order (x fastest). Returns Keff [m^2]."""
