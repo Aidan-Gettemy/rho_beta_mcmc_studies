@@ -1085,3 +1085,11 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 - Code: runs with failed solves are saved (NaN) and their fits skipped instead of crashing in `collect()`;
   parts with a different rho grid are refused; Recovery notes in `external/README.md`.
 - Open: tolerance check (`--rtol 1e-11`), then the full 2048 x 40 study.
+
+## 2026-10-19 - 3D beta(rho) curve with the external Darcy solver (Juno): `runs/juno_external_2026-10/`
+
+- Command: `BRHO_ROOT=$HOME/scratch/brho_runs sbatch --time=02:00:00 cluster/slurm/node_e3_external.sbatch` (2048 realizations x 40 rho in [0.05, 5], seed 99, rtol 1e-8, `-pc_type jacobi -ksp_max_it 100000`, 38x38x45 problem, SP1 whitening, Kexp = 1.036016e-13 m^2).
+- Result: 0 failed solves. Even polynomials fit poorly (chi2/dof 5413 / 138 / 87 for degrees 2 / 4 / 6; leave-one-out error 84 / 11 / 13 standard errors); PCHIP of mean log Keff predicts held-out points to 0.50 standard errors, so `beta_pchip_table.csv` is the curve for the sampler. h(rho) rises as rho^2 at small rho (fitted coefficient 0.124, compare sigma^2/6 = 0.156 for these fields) and falls steeply beyond rho of about 3 (-0.28 at 3.02, -4.6 at 5.00).
+- Solver checks: Jacobi agrees with the default GAMG to <= 6.5e-8 where GAMG converges; rtol 1e-11 changes no Keff by more than 4.7e-8 (relative).
+- Correction: the first flat-script pilot accepted diverged GAMG solves (DIVERGED_INDEFINITE_PC) at rho >= 4 (41 of 384 solves, none below). Do not use its large-rho numbers; the curve here has every solve converged.
+- Not in git: keff_parts (raw per-realization results, on Juno scratch), saved fields.
