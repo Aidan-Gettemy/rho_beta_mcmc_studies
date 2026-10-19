@@ -1,0 +1,5 @@
+# Copy to external/solver.local (git ignores it) and edit.  KEY=VALUE, read by the job scripts and by
+# brho/darcy_external.py.
+SOLVER_DIR=$HOME/Darcy_solver              # folder with the built `darcy_solver`
+# Optional: a file that sets up the solver's runtime (module loads, PETSC_DIR, ...), sourced by the jobs.
+SOLVER_ENV=$HOME/Darcy_solver/ev_arch-openmpi

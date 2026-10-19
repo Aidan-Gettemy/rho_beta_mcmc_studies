@@ -28,6 +28,7 @@ def exp_e1(move, tag=""):
     return f"e1_{move}" + (f"_{tag}" if tag else "")
 EXP_GRID = "e2_grid"
 EXP_CURVE = "e3_curve"
+EXP_CURVE_EXTERNAL = "e3_external"   # E3 with an external solver (experiments/run_external_curve.py)
 EXP_SAMPLER = "e4_sampler"
 
 

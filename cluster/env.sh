@@ -71,3 +71,16 @@ export E4_ARGS="${E4_ARGS:---n-total 51000 --n-burn 15000 --thin 30}"
 #   export PROBLEM_ARGS="--dim 3 --n 16 --ell 0.2 --kle-method nystrom_sep --kle-nq 40 --truth-mode kle --sigma-rel 2e-3"
 export E5_CHAINS="${E5_CHAINS:-}"                  # empty: one chain per rank
 export E5_ARGS="${E5_ARGS:---n-total 150000 --n-burn 30000 --thin 100}"   # = E4 budget
+
+# --- external-solver curve (E3 with an external Darcy solver; external/README.md) ------
+# The solver itself is located by external/solver.local (not in git).  Defaults below are the
+# 38x38x45 problem; paths are relative to the repo root.
+export EXT_CFG="${EXT_CFG:-external/DATA.cfg}"
+export EXT_MATRICES="${EXT_MATRICES:-external/matrices}"
+export EXT_TAG="${EXT_TAG:-38x38x45_38x38x45_l2.0x2.0x2.0_m500_IND}"
+export EXT_WHITENING="${EXT_WHITENING:-$EXT_MATRICES/whitening_operator_SP1.npz}"   # 4699 modes, matches PHI
+export EXT_REF_FIELD="${EXT_REF_FIELD:-external/data/Kref.dat}"
+export EXT_REF_PDROP="${EXT_REF_PDROP:-external/data/Syn_2mm_pDrop.dat}"
+# Kexp = |v| mu Lz / dP_observed[Pa] = 7.6313e-6 * 1e-3 * 0.045 / (0.480757 psi * 6894.757) = 1.036e-13
+export EXT_KEXP="${EXT_KEXP:-1.036016e-13}"
+export E3EXT_ARGS="${E3EXT_ARGS:---n-real 2048 --n-rho 40}"
