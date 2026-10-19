@@ -1069,3 +1069,19 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 - Next: tolerance check (`--rtol 1e-11`, `compare_external_runs.py`), then the full study (2048
   realizations x 40 rho; SE of the mean log Keff at rho = 5 is 0.038 at 2048); keep the PCHIP table as the
   baseline for the sampler and compare with the polynomials by leave-one-out error.
+
+## 2026-10-18 - External solver: GAMG breaks down at large rho; Jacobi-preconditioned CG used (PR #121)
+
+- Repo pilot on Juno (64 realizations x 6 rho, seed 99, same code path as the first pilot): the fields are
+  bit-identical to the flat-script pilot and the solver command is identical, but 41 of 384 solves fail
+  with `DIVERGED_INDEFINITE_PC` after 5-11 iterations (CG + GAMG): 4 of 64 at rho = 4.01, 37 of 64 at
+  rho = 5, none below. The failure is deterministic. The first pilot's driver did not check the KSP reason
+  and accepted these stopped iterates (some with a negative pressure drop) as Keff values, so large-rho
+  numbers from that pilot are unreliable. Where GAMG converged, both pilots agree exactly.
+- Fix: `PETSC_OPTIONS="-pc_type jacobi -ksp_max_it 100000"` (default in the sbatch). Pilot with Jacobi:
+  0 failures; agrees with GAMG to <= 6.5e-8 on all solves where GAMG converged (rho 0.05-5); on the 41
+  diverged solves the Jacobi/old-recorded ratio has median 0.91 (rho = 4.01) and 0.98 (rho = 5.00).
+  Example (one rho = 5 field): GAMG stops with drop 9085 Pa, Jacobi converges to 16240 Pa (3636 it, 1.4 s).
+- Code: runs with failed solves are saved (NaN) and their fits skipped instead of crashing in `collect()`;
+  parts with a different rho grid are refused; Recovery notes in `external/README.md`.
+- Open: tolerance check (`--rtol 1e-11`), then the full 2048 x 40 study.

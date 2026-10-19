@@ -93,3 +93,18 @@ pilot first (`E3EXT_ARGS="--n-real 64 --n-rho 6 --exp-tag pilot" ALLOW_FEW_RHO=1
 study. Results go to `$BRHO_ROOT/results/e3_external/` (`curve_external.npz` has the layout of
 `curve_kle.npz`, so `brho.curve.BetaCurve.load` reads it), fits to `tables/e3_external/`, figures to
 `figures/e3_external/`.
+
+**Solver options.** The solver's default (CG + GAMG) fails with `DIVERGED_INDEFINITE_PC` on the
+high-contrast fields at large rho (in the 64x6 pilot: 4 of 64 solves at rho = 4, 37 of 64 at rho = 5).
+The driver treats any `DIVERGED_*` as a failed solve (NaN). `node_e3_external.sbatch` therefore sets
+`PETSC_OPTIONS="-pc_type jacobi -ksp_max_it 100000"` (`EXT_PETSC_OPTIONS` in `cluster/env.sh`; set it to
+the empty string for the solver's own defaults; extra options exported at submit time are appended and
+win). Jacobi agrees with GAMG to < 1e-7 where GAMG converges. Run `--selfcheck` and any manual solves
+with the same `PETSC_OPTIONS`.
+
+**Recovery.** The raw results are the per-realization files `results/e3_external*/keff_parts/` (one
+vector of Keff over the rho grid each); everything else is derived. If the collection or the fits fail
+or need changing, no solve is repeated: rerun the command with `--fit` (same `--n-real`, `--n-rho`,
+`--rho-min/--rho-max` as the run; they are in `manifest.json`), which rebuilds `curve_external.npz` and
+the fits from the parts. A run with failed solves is saved too (NaN entries) and its fits are skipped.
+Back the parts up (`tar czf keff_parts.tgz keff_parts`) before experimenting.

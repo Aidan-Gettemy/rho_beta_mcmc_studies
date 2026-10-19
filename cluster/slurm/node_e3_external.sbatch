@@ -33,6 +33,10 @@ set -u
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader
 
+# PETSc options for the solver: defaults from env.sh first, anything exported at submit time after them.
+export PETSC_OPTIONS="$EXT_PETSC_OPTIONS ${PETSC_OPTIONS:-}"
+echo "PETSC_OPTIONS=$PETSC_OPTIONS"
+
 PHI_NPY="$EXT_MATRICES/phi_full_f32.npy"
 if [ ! -f "$PHI_NPY" ]; then
   python experiments/run_external_curve.py --cache-phi "$EXT_MATRICES/phi_matrix_full_${EXT_TAG}.mat" "$PHI_NPY"
