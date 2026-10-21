@@ -51,7 +51,7 @@ def build_model(args, cfg, rank):
     runner = DarcyRunner(args.exe or solver_exe(), args.cfg, os.path.join(args.work, f"rank{rank:03d}"),
                          launcher=args.launcher, rtol=args.rtol, extra=args.solver_extra, keep_velocity=True,
                          clean_mpi_env=True)
-    tracer = TracerRunner(args.cfg, args.tracer_dir)
+    tracer = TracerRunner(args.cfg, args.tracer_dir, rank=rank)
     data = GlamData.load(args.conc, args.pdrop, dp_unit="psi")
     return ExternalModel(field, beta, runner, tracer, data, cfg.sigma_conc, cfg.sigma_dp, cfg.mu_logrho,
                          cfg.s_logrho, (cfg.rho_min, cfg.rho_max))

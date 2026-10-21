@@ -106,13 +106,30 @@ def read_petsc_vec(path, n=None):
     return v.astype(np.float64)
 
 
+def assign_gpu(rank):
+    """Many ranks share the node's GPUs: rank r uses device r % n_gpus (round robin).  Sets CUDA_VISIBLE_DEVICES for
+    this process, so it must run before CuPy is first imported; a no-op when no GPU list is visible.  Returns the
+    physical device id (or None)."""
+    vis = os.environ.get("CUDA_VISIBLE_DEVICES", "")
+    devs = [d for d in vis.split(",") if d.strip()]
+    if not devs:
+        n = int(os.environ.get("SLURM_GPUS_ON_NODE", "0") or 0)
+        devs = [str(i) for i in range(n)]
+    if not devs:
+        return None
+    d = devs[rank % len(devs)]
+    os.environ["CUDA_VISIBLE_DEVICES"] = d
+    return d
+
+
 class TracerRunner:
     """Calls the group's GPU tracer in-process: transpTracer.set_problem_and_call_solver(cfg, velocity_file).
     The tracer is proprietary and lives outside the repository: give its folder (the `transport/` directory of the
     solver repository) as tracer_dir or $TRACER_DIR.  Needs CuPy + petsc4py on the machine that calls it."""
 
-    def __init__(self, cfg, tracer_dir=None):
+    def __init__(self, cfg, tracer_dir=None, rank=0):
         self.cfg = os.path.abspath(cfg)
+        self.gpu = assign_gpu(rank)
         self.tracer_dir = tracer_dir or os.environ.get("TRACER_DIR")
         self._fn = None
 

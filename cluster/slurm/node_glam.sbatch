@@ -2,16 +2,16 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=64                   # one GLAM chain per CPU
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=200G                    # every rank holds its own float32 PHI (1.2 GB) -> ~77 GB for 64 ranks
-#SBATCH --partition=normal
-#SBATCH --time=24:00:00
+#SBATCH --mem=300G                    # every rank holds its own float32 PHI (1.2 GB) -> ~77 GB for 64 ranks (+ CuPy/solver)
+#SBATCH --partition=h200              # 64 cores, 384 GB, 2 x H200; h100 (4 x H100, 512 GB) or a30 (128 cores, 8 x A30) also possible
+#SBATCH --gres=gpu:2                  # --gres=gpu:<n> is required for GPU access; the 64 ranks share these GPUs round-robin
+#SBATCH --time=24:00:00                   # partition limit 2 days
 #SBATCH -J brho-glam
 #SBATCH -o logs/brho-glam-%j.out
-##SBATCH --gres=gpu:1                 # the tracer needs a GPU (CuPy + petsc4py); ask the cluster admins how GPUs are shared
 #
 # GLAM (global-local anchored multistage sampling) on top of the offline PCHIP beta(rho) curve.
 # Submit from the repo root; settings come from cluster/env.sh, GLAM options via GLAM_ARGS:
-#   GLAM_ARGS="--forward toy --exp-tag rehearsal --n-iter 2000"  sbatch --time=00:30:00 cluster/slurm/node_glam.sbatch   # dress rehearsal, no solver/tracer
+#   GLAM_ARGS="--forward toy --exp-tag rehearsal --n-iter 2000"  sbatch --partition=normal --gres=none --time=00:30:00 cluster/slurm/node_glam.sbatch   # dress rehearsal, no solver/tracer
 #   GLAM_ARGS="--exp-tag run1"                                    sbatch cluster/slurm/node_glam.sbatch                   # real run
 #   GLAM_ARGS="--exp-tag run1 --resume"                           sbatch cluster/slurm/node_glam.sbatch                   # continue after a time-out
 # Then post-process (strided samples; add --fields to re-run the forward model on them):
