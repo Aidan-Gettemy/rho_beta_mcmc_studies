@@ -11,7 +11,7 @@
 #
 # GLAM (global-local anchored multistage sampling) on top of the offline PCHIP beta(rho) curve.
 # Submit from the repo root; settings come from cluster/env.sh, GLAM options via GLAM_ARGS:
-#   GLAM_ARGS="--forward toy --exp-tag rehearsal --n-iter 2000"  sbatch --partition=normal --gres=none --time=00:30:00 cluster/slurm/node_glam.sbatch   # dress rehearsal, no solver/tracer
+#   GLAM_ARGS="--forward toy --exp-tag rehearsal --n-iter 2000 --window1 600 --window2 600 --burnin-length 100 --global-stage-length 100 --local-stage-length 100" PHI_MODE=ram  sbatch --partition=normal --gres=none --time=00:30:00 cluster/slurm/node_glam.sbatch   # dress rehearsal, no solver/tracer
 #   GLAM_ARGS="--exp-tag run1"                                    sbatch cluster/slurm/node_glam.sbatch                   # real run
 #   GLAM_ARGS="--exp-tag run1 --resume"                           sbatch cluster/slurm/node_glam.sbatch                   # continue after a time-out
 # PHI_MODE=ram uses the CPU projection (6x slower at 64 processes, see cluster/slurm/bench_projection.sbatch).
@@ -26,6 +26,7 @@ set +u
 set -u
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader
+export UCX_TLS="${UCX_TLS:-self,sm}"      # MPICH/UCX on one node: shared memory only (also silences "cuDeviceGetCount failed" on CPU nodes)
 export PETSC_OPTIONS="$EXT_PETSC_OPTIONS ${PETSC_OPTIONS:-}"
 mkdir -p logs "$GLAM_WORK"
 echo "python: $(which python)"; python -c "import numpy, scipy; print('numpy', numpy.__version__)"
