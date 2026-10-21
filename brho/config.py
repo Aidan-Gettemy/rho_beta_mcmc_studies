@@ -299,6 +299,7 @@ class GlamConfig:
     restart_scale: float = 0.2
     anchor_current_only: bool = False
     rho_distance_weight: float = 1.0
+    max_anchors: int = 0            # archive size cap: 0 = 2 x number of chains (the manager's recommended setting), <0 = unlimited
     save_every: int = 200           # chain records per output part
     log_every: int = 100
     seed0: int = 2026
