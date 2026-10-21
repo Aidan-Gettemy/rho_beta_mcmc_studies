@@ -27,6 +27,8 @@ export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader
 export UCX_TLS="${UCX_TLS:-self,sm}"
 export PETSC_OPTIONS="$EXT_PETSC_OPTIONS ${PETSC_OPTIONS:-}"
 mkdir -p logs "$GLAM_WORK"
+[ -f "$GLAM_FITS" ] || { echo "GLAM_FITS=$GLAM_FITS not found: GLAM_FITS=../brho_runs/tables/e3_external/fits.json sbatch ..."; exit 1; }
+echo "curve: $GLAM_FITS"
 echo "python: $(which python)"
 python -c "import mpi4py; print('mpi4py', mpi4py.__version__)"
 python -c "import cupy; print('cupy', cupy.__version__)"
