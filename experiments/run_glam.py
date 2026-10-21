@@ -63,8 +63,8 @@ def build_model(args, cfg, rank):
                          cfg.s_logrho, (cfg.rho_min, cfg.rho_max))
 
 
-def main():
-    ap = _common.parser(__doc__, C.GlamConfig)
+def build_parser(doc=None):
+    ap = _common.parser(doc or __doc__, C.GlamConfig)
     ap.add_argument("--forward", choices=["external", "toy"], default="external")
     ap.add_argument("--exp-tag", default="")
     ap.add_argument("--resume", action="store_true")
@@ -87,7 +87,11 @@ def main():
     ap.add_argument("--toy-n-sub", type=int, default=12); ap.add_argument("--toy-m", type=int, default=10)
     ap.add_argument("--toy-cells", type=int, default=400); ap.add_argument("--toy-seed", type=int, default=0)
     ap.add_argument("--toy-sigma", type=float, default=0.05)
-    args = ap.parse_args()
+    return ap
+
+
+def main():
+    args = build_parser().parse_args()
     cfg = C.from_cli(args, C.GlamConfig, quick=args.quick)
 
     comm = world()
