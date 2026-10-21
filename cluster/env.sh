@@ -97,7 +97,14 @@ export EXT_PETSC_OPTIONS="${EXT_PETSC_OPTIONS--pc_type jacobi -ksp_max_it 100000
 export E3EXT_ARGS="${E3EXT_ARGS:---n-real 2048 --n-rho 40}"
 
 # --- GLAM sampler on the PCHIP beta(rho) curve (experiments/run_glam.py) -------------------
-export GLAM_FITS="${GLAM_FITS:-runs/juno_external_2026-10/tables/e3_external/fits.json}"   # PCHIP nodes + Kexp
+# PCHIP nodes + Kexp of the offline curve study: the first of these that exists (override with GLAM_FITS=...)
+if [ -z "${GLAM_FITS:-}" ]; then
+  for _c in runs/juno_external_2026-10/tables/e3_external/fits.json ../brho_runs/tables/e3_external/fits.json \
+            runs/cluster/tables/e3_external/fits.json; do
+    [ -f "$_c" ] && { GLAM_FITS="$_c"; break; }
+  done
+fi
+export GLAM_FITS="${GLAM_FITS:-runs/juno_external_2026-10/tables/e3_external/fits.json}"
 export EXT_DATA_CONC="${EXT_DATA_CONC:-external/data/Syn_2mm_TC.dat}"
 export GLAM_WORK="${GLAM_WORK:-/tmp/glam_work_${SLURM_JOB_ID:-local}}"    # per-rank scratch (node-local disk)
 # TRACER_DIR (GPU tracer, proprietary, outside the repo) is read from external/solver.local or the environment.
