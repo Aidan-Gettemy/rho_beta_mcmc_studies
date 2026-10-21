@@ -19,4 +19,8 @@ mkdir -p logs
 echo "node $(hostname)  nproc=$(nproc)  allowed cpus: $(taskset -cp $$ | sed 's/.*: //')"
 lscpu | grep -E "Model name|Socket|Thread|NUMA node\(s\)|^CPU\(s\)"
 free -g | head -2
-python experiments/bench_projection.py --procs 1 8 16 32 64 --phi "$EXT_MATRICES/phi_full_f32.npy"
+F="$EXT_MATRICES/phi_full_f32.npy"
+echo "== shared memory map (what the first benchmark did)"
+python experiments/bench_projection.py --procs 1 8 16 32 64 --phi "$F"
+echo "== private copy per process (= --phi-mode ram, the layout of the CPU GLAM run)"
+python experiments/bench_projection.py --procs 1 8 16 32 64 --phi "$F" --private

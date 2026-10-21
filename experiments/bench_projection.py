@@ -11,8 +11,9 @@ import argparse, multiprocessing as mp, os, time
 import numpy as np
 
 def _work(args):
-    phi_path, m, reps, barrier, q = args
-    phi = np.load(phi_path, mmap_mode="r")
+    phi_path, m, reps, barrier, q, private = args
+    # private: the real --phi-mode ram layout (every process owns a first-touch copy); default: shared memory map
+    phi = np.load(phi_path) if private else np.load(phi_path, mmap_mode="r")
     rng = np.random.default_rng(os.getpid())
     n = phi.shape[0]
     U = rng.standard_normal((m, m)).astype(np.float32) / np.sqrt(m)   # stands in for eigvec
@@ -36,6 +37,7 @@ def main():
     ap.add_argument("--procs", type=int, nargs="+", default=[1, 2])
     ap.add_argument("--reps", type=int, default=5)
     ap.add_argument("--tmp", default="/tmp")
+    ap.add_argument("--private", action="store_true", help="each process loads its own copy of PHI (= --phi-mode ram); 64 x 1.2 GB")
     a = ap.parse_args()
     path = a.phi
     if path is None:
@@ -48,11 +50,11 @@ def main():
             mm.flush(); del mm
     m = np.load(path, mmap_mode="r").shape[1]
     gb = 2 * np.load(path, mmap_mode="r").nbytes / 1e9 + 2 * 4 * m * m / 1e9
-    print(f"PHI {path}  traffic/call ~ {gb:.2f} GB (PHI twice + U twice)")
+    print(f"PHI {path}  {'private copies' if a.private else 'shared mmap'}  traffic/call ~ {gb:.2f} GB (PHI twice + U twice)")
     base = None
     for P in a.procs:
         ctx = mp.get_context("fork"); barrier = ctx.Barrier(P); q = ctx.Queue()
-        ps = [ctx.Process(target=_work, args=((path, m, a.reps, barrier, q),)) for _ in range(P)]
+        ps = [ctx.Process(target=_work, args=((path, m, a.reps, barrier, q, a.private),)) for _ in range(P)]
         [p.start() for p in ps]; ts = [q.get() for _ in ps]; [p.join() for p in ps]
         med = float(np.median(np.concatenate(ts)))
         base = base or med
