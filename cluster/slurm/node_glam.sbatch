@@ -19,6 +19,8 @@
 #   mpirun -np 64 python experiments/glam_postprocess.py --exp-tag run1 --stride 50 --fields
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
+# the GPU tracer and CuPy live in the darcyMCMC environment (cupy 13.4.1, petsc4py 3.21.4); override with BRHO_CONDA_ENV=...
+export BRHO_CONDA_ENV="${BRHO_CONDA_ENV-/home/arg210006/.conda/envs/darcyMCMC}"
 source cluster/env.sh
 set -a; source external/solver.local; set +a          # SOLVER_DIR, TRACER_DIR, optional SOLVER_ENV
 set +u
