@@ -105,6 +105,8 @@ def main():
               f"(window1 {cfg.window1}, window2 {cfg.window2})", flush=True)
     comm.Barrier()
     model = build_model(args, cfg, rank)
+    if rank == 0:
+        io.save_json(os.path.join(out, "block_dims.json"), dict(block_dims=[int(d) for d in model.block_dims]))
     run_glam(model, cfg, comm, out, resume=args.resume)
     if rank == 0:
         print("[glam] done:", out, flush=True)
