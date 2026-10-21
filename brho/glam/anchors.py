@@ -3065,6 +3065,7 @@ class GlobalLocalAnchorManager:
         best_field: Any = None
         best_simuldata: Any = None
         best_phi = np.inf
+        tried_phis: list[float] = []
 
         for attempt in range(1, self.max_restart_attempts + 1):
             trial = self.propose_around_anchor(anchor, rank=rank, scale=scale)
@@ -3078,6 +3079,7 @@ class GlobalLocalAnchorManager:
                 datafiletype=datafiletype,
             )
 
+            tried_phis.append(float(phi))
             if phi < best_phi:
                 best_theta = trial
                 best_field = field_payload
@@ -3103,7 +3105,27 @@ class GlobalLocalAnchorManager:
             scale *= self.restart_scale_decay
 
         if best_theta is None:
-            raise RuntimeError("Restart search produced no evaluated state.")
+            # Every perturbed trial had a non-finite potential. Fall back to the anchor itself (it was evaluated
+            # finite when it entered the archive); if that is also non-finite, say exactly what was seen.
+            theta_copy = copy_theta(anchor.theta)
+            field_payload, simuldata, phi = self.evaluate_theta(
+                theta_copy, field_builder=field_builder, simulation_fn=simulation_fn, phi_fn=phi_fn,
+                inputdata=inputdata, rank=rank, datafiletype=datafiletype,
+            )
+            if not np.isfinite(phi):
+                last = [float(np.ravel(b)[0]) if np.size(b) else float("nan") for b in anchor.theta]
+                raise RuntimeError(
+                    "Restart search produced no evaluated state: rank %d, anchor %d (stored phi %r), scale %g, "
+                    "%d trial potentials %r, re-evaluated anchor phi %r, first entry of each anchor block %r"
+                    % (rank, int(anchor_index), anchor.phi, restart_scale, len(tried_phis), tried_phis[:6], phi, last)
+                )
+            self.restart_fallbacks = getattr(self, "restart_fallbacks", 0) + 1
+            return RestartResult(
+                theta=theta_copy, field=field_payload, simuldata=simuldata, phi=phi,
+                anchor_index=int(anchor_index), anchor_phi=float(anchor.phi), exact_anchor_copy=True,
+                accepted_under_threshold=(phi <= target_phi), attempts=len(tried_phis), final_scale=0.0,
+                role=str(role), source_anchor_id=int(anchor.anchor_id),
+            )
 
         if self.random_reach_attempts == 0:
 
