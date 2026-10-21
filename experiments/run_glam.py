@@ -45,7 +45,13 @@ def build_model(args, cfg, rank):
     from brho.glam_likelihood import GlamData
     from brho.multiscale_mat import load_multiscale
     field = load_multiscale(args.matrix_dir, args.tag, args.whitening, n_sub=args.n_sub,
-                            phi_npy=args.phi_npy if args.phi_mode == "mmap" else None)
+                            phi_npy=args.phi_npy if args.phi_mode in ("mmap", "gpu") else None)
+    if args.phi_mode == "gpu":                             # projection on the GPU: PHI (1.2 GB) per rank on the device
+        import cupy
+        from brho.glam.model import assign_gpu
+        from brho.multiscale_mat import attach_gpu_projector
+        assign_gpu(rank)                                   # before CuPy touches the device
+        field = attach_gpu_projector(field, cupy)
     if args.phi_mode == "ram" and args.phi_npy:
         field.PHI = np.load(args.phi_npy)                  # private float32 copy per rank (1.2 GB; 64 ranks ~ 77 GB)
     runner = DarcyRunner(args.exe or solver_exe(), args.cfg, os.path.join(args.work, f"rank{rank:03d}"),
@@ -74,7 +80,7 @@ def main():
     ap.add_argument("--n-sub", type=int, default=12)
     ap.add_argument("--whitening", default=os.environ.get("EXT_WHITENING", "external/matrices/whitening_operator_SP1.npz"))
     ap.add_argument("--phi-npy", default=os.environ.get("EXT_PHI_NPY", "external/matrices/phi_full_f32.npy"))
-    ap.add_argument("--phi-mode", choices=["ram", "mmap"], default="ram")
+    ap.add_argument("--phi-mode", choices=["ram", "mmap", "gpu"], default="ram")
     ap.add_argument("--tracer-dir", default=os.environ.get("TRACER_DIR"))
     ap.add_argument("--conc", default=os.environ.get("EXT_DATA_CONC", "external/data/Syn_2mm_TC.dat"))
     ap.add_argument("--pdrop", default=os.environ.get("EXT_REF_PDROP", "external/data/Syn_2mm_pDrop.dat"))

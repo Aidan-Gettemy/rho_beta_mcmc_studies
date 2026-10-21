@@ -59,6 +59,7 @@ class MultiscaleField:
         self.invsqrt = np.asarray(invsqrt, dtype=dtype).ravel()               # (M,)
         self.N = self.PHI.shape[0]
         self.M = self.PHI.shape[1]
+        self.projector = None          # optional replacement of whiten_project (e.g. GpuProjector)
         self._check()
 
     def _check(self):
@@ -88,6 +89,9 @@ class MultiscaleField:
         """YP = PHI @ U @ diag(invsqrt) @ U^T @ PHI^T @ Y  (Y: (N,) or (N, k))."""
         one = Y.ndim == 1
         Yk = Y.reshape(self.N, -1).astype(self.dtype, copy=False)
+        if self.projector is not None:
+            out = self.projector(Yk)
+            return out[:, 0] if one else out
         z = self.PHI.T @ Yk
         z = self.U.T @ z
         z *= self.invsqrt[:, None]
@@ -121,3 +125,33 @@ def load_multiscale(matrix_dir, tag, whitening_npz, n_sub=12, phi_npy=None, dtyp
     w = np.load(whitening_npz)
     return MultiscaleField(T_list, elem_list, PHI, w["eigvec"], w["invsqrt"], dtype=dtype)
 
+
+
+class GpuProjector:
+    """YP = PHI U diag(invsqrt) U^T PHI^T Y with PHI, U on the device (xp = cupy; xp = numpy for tests).
+    The CPU projection reads ~2.6 GB per call and saturates the node's memory bandwidth at ~70 GB/s (6x slower
+    with 64 processes); on a GPU it is bandwidth-bound at TB/s.  Each rank keeps its own copy (1.2 GB float32);
+    PHI is uploaded in row blocks so the host never holds a second copy."""
+
+    def __init__(self, PHI, U, invsqrt, xp, block=8192):
+        self.xp = xp
+        N, M = PHI.shape
+        self.PHI = xp.empty((N, M), dtype=xp.float32)
+        for i in range(0, N, block):
+            self.PHI[i:i + block] = xp.asarray(np.asarray(PHI[i:i + block], dtype=np.float32))
+        self.U = xp.asarray(np.asarray(U, dtype=np.float32))
+        self.invsqrt = xp.asarray(np.asarray(invsqrt, dtype=np.float32).ravel())
+
+    def __call__(self, Yk):
+        xp = self.xp
+        y = xp.asarray(np.ascontiguousarray(Yk, dtype=np.float32))
+        z = self.PHI.T @ y
+        z = self.U.T @ z
+        z *= self.invsqrt[:, None]
+        out = self.PHI @ (self.U @ z)
+        return out.get() if hasattr(out, "get") else np.asarray(out)
+
+
+def attach_gpu_projector(field, xp):
+    field.projector = GpuProjector(field.PHI, field.U, field.invsqrt, xp)
+    return field
