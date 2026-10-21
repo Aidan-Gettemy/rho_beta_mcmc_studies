@@ -30,6 +30,7 @@ EXP_GRID = "e2_grid"
 EXP_CURVE = "e3_curve"
 EXP_CURVE_EXTERNAL = "e3_external"   # E3 with an external solver (experiments/run_external_curve.py)
 EXP_SAMPLER = "e4_sampler"
+EXP_GLAM = "e6_glam"             # GLAM on the PCHIP beta(rho) curve (experiments/run_glam.py)
 
 
 def exp_sampler(tag=""):

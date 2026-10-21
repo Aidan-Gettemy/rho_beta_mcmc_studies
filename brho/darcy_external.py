@@ -81,10 +81,22 @@ def physics_from_cfg(path):
 
 
 # ----------------------------------------------------------------------------- solver
+def clean_env():
+    """Environment for a solver started from inside an MPI rank (GLAM runs one chain per rank): drop the parent's
+    OpenMPI/PMIx/PMI process-manager variables so the solver starts as an independent single-rank (singleton) job
+    instead of trying to join the parent's MPI world.  Tuning variables OMPI_MCA_* are kept."""
+    drop = ("PMIX_", "PMI_", "OMPI_COMM_", "OMPI_UNIVERSE", "OMPI_NUM_APP", "OMPI_FIRST", "OMPI_APP", "OMPI_MCA_ess",
+            "OMPI_MCA_orte", "OMPI_MCA_pmix", "OMPI_MCA_mca_base_env", "SLURM_PROCID", "SLURM_LOCALID", "SLURM_NODEID",
+            "SLURM_STEP", "SLURM_TASK_PID", "SLURM_GTIDS", "SLURM_NTASKS", "SLURM_NPROCS", "SLURM_STEPID")
+    return {k: v for k, v in os.environ.items() if not k.startswith(drop)}
+
+
 class DarcyRunner:
-    def __init__(self, exe, cfg, work, launcher="", rtol=1e-8, timeout=900, extra="", keep_velocity=False):
+    def __init__(self, exe, cfg, work, launcher="", rtol=1e-8, timeout=900, extra="", keep_velocity=False,
+                 clean_mpi_env=False):
         self.exe, self.cfg, self.work = os.path.abspath(exe), os.path.abspath(cfg), os.path.abspath(work)
         self.launcher, self.rtol, self.timeout, self.extra = launcher, rtol, timeout, extra
+        self.env = clean_env() if clean_mpi_env else None
         self.phys = physics_from_cfg(cfg)
         os.makedirs(self.work, exist_ok=True)
         if not keep_velocity:
@@ -120,7 +132,7 @@ class DarcyRunner:
         why = ""
         for attempt in (1, 2):
             try:
-                r = subprocess.run(cmd, cwd=self.work, capture_output=True, text=True, timeout=self.timeout)
+                r = subprocess.run(cmd, cwd=self.work, capture_output=True, text=True, timeout=self.timeout, env=self.env)
                 tail = "\n".join((r.stdout + "\n" + r.stderr).strip().splitlines()[-15:])
                 dpf = os.path.join(outdir, "pressure_drop.txt")
                 if not os.path.exists(dpf):
