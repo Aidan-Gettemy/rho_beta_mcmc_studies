@@ -60,3 +60,16 @@ def test_field_statistics_match_numpy():
     for k, v in ref.items():
         v = np.array(v)
         assert np.allclose(res[f"{k}_mean"], v.mean(0)) and np.allclose(res[f"{k}_std"], v.std(0, ddof=1))
+
+
+def test_gpu_projector_matches_cpu_projection_with_numpy_backend():
+    import test_external as te
+    from brho.multiscale_mat import MultiscaleField, attach_gpu_projector
+    rng = np.random.default_rng(3)
+    PHI, U, sv, cells, T_list = te._synthetic_multiscale(rng, N=288, M=30, n_sub=3)
+    f = MultiscaleField(T_list, cells, PHI, U, 1.0 / np.sqrt(sv), dtype=np.float32)
+    Y = rng.standard_normal(288).astype(np.float32)
+    ref = f.whiten_project(Y); refk = f.whiten_project(np.stack([Y, 2 * Y], 1))
+    attach_gpu_projector(f, np)
+    assert np.allclose(f.whiten_project(Y), ref, rtol=1e-4, atol=1e-5)
+    assert np.allclose(f.whiten_project(np.stack([Y, 2 * Y], 1)), refk, rtol=1e-4, atol=1e-5)

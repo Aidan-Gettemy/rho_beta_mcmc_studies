@@ -14,6 +14,7 @@
 #   GLAM_ARGS="--forward toy --exp-tag rehearsal --n-iter 2000"  sbatch --partition=normal --gres=none --time=00:30:00 cluster/slurm/node_glam.sbatch   # dress rehearsal, no solver/tracer
 #   GLAM_ARGS="--exp-tag run1"                                    sbatch cluster/slurm/node_glam.sbatch                   # real run
 #   GLAM_ARGS="--exp-tag run1 --resume"                           sbatch cluster/slurm/node_glam.sbatch                   # continue after a time-out
+# PHI_MODE=ram uses the CPU projection (6x slower at 64 processes, see cluster/slurm/bench_projection.sbatch).
 # Then post-process (strided samples; add --fields to re-run the forward model on them):
 #   mpirun -np 64 python experiments/glam_postprocess.py --exp-tag run1 --stride 50 --fields
 set -euo pipefail
@@ -37,4 +38,4 @@ export EXT_PHI_NPY="$PHI_NPY"
 
 mpirun -np "$SLURM_NTASKS" python experiments/run_glam.py --cfg "$EXT_CFG" --matrix-dir "$EXT_MATRICES" \
     --tag "$EXT_TAG" --whitening "$EXT_WHITENING" --phi-npy "$PHI_NPY" --fits-json "$GLAM_FITS" \
-    --conc "$EXT_DATA_CONC" --pdrop "$EXT_REF_PDROP" --work "$GLAM_WORK" ${TRACER_DIR:+--tracer-dir "$TRACER_DIR"} $GLAM_ARGS
+    --conc "$EXT_DATA_CONC" --pdrop "$EXT_REF_PDROP" --work "$GLAM_WORK" --phi-mode "${PHI_MODE:-gpu}" ${TRACER_DIR:+--tracer-dir "$TRACER_DIR"} $GLAM_ARGS
