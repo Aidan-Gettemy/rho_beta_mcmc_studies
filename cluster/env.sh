@@ -89,3 +89,10 @@ export EXT_KEXP="${EXT_KEXP:-1.036016e-13}"
 # with GAMG to < 1e-7 where GAMG converges.  Set EXT_PETSC_OPTIONS="" to use the solver's own defaults.
 export EXT_PETSC_OPTIONS="${EXT_PETSC_OPTIONS--pc_type jacobi -ksp_max_it 100000}"
 export E3EXT_ARGS="${E3EXT_ARGS:---n-real 2048 --n-rho 40}"
+
+# --- GLAM sampler on the PCHIP beta(rho) curve (experiments/run_glam.py) -------------------
+export GLAM_FITS="${GLAM_FITS:-runs/juno_external_2026-10/tables/e3_external/fits.json}"   # PCHIP nodes + Kexp
+export EXT_DATA_CONC="${EXT_DATA_CONC:-external/data/Syn_2mm_TC.dat}"
+export GLAM_WORK="${GLAM_WORK:-/tmp/glam_work_${SLURM_JOB_ID:-local}}"    # per-rank scratch (node-local disk)
+# TRACER_DIR (GPU tracer, proprietary, outside the repo) is read from external/solver.local or the environment.
+export GLAM_ARGS="${GLAM_ARGS:-}"                                         # e.g. "--n-iter 20000 --window1 4000 --window2 8000"

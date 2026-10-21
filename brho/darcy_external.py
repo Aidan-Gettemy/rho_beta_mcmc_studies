@@ -16,6 +16,7 @@ that honours the contract can be dropped in and validated with `selfcheck` (unif
 scaling, reference field against the measured pressure drop).
 """
 import os
+import shutil
 import re
 import shlex
 import subprocess
@@ -80,10 +81,22 @@ def physics_from_cfg(path):
 
 
 # ----------------------------------------------------------------------------- solver
+def clean_env():
+    """Environment for a solver started from inside an MPI rank (GLAM runs one chain per rank): drop the parent's
+    OpenMPI/PMIx/PMI process-manager variables so the solver starts as an independent single-rank (singleton) job
+    instead of trying to join the parent's MPI world.  Tuning variables OMPI_MCA_* are kept."""
+    drop = ("PMIX_", "PMI_", "OMPI_COMM_", "OMPI_UNIVERSE", "OMPI_NUM_APP", "OMPI_FIRST", "OMPI_APP", "OMPI_MCA_ess",
+            "OMPI_MCA_orte", "OMPI_MCA_pmix", "OMPI_MCA_mca_base_env", "SLURM_PROCID", "SLURM_LOCALID", "SLURM_NODEID",
+            "SLURM_STEP", "SLURM_TASK_PID", "SLURM_GTIDS", "SLURM_NTASKS", "SLURM_NPROCS", "SLURM_STEPID")
+    return {k: v for k, v in os.environ.items() if not k.startswith(drop)}
+
+
 class DarcyRunner:
-    def __init__(self, exe, cfg, work, launcher="", rtol=1e-8, timeout=900, extra="", keep_velocity=False):
+    def __init__(self, exe, cfg, work, launcher="", rtol=1e-8, timeout=900, extra="", keep_velocity=False,
+                 clean_mpi_env=False):
         self.exe, self.cfg, self.work = os.path.abspath(exe), os.path.abspath(cfg), os.path.abspath(work)
         self.launcher, self.rtol, self.timeout, self.extra = launcher, rtol, timeout, extra
+        self.env = clean_env() if clean_mpi_env else None
         self.phys = physics_from_cfg(cfg)
         os.makedirs(self.work, exist_ok=True)
         if not keep_velocity:
@@ -94,8 +107,14 @@ class DarcyRunner:
             self.cfg = os.path.join(self.work, "DATA_keff_only.cfg")
             open(self.cfg, "w").write(txt)
 
-    def keff(self, K, tag="solve"):
-        """K: (N,) array of permeabilities in solver order (x fastest). Returns Keff [m^2]."""
+    def solve(self, K, tag="solve", pressure=False, velocity=False):
+        """Run the solver on K (N,) [m^2, solver order].  Returns dict(dp=<pressure drop, Pa>, outdir=<dir>,
+        pressure_file, velocity_file) or None after two failed attempts (message on stderr).
+        pressure=True also writes solution_pressure (PETSc binary); velocity=True writes solution_velocity.dat for
+        the tracer (needs a runner made with keep_velocity=True, since the cfg switch overrides the command line).
+        The caller removes `outdir` when done (see `cleanup`)."""
+        if velocity and self.cfg.endswith("DATA_keff_only.cfg"):
+            raise ValueError("velocity=True needs DarcyRunner(..., keep_velocity=True)")
         kfile = os.path.join(self.work, f"K_{tag}.bin")
         outdir = os.path.join(self.work, f"out_{tag}")
         os.makedirs(outdir, exist_ok=True)
@@ -103,13 +122,17 @@ class DarcyRunner:
         cmd = shlex.split(self.launcher) + [self.exe, self.cfg,
                "-permeability_file", kfile, "-output_dir", outdir,
                "-ksp_rtol", repr(self.rtol),
-               "-output_pressure", "false", "-output_velocity", "false",
+               "-output_pressure", "true" if pressure else "false",
+               "-output_velocity", "true" if velocity else "false",
                "-output_permeability", "false", "-output_porosity", "false", "-output_mask", "false",
-               "-output_pressure_drop", "true", "-output_pressure_drop_format", "ascii"] + shlex.split(self.extra)
+               "-output_pressure_drop", "true", "-output_pressure_drop_format", "ascii"]
+        if pressure:
+            cmd += ["-output_pressure_format", "binary"]
+        cmd += shlex.split(self.extra)
         why = ""
         for attempt in (1, 2):
             try:
-                r = subprocess.run(cmd, cwd=self.work, capture_output=True, text=True, timeout=self.timeout)
+                r = subprocess.run(cmd, cwd=self.work, capture_output=True, text=True, timeout=self.timeout, env=self.env)
                 tail = "\n".join((r.stdout + "\n" + r.stderr).strip().splitlines()[-15:])
                 dpf = os.path.join(outdir, "pressure_drop.txt")
                 if not os.path.exists(dpf):
@@ -121,16 +144,30 @@ class DarcyRunner:
                     continue
                 dp = float(open(dpf).read().split()[0])
                 if r.returncode == 0 and np.isfinite(dp) and dp != 0.0:
-                    p = self.phys
                     os.remove(kfile)
-                    return p["v"] * p["mu"] * p["Lz"] / abs(dp)
+                    return dict(dp=dp, outdir=outdir,
+                                pressure_file=os.path.join(outdir, "solution_pressure.dat"),
+                                velocity_file=os.path.join(outdir, "solution_velocity.dat"))
                 why = f"exit code {r.returncode}; pressure drop = {dp}. Last solver output:\n{tail}"
             except subprocess.TimeoutExpired:
                 why = f"timeout after {self.timeout} s"
             except (FileNotFoundError, ValueError, IndexError) as e:
                 why = f"{type(e).__name__}: {e}"
         sys.stderr.write(f"[solver failed twice] {' '.join(cmd)}\n  reason: {why}\n")
-        return float("nan")
+        return None
+
+    @staticmethod
+    def cleanup(res):
+        if res and os.path.isdir(res["outdir"]):
+            shutil.rmtree(res["outdir"], ignore_errors=True)
+
+    def keff(self, K, tag="solve"):
+        """K: (N,) array of permeabilities in solver order (x fastest). Returns Keff [m^2] (NaN on failure)."""
+        res = self.solve(K, tag)
+        if res is None:
+            return float("nan")
+        p = self.phys
+        return p["v"] * p["mu"] * p["Lz"] / abs(res["dp"])
 
 
 

@@ -1,0 +1,132 @@
+% Section for the paper: offline beta(rho) curve with the external Darcy solver.
+% Needs: amsmath, graphicx, booktabs.   Figures are expected in figures/ (see \figdir below).
+% Source of every number: runs/juno_external_2026-10/{results,tables,figures}/e3_external, LOG.md, external/README.md.
+\providecommand{\figdir}{figures/}
+\providecommand{\Kexp}{K_{\mathrm{exp}}}
+\providecommand{\Keff}{K_{\mathrm{eff}}}
+
+\section{Offline construction of the $\beta(\rho)$ curve with the external flow solver}
+\label{sec:external-curve}
+
+\subsection{Purpose and notation}
+The hierarchical prior writes the log-permeability as
+\begin{equation}
+  K(\mathbf{x}) \;=\; \beta(\rho)\,\exp\!\big(\rho\, Y_P(\mathbf{x})\big),
+  \label{eq:prior-field}
+\end{equation}
+where $Y_P$ is a whitened, unit-variance Gaussian field built from the multiscale coordinates $\boldsymbol\theta$, $\rho>0$ is the amplitude of the heterogeneity, and $\beta(\rho)$ is a level (a permeability) that ties the amplitude to the measured effective permeability. The curve $\beta(\rho)$ is not sampled; it is computed once, offline, by Monte Carlo (MC) with the same forward solver, the same fields and the same whitening operator as the sampler, so that $\rho$ has the same meaning in both. This section describes that construction, the checks that were run on the solver, and the figures that summarise the result.
+
+\subsection{Forward problem and solver}
+The forward model is steady single-phase Darcy flow, $\nabla\!\cdot(K\mu^{-1}\nabla p)=0$, on a $38\times38\times45$ grid of a cylindrical core plug (the box is $0.038\times0.038\times0.045$~m; $49{,}140$ of the $64{,}980$ cells are inside the plug mask). A constant flux $v=7.6313\times10^{-6}$~m\,s$^{-1}$ is imposed on the bottom face, the top face is held at fixed pressure, the lateral faces are no-flow, and the viscosity is $\mu=10^{-3}$~Pa\,s. The solver is a two-point flux finite-volume code (C with PETSc) that is kept outside the repository; the repository depends only on its contract: a binary permeability file in, a pressure drop $\Delta P$ in pascal out. The effective permeability of a field is
+\begin{equation}
+  \Keff \;=\; \frac{|v|\,\mu\,L_z}{\Delta P},
+  \label{eq:keff}
+\end{equation}
+with $L_z=0.045$~m. The measured value for the experiment is $\Kexp = 1.036016\times10^{-13}$~m$^2$, obtained from the observed pressure drop of $0.480757$~psi ($3314.6$~Pa).
+
+\paragraph{Solver verification.}
+Three acceptance checks were run on the cluster before any production solve: (i) a uniform field $K_0$ returns $\Keff/K_0=1.000000$; (ii) scaling the field by $3.7$ scales $\Keff$ by $3.700000$; and (iii) the group's reference permeability field gives $\Keff=1.0360\times10^{-13}$~m$^2$, which equals $|v|\mu L_z/\Delta P_{\mathrm{obs}}$ to four digits (ratio $1.0000$). A pilot with the default algebraic-multigrid preconditioner (CG+GAMG) revealed that the linear solve stops with \texttt{DIVERGED\_INDEFINITE\_PC} after 5--11 iterations for part of the fields at large $\rho$ (41 of 384 pilot solves, none below $\rho\approx4$; the first driver did not check the linear-solver convergence reason and accepted these stopped iterates). The production study therefore uses Jacobi-preconditioned CG with a high iteration cap, which converged in every solve (0 failures in 81{,}920) and agrees with the multigrid result to $6.5\times10^{-8}$ (relative) wherever multigrid converged. Tightening the relative tolerance from $10^{-8}$ to $10^{-11}$ changes no $\Keff$ by more than $4.7\times10^{-8}$ (relative). The driver also treats any non-converged linear solve as a failed solve (NaN), and a study with failed solves is saved but not fitted.
+
+\subsection{Random fields}
+\label{sec:fields}
+A field is drawn in three steps. (i) For each of the $n_{\mathrm{sub}}=12$ subdomains, $\boldsymbol\theta_i\sim\mathcal N(\mathbf 0,I_{500})$ gives $500$ local modes. (ii) The local fields are assembled, $Y=\sum_{i=1}^{12}T_i\boldsymbol\theta_i$, with $T_i$ the subdomain basis restricted to its central cells. (iii) The assembled field is projected on the global Karhunen--Lo\`eve basis $\Phi\in\mathbb R^{64980\times4699}$ with a whitening operator,
+\begin{equation}
+  Y_P \;=\; \Phi\,U\,\Lambda^{-1/2}\,U^{\!\top}\,\Phi^{\!\top}\,Y,
+  \label{eq:whiten}
+\end{equation}
+where $U$ are the eigenvectors and $\Lambda^{-1/2}$ the inverse square-root eigenvalues of the whitening file (4699 modes; the file with 5313 modes does not match this $\Phi$, and the loader rejects it). The correlation length is two cells. In a pilot of 64 draws, the mean pointwise standard deviation of $Y_P$ is $0.967$ (the $3\%$ deficit is the truncation of the basis), and the neighbour correlations are $0.88,\,0.88,\,0.88$ along $x,y,z$, against $0.89,\,0.89,\,0.88$ for $\log K_{\mathrm{ref}}$ of the reference field. Figure~\ref{fig:field-check} shows slices of four such fields next to the reference.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{\figdir field_check.png}
+  \caption{Whitened multiscale fields $Y_P$ (first four columns) and the centred, scaled reference $\log K_{\mathrm{ref}}$ (last column). Top row: horizontal slice $k=22$; bottom row: vertical slice. The synthetic fields have the same smoothness and variance as the reference, and the cell ordering is consistent.}
+  \label{fig:field-check}
+\end{figure}
+
+\subsection{From the scaling property to $\beta(\rho)$}
+\label{sec:scaling}
+Darcy flow is linear in the permeability level: $\Keff(cK)=c\,\Keff(K)$ for any constant $c>0$. For a realization $Y_{P}$ and an amplitude $\rho$ we therefore solve once with $K=K_0\exp(\rho Y_P)$, $K_0=10^{-13}$~m$^2$, and obtain the effective permeability for any level $\beta$ by rescaling: $\Keff\big(\beta e^{\rho Y_P}\big)=(\beta/K_0)\,\Keff\big(K_0e^{\rho Y_P}\big)$. Define
+\begin{equation}
+  h(\rho)\;=\;\mathbb E\,\log\frac{\Keff\big(K_0e^{\rho Y_P}\big)}{K_0}.
+  \label{eq:h}
+\end{equation}
+Requiring the prior to reproduce the measured permeability on average in the log, $\mathbb E\log\Keff=\log\Kexp$, gives
+\begin{equation}
+  \beta(\rho)\;=\;\Kexp\,\exp\!\big(-h(\rho)\big).
+  \label{eq:beta}
+\end{equation}
+A single realization has its own value $\beta_i(\rho)=\Kexp K_0/\Keff^{(i)}(\rho)$; the curve is the one built from the mean $h$. For a homogeneous plug ($\rho\to0$) $\Keff=K_0$, so $h(0)=0$ and $\beta(0)=\Kexp$.
+
+\subsection{Monte Carlo design}
+The study uses $N=2048$ realizations $Y_P^{(i)}$ (seed 99) and $40$ equally spaced amplitudes $\rho_j\in[0.05,\,5]$ (spacing $0.127$), i.e.\ $81{,}920$ solves. The same $2048$ fields are used at every $\rho_j$ (common random numbers), which keeps the curve smooth in $\rho$ and makes the realizations at different $\rho$ strongly dependent. Each solve is a single MPI rank, run $64$ at a time on one cluster node (relative tolerance $10^{-8}$), with results saved per realization so that an interrupted run resumes. From the output, the MC mean $\hat h_j=\frac1N\sum_i\log(\Keff^{(i)}(\rho_j)/K_0)$ and its standard error $s_j$ are computed at each node.
+
+\subsection{Curve fits}
+Four representations of $h(\rho)$ are compared. Three are even polynomials, $h(\rho)=c_0+a\rho^2$ (degree 2), $c_0+a\rho^2+b\rho^4$ (degree 4), and $c_0+a\rho^2+b\rho^4+c\rho^6$ (degree 6), fitted by weighted least squares with weights $1/s_j^2$. The fourth is the monotone piecewise-cubic Hermite interpolant (PCHIP) through the nodes $(\rho_j,\hat h_j)$, anchored at $h(0)=0$; it interpolates the means exactly and is defined on $[0,5]$ only. All curves are mapped to $\beta$ with~\eqref{eq:beta}. The polynomials must not be evaluated outside $[0.05,5]$. Models are compared by $\chi^2$ per degree of freedom and by a leave-one-out (LOO) error: each interior node is removed, the model is refitted, the held-out $\hat h_j$ is predicted, and the root-mean-square of (prediction $-\hat h_j$)$/s_j$ is reported (the last node is skipped because it would be an extrapolation for PCHIP).
+
+\begin{table}[t]
+  \centering
+  \caption{Fits of $h(\rho)$ to the MC means ($N=2048$, 40 nodes in $[0.05,5]$). The fitted coefficients multiply the powers of $\rho$ shown; $\chi^2$ uses the standard errors of the means. LOO is the leave-one-out prediction error in units of the standard error of the held-out mean (smaller is better; $\approx1$ means prediction within noise).}
+  \label{tab:fits}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    model & $c_0$ & $a$ & $b$ & $c$ & $\chi^2$/dof & LOO\\
+    \midrule
+    degree 2 & $1.8\times10^{-3}$ & $3.23\times10^{-2}$ & -- & -- & 5413 & 84.3\\
+    degree 4 & $-9.0\times10^{-5}$ & $0.1112$ & $-1.369\times10^{-2}$ & -- & 138 & 11.2\\
+    degree 6 & $-3.1\times10^{-4}$ & $0.1238$ & $-1.834\times10^{-2}$ & $2.12\times10^{-4}$ & 87.2 & 13.0\\
+    PCHIP    & \multicolumn{4}{c}{interpolates the means} & -- & 0.50\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Table~\ref{tab:fits} and Figure~\ref{fig:fit-curves} summarise the comparison. The intercept $c_0$ is zero within $3\times10^{-4}$ in all fits, as it must be for a solver without a nozzle. No even polynomial of degree $\le6$ describes the mean within its (very small) standard error: the largest residual is $134$, $31$ and $14$ standard errors for degree 2, 4 and 6. The degree-2 fit is qualitatively wrong beyond $\rho\approx3$ (it keeps increasing while the data decrease). Only PCHIP predicts held-out nodes within noise (LOO $0.50$), so its tabulated curve (\texttt{beta\_pchip\_table.csv}, 1001 points on $[0,5]$) is the one used by the sampler.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{\figdir fit_curves.png}
+  \caption{Fits to the MC means. Left: $h(\rho)=\mathbb E\log(\Keff/K_0)$, the MC mean with its standard error (smaller than the markers) and the four representations. Middle: residual divided by the standard error for the polynomials (zero is a perfect fit). Right: the corresponding $\beta(\rho)/\Kexp=\exp(-h)$ on a logarithmic axis.}
+  \label{fig:fit-curves}
+\end{figure}
+
+\paragraph{Shape of $h(\rho)$.}
+At small amplitude $h$ rises as $\rho^2$ (the fitted $a\approx0.12$; a small-variance estimate with the variance $0.935$ of these fields gives $\sigma^2/6\approx0.156$, the same order), reaches a maximum of $0.25$ at $\rho\approx2.1$, crosses zero near $\rho\approx2.5$, and then falls steeply to $h=-4.55$ at $\rho=5$, i.e.\ $\beta(5)/\Kexp\approx95$ (the minimum of $\beta/\Kexp$ is $0.78$). The fall beyond $\rho\approx3$ is a property of the boundary condition rather than of the solver. The flux condition forces the same flux through every bottom-face cell, so the face-averaged inlet pressure, and hence $\Delta P$, is dominated by the lowest-permeability cells of the inlet face. In a pilot on six saved fields, $\log\Keff$ correlated $0.96$, $0.99$ and $0.99$ ($\rho=3,4,5$) with the logarithm of the harmonic mean of the inlet-face permeability, and between $-0.33$ and $0.37$ with the outlet face used as a control. The curve therefore depends on how the experiment injects (nozzle, injection mask, plug geometry).
+
+\subsection{Uncertainty of the curve and of the data}
+\label{sec:uncertainty}
+Two different uncertainties are shown, and they should not be confused.
+
+\emph{Scatter of the data} is the spread of single realizations at fixed $\rho$. At each $\rho_j$ the central $90\%$ interval is the $5$th--$95$th percentile of $\beta_i(\rho_j)=\Kexp K_0/\Keff^{(i)}$ over $i=1,\dots,2048$. It is wide and grows with $\rho$: the standard deviation of $\log\Keff$ is $1.8$ at $\rho=5$, so the single-realization $\beta$ spans $0.39$ to $4.7\times10^{5}$ (in units of $10^{-13}$~m$^2$) over the study, and the $90\%$ interval alone spans about two and a half decades at $\rho=5$ ($7.5$ to $2.6\times10^{3}$).
+
+\emph{Sampling uncertainty of the fitted curve} is obtained by a bootstrap over realizations: the $2048$ realizations are resampled with replacement (the same resample at every $\rho_j$, so the dependence between amplitudes through the common fields is kept), the means $\hat h_j$ and standard errors $s_j$ are recomputed, and every model is refitted. With $2000$ resamples, the median of the fitted curves and the central $90\%$ interval are taken pointwise on a grid of 400 values in $[0.05,5]$; the interval of $h$ is mapped to $\beta$ through~\eqref{eq:beta}, which reverses its ends. This is the uncertainty of the curve, not of a single field. It is very small: the standard error of the mean of $\log\Keff$ at $\rho=5$ is $0.040$, against a single-realization standard deviation of $1.8$.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\textwidth]{\figdir beta_overlay.png}
+  \caption{$\beta(\rho)$ as a function of $\rho$: median fitted curve of each of the four models, overlaid, with the mean of the simulations (black markers; $\beta$ evaluated at the MC mean of $h$, which is what the fits target) and the central $90\%$ interval of the simulations (dashed). Logarithmic vertical axis. Degrees~4 and~6 and PCHIP follow the mean; degree~2 departs from it beyond $\rho\approx3$ and leaves the data interval at $\rho\approx3.3$.}
+  \label{fig:beta-overlay}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.49\textwidth]{\figdir beta_poly2.png}\hfill
+  \includegraphics[width=0.49\textwidth]{\figdir beta_poly4.png}\\[2pt]
+  \includegraphics[width=0.49\textwidth]{\figdir beta_poly6.png}\hfill
+  \includegraphics[width=0.49\textwidth]{\figdir beta_pchip.png}
+  \caption{One panel per representation (degree 2, 4, 6 and PCHIP). Grey dots: the simulated $\beta_i(\rho)$ of every realization at each of the 40 amplitudes (horizontal jitter only for visibility); dashed lines: their central $90\%$ interval; coloured line: median of the fitted curve over the bootstrap; shaded band: its central $90\%$ interval, which is narrower than the line width at this scale. Logarithmic vertical axis.}
+  \label{fig:beta-models}
+\end{figure}
+
+Figure~\ref{fig:beta-overlay} compares the representations directly in $\beta(\rho)$, the form in which the curve enters the prior~\eqref{eq:prior-field}. Figure~\ref{fig:beta-models} places each representation against the full scatter of the data. The fitted median of degree 4 and 6 stays inside the data interval but overshoots the mean at $\rho>4.5$ (at $\rho=5$, $\beta/\Kexp=323$ for degree 4 and $157$ for degree 6, against $95$ from the mean), and the degree-2 curve ($0.45$ at $\rho=5$) leaves the data interval from $\rho\approx3.3$ on. PCHIP passes through the means by construction.
+
+\subsection{Forward model prepared for the sampler}
+\label{sec:sampler-prep}
+The next stage replaces the flux-only observable by the pressure drop and a tracer concentration field. The case file \texttt{external/DATA.cfg} has been configured for this: the solver writes the face-velocity field (\texttt{*DUMP\_VELOCITY 1}), which a GPU tracer consumes. The tracer output times are $10,\,90,\,200,\,300,\,400,\,600,\,800,\,1100,\,1500,\,1800$~s, which are the ten columns of the measured concentration file ($64{,}980$ cells $\times$ $10$ times). The times were checked against the data: the pore-volume time is $\phi L_z/v=0.18\times0.045/7.6313\times10^{-6}=1061$~s, and for the first five times the mean saturation divided by $t/\mathrm{PV}$ is the constant $0.7562$, which equals the active fraction of the cells ($49{,}140/64{,}980$). The likelihood is a sum of normalised squared errors,
+\begin{equation}
+  \Phi(\boldsymbol\theta,\rho)\;=\;\sum_{d\in\{\mathrm{conc},\,\Delta P\}}\frac{\lVert r_d-s_d\rVert^2}{\lVert r_d\rVert^2}\,\frac1{2\sigma_d^2},
+  \qquad \sigma_{\mathrm{conc}}=10^{-3},\;\sigma_{\Delta P}=2\times10^{-3},
+  \label{eq:likelihood}
+\end{equation}
+with $r_d$ the data, $s_d$ the simulation, and $\sigma_d$ a standard deviation (not a variance); a failed forward solve gives $\Phi=+\infty$. The sampler also evaluates the whitened projection~\eqref{eq:whiten} at every try. On one core with $\Phi$ in memory it costs $0.19$~s ($0.10$~s for $\Phi^{\top}Y$, $0.09$~s for $\Phi z$, $0.01$~s for the whitening matrices), against about $1$~s for a flow solve, so it is not negligible but not dominant; reading $\Phi$ through a memory map instead of from memory is five times slower ($0.95$~s) and should be avoided. The behaviour with $64$ concurrent chains on one node, where the product is limited by memory bandwidth, has not yet been measured.
+
+\subsection{Reproducibility}
+The solves are produced by \texttt{experiments/run\_external\_curve.py} (job script \texttt{cluster/slurm/node\_e3\_external.sbatch}) and stored as \texttt{curve\_external.npz} (the $40\times2048$ array of $\Keff$ and $K_0$). Figures~\ref{fig:fit-curves} and the tables come from the same run; Figures~\ref{fig:beta-overlay} and~\ref{fig:beta-models} are regenerated from that file, with no solver call, by \texttt{experiments/plot\_beta\_curves.py}.
