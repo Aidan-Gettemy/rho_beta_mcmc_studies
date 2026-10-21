@@ -264,6 +264,46 @@ class NaiveConfig:
     log_every: int = 5000          # progress line every k iterations
 
 
+@dataclass(frozen=True)
+class GlamConfig:
+    """GLAM (global-local anchored multistage sampling) on top of the PCHIP beta(rho) curve.
+    State = 12 subdomain blocks theta_i and w_rho (log rho = mu_logrho + s_logrho w_rho, rho in [rho_min, rho_max]),
+    plain pCN (no preconditioning), two step sizes (beta_g global stages, beta_l local stages).
+    Window 1 = [0, window1): both betas adapted (Robbins-Monro on the logit scale, pooled over chains), then
+    frozen; the tail used for post-processing starts at window1.  Window 2 = [window1, window1 + window2): betas
+    frozen, local stages still allowed; local stages stop at window1 + window2 (global-only stages and exchanges
+    continue).  Exchanges stop after anchor_stop_iteration (-1 = never)."""
+    n_iter: int = 20000
+    window1: int = 5000
+    window2: int = 5000
+    burnin_length: int = 500        # first (global) stage before the first exchange
+    global_stage_length: int = 200
+    local_stage_length: int = 200
+    global_stage_decay: float = 1.0
+    local_stage_decay: float = 1.0
+    min_global_stage_length: int = 50
+    min_local_stage_length: int = 50
+    anchor_stop_iteration: int = -1
+    beta_g0: float = 0.05
+    beta_l0: float = 0.10
+    target: float = 0.25
+    adapt_interval: int = 100
+    mu_logrho: float = 0.0
+    s_logrho: float = 0.75
+    rho_min: float = 0.05
+    rho_max: float = 5.0
+    sigma_conc: float = 0.001
+    sigma_dp: float = 0.002
+    quality_tolerance: float = 20.0
+    minimum_anchor_distance: float = 5.0
+    restart_scale: float = 0.2
+    anchor_current_only: bool = False
+    rho_distance_weight: float = 1.0
+    save_every: int = 200           # chain records per output part
+    log_every: int = 100
+    seed0: int = 2026
+
+
 # ------------------------------------------------------------ quick budgets
 QUICK = {
     GridStudyConfig: dict(n_iter=300, n_burn=150, n_workers=2),
@@ -274,6 +314,9 @@ QUICK = {
                             chunk=600, n_workers=2),
     NaiveConfig: dict(n_iter=1500, n_burn=500, thin=10, checkpoint_every=500,
                       log_every=500),
+    GlamConfig: dict(n_iter=60, window1=20, window2=20, burnin_length=10, global_stage_length=10,
+                     local_stage_length=10, min_global_stage_length=5, min_local_stage_length=5,
+                     adapt_interval=5, save_every=20, log_every=10),
 }
 
 

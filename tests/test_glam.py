@@ -1,0 +1,237 @@
+"""GLAM validation V2/V3 and machinery tests: no MPI, no solver (ThreadWorld ranks, toy forward models)."""
+import glob
+import os
+import sys
+import tempfile
+
+import numpy as np
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.dirname(HERE)
+sys.path.insert(0, REPO)
+
+from brho import config as C  # noqa: E402
+from brho.glam.comm import ThreadWorld  # noqa: E402
+from brho.glam.model import BetaPchip  # noqa: E402
+from brho.glam.sampler import pcn_propose, run_glam  # noqa: E402
+from brho.glam.stepsize import GLOBAL, LOCAL, TwoStepAdapter  # noqa: E402
+from brho.glam.toy import LinearGaussianModel, ToyModel  # noqa: E402
+
+FITS = os.path.join(REPO, "runs", "juno_external_2026-10", "tables", "e3_external", "fits.json")
+
+
+def _beta():
+    return BetaPchip.from_fits_json(FITS)
+
+
+def load_chain(out, rank):
+    parts = sorted(glob.glob(os.path.join(out, "chains", f"rank{rank:03d}_part*.npz")))
+    z = [np.load(p) for p in parts]
+    cat = lambda k: np.concatenate([a[k] for a in z])  # noqa: E731
+    return dict(start=cat("start"), count=cat("count"), theta=np.concatenate([a["theta"] for a in z]),
+                w=cat("w"), phi=cat("phi"), kind=cat("trace_kind"), acc=cat("trace_acc"),
+                bg=cat("trace_beta_g"), bl=cat("trace_beta_l"), phi_tr=cat("trace_phi"))
+
+
+def expand(ch, n_iter):
+    """per-iteration index of the record that holds the state after the move at that iteration"""
+    idx = np.full(n_iter, -1)
+    for j, (s, c) in enumerate(zip(ch["start"], ch["count"])):
+        idx[s:s + c] = j
+    return idx
+
+
+# ------------------------------------------------------------------------------------------- moves / adaptation
+def test_pcn_propose_blocks_and_prior_invariance():
+    rng = np.random.default_rng(1)
+    th = [rng.standard_normal(5) for _ in range(4)] + [rng.standard_normal(1)]
+    p = pcn_propose(th, [2], 0.3, rng)
+    assert all(np.array_equal(p[k], th[k]) for k in (0, 1, 3, 4)), "local move must only touch its block (and not rho)"
+    assert not np.array_equal(p[2], th[2])
+    # N(0, I) is invariant: start from the prior, propose, the marginal stays N(0, 1)
+    x = rng.standard_normal((200000, 1)); y = np.sqrt(1 - 0.5 ** 2) * x + 0.5 * rng.standard_normal((200000, 1))
+    assert abs(y.mean()) < 0.01 and abs(y.var() - 1) < 0.02
+
+
+def test_two_step_adapter_reaches_target_and_freezes():
+    def work(comm):
+        rng = np.random.default_rng(comm.Get_rank())
+        ad = TwoStepAdapter(comm, 0.5, 0.5, target=0.25, adapt_stop=3000, adapt_interval=20)
+        for it in range(4000):
+            for kind in (GLOBAL, LOCAL):
+                if kind == LOCAL and (it // 100) % 2 == 0:
+                    continue                                 # local only proposed in alternate blocks of iterations
+                p_acc = 1.0 - ad.beta[kind] if kind == GLOBAL else 0.6 * (1.0 - ad.beta[kind])
+                ad.record(kind, rng.random() < p_acc)
+            ad.adapt(it)
+            if it == 2999 and not ad.frozen:
+                pass
+        return ad.beta.copy(), ad.frozen, len(ad.history)
+    out = ThreadWorld(4).run(work)
+    for beta, frozen, nh in out:
+        assert frozen and nh <= 150
+        assert abs(beta[0] - 0.75) < 0.05, beta          # 1 - beta = 0.25
+        assert abs(beta[1] - (1 - 0.25 / 0.6)) < 0.05, beta
+    assert all(np.allclose(out[0][0], o[0]) for o in out), "all ranks must hold identical betas"
+
+
+# ------------------------------------------------------------------------------------------- V2: prior only
+class PriorOnlyToy(ToyModel):
+    def phi(self, state, field, sim):
+        return 0.0 if self.rho_ok(state) else np.inf
+
+
+def test_prior_only_global_moves_recover_prior():
+    model = PriorOnlyToy(_beta(), n_sub=3, m=4, n_cells=30, n_times=2)
+    cfg = C.GlamConfig(n_iter=4000, window1=500, window2=0, burnin_length=10 ** 6, global_stage_length=10 ** 6,
+                       local_stage_length=10 ** 6, beta_g0=0.5, adapt_interval=50, save_every=10 ** 6, log_every=0)
+    out = tempfile.mkdtemp()
+    ThreadWorld(3).run(lambda comm: run_glam(model, cfg, comm, out, log=lambda *_: None))
+    th, w = [], []
+    for r in range(3):
+        ch = load_chain(out, r)
+        idx = expand(ch, cfg.n_iter)[cfg.window1:]
+        th.append(ch["theta"][idx]); w.append(ch["w"][idx])
+    th, w = np.concatenate(th), np.concatenate(w)
+    assert abs(th.mean()) < 0.06 and abs(th.var() - 1.0) < 0.08, (th.mean(), th.var())
+    # rho marginal: standard normal w truncated to the PCHIP range [0.05, 5]  (log rho = 0.75 w)
+    from scipy.stats import norm, kstest
+    lo, hi = np.log(0.05) / 0.75, np.log(5.0) / 0.75
+    cdf = lambda x: (norm.cdf(np.clip(x, lo, hi)) - norm.cdf(lo)) / (norm.cdf(hi) - norm.cdf(lo))  # noqa: E731
+    d = kstest(w[::20], cdf).statistic          # thinned (autocorrelation); loose threshold
+    assert d < 0.07, d
+    assert np.all((w >= lo) & (w <= hi)), "rho left the PCHIP range"
+
+
+# ------------------------------------------------------------------------------------------- V3: linear Gaussian
+def test_linear_gaussian_posterior_without_exchanges():
+    model = LinearGaussianModel(n_sub=3, m=4, n_data=10, s=0.7, seed=3)
+    cfg = C.GlamConfig(n_iter=30000, window1=3000, window2=0, burnin_length=10 ** 8, global_stage_length=10 ** 8,
+                       local_stage_length=10 ** 8, beta_g0=0.2, adapt_interval=100, save_every=10 ** 6, log_every=0)
+    out = tempfile.mkdtemp()
+    ThreadWorld(4).run(lambda comm: run_glam(model, cfg, comm, out, log=lambda *_: None))
+    X = []
+    for r in range(4):
+        ch = load_chain(out, r)
+        idx = expand(ch, cfg.n_iter)[cfg.window1:]
+        X.append(np.hstack([ch["theta"][idx], ch["w"][idx][:, None]]))
+    X = np.concatenate(X)
+    mu, cov = model.posterior()
+    sd = np.sqrt(np.diag(cov))
+    assert np.max(np.abs(X.mean(0) - mu) / sd) < 0.12, np.abs(X.mean(0) - mu) / sd
+    assert np.max(np.abs(X.std(0) / sd - 1)) < 0.10, X.std(0) / sd
+    c_emp = np.cov(X.T); c_ref = cov
+    assert np.max(np.abs(c_emp - c_ref)) < 0.12 * sd.max() ** 2
+
+
+# ------------------------------------------------------------------------------------------- machinery: exchanges
+def _toy_run(n_iter, out, P=4, resume=False, **kw):
+    model = ToyModel(_beta(), n_sub=4, m=6, n_cells=60, n_times=3, seed=5, sigma_conc=0.05, sigma_dp=0.05)
+    base = dict(n_iter=n_iter, window1=60, window2=60, burnin_length=20, global_stage_length=20, local_stage_length=15,
+                min_global_stage_length=10, min_local_stage_length=10, adapt_interval=10, beta_g0=0.1, beta_l0=0.2,
+                quality_tolerance=50.0, minimum_anchor_distance=0.5, restart_scale=0.2, save_every=25, log_every=0)
+    base.update(kw)
+    cfg = C.GlamConfig(**base)
+    res = ThreadWorld(P).run(lambda comm: run_glam(model, cfg, comm, out, resume=resume, log=lambda *_: None))
+    return model, cfg, res
+
+
+def test_exchange_schedule_adaptation_and_output():
+    out = tempfile.mkdtemp()
+    model, cfg, res = _toy_run(240, out)
+    P = 4
+    assert res[0]["n_exchanges"] >= 4
+    phases = [e["phase"] for e in res[0]["exchanges"]]
+    assert "LOCAL" in phases and "GLOBAL" in phases
+    # betas: identical on all ranks, history only inside window 1, frozen afterwards
+    assert all(np.allclose(res[0]["beta"], r["beta"]) for r in res)
+    hist = res[0]["adapter"].history
+    assert hist and max(h[0] for h in hist) < cfg.window1
+    n_sub = model.n_sub
+    for r in range(P):
+        ch = load_chain(out, r)
+        idx = expand(ch, cfg.n_iter if hasattr(cfg, "n_iter") else 240)
+        assert np.all(idx >= 0), "every iteration must be covered by exactly one record"
+        assert np.all(ch["count"] > 0) and int(ch["count"].sum()) == 240
+        assert len(ch["kind"]) == 240
+        # betas after window 1 are constant
+        assert np.all(ch["bg"][cfg.window1:] == ch["bg"][cfg.window1]) and np.all(ch["bl"][cfg.window1:] == ch["bl"][cfg.window1])
+        # local stages exist, and stop at window1 + window2 (a stage already running may finish)
+        last_local = np.max(np.nonzero(ch["kind"] == LOCAL)[0])
+        assert np.any(ch["kind"][:cfg.window1] == LOCAL)
+        assert last_local <= cfg.window1 + cfg.window2 + cfg.local_stage_length
+        # local accepted moves change only block r % n_sub and never rho
+        d = ch["theta"].shape[1] // n_sub
+        ex_its = {e["iteration"] for e in res[0]["exchanges"]}
+        n_checked = 0
+        for t in np.nonzero((ch["kind"] == LOCAL) & (ch["acc"] == 1))[0]:
+            if t == 0 or idx[t] == idx[t - 1] or int(t) in ex_its:   # an exchange at t also replaces the state
+                continue
+            a, b = ch["theta"][idx[t - 1]], ch["theta"][idx[t]]
+            changed = [k for k in range(n_sub) if not np.array_equal(a[k * d:(k + 1) * d], b[k * d:(k + 1) * d])]
+            if ch["start"][idx[t]] == t and changed:       # a move (not an exchange restart) starts a record here
+                assert changed == [r % n_sub] and ch["w"][idx[t - 1]] == ch["w"][idx[t]]
+                n_checked += 1
+        assert n_checked > 0, "no accepted local move was checked"
+
+
+def test_anchor_stop_and_current_only_options_run():
+    out = tempfile.mkdtemp()
+    _, cfg, res = _toy_run(150, out, anchor_stop_iteration=80, anchor_current_only=True, window2=30)
+    its = [e["iteration"] for e in res[0]["exchanges"]]
+    assert its and max(its) <= 80
+    assert res[0]["manager"].current_iteration_only is True
+
+
+def test_resume_is_exact():
+    full, part = tempfile.mkdtemp(), tempfile.mkdtemp()
+    _, cfg, a = _toy_run(200, full)
+    _toy_run(130, part)
+    _, _, b = _toy_run(200, part, resume=True)
+    for ra, rb in zip(a, b):
+        assert all(np.array_equal(x, y) for x, y in zip(ra["theta"], rb["theta"]))
+        assert ra["phi"] == rb["phi"]
+    for r in range(4):
+        ca, cb = load_chain(full, r), load_chain(part, r)
+        assert np.array_equal(ca["start"], cb["start"]) and np.array_equal(ca["theta"], cb["theta"])
+
+
+# ------------------------------------------------------------------------------------------- V0: external model plumbing
+def test_external_model_build_simulate_and_run_with_mock_solver():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("t_ext", os.path.join(HERE, "test_external.py"))
+    te = importlib.util.module_from_spec(spec); spec.loader.exec_module(te)
+    from brho.darcy_external import DarcyRunner
+    from brho.glam.model import ExternalModel, SimData
+    from brho.glam_likelihood import GlamData
+    from brho.multiscale_mat import MultiscaleField
+    with tempfile.TemporaryDirectory() as d:
+        rng = np.random.default_rng(4)
+        PHI, U, sv, cells, T_list = te._synthetic_multiscale(rng, N=288, M=30, n_sub=3)
+        field = MultiscaleField(T_list, cells, PHI, U, 1.0 / np.sqrt(sv), dtype=np.float64)
+        cfg = te._write_cfg(d)
+        runner = DarcyRunner(te._mock_exe(d), cfg, os.path.join(d, "w"), keep_velocity=True)
+        beta = _beta()
+        n_times = 3
+        tracer = lambda vel: np.tile(np.linspace(0.1, 0.9, 288)[:, None], (1, n_times))  # noqa: E731
+        model = ExternalModel(field, beta, runner, tracer, GlamData(np.ones((288, n_times)), 3000.0))
+        st = model.sample_state(rng, model.block_dims)
+        f = model.build(st)
+        rho = model.rho_of(st[3][0])
+        ref = np.exp(float(beta.log_beta(rho)) + rho * field.field(st[:3]))
+        assert np.allclose(f.simulation_field, ref, rtol=1e-12)
+        sim = model.simulate(f, rank=0)
+        assert np.isfinite(sim.dp_pa) and sim.conc.shape == (288, n_times)
+        assert abs(sim.dp_pa - runner.phys["v"] * runner.phys["mu"] * runner.phys["Lz"] / runner.keff(ref, "chk")) < 1e-9 * sim.dp_pa
+        model.data = GlamData(sim.conc, sim.dp_pa)
+        assert model.phi(st, f, sim) == 0.0
+        assert model.phi(st, f, SimData(np.nan, None)) == np.inf
+        bad = [b.copy() for b in st]; bad[3] = np.array([50.0])             # rho far above the PCHIP range
+        assert not model.rho_ok(bad) and model.phi(bad, f, sim) == np.inf
+        # short GLAM run through the real model class (2 ranks, mock solver, mock tracer)
+        gc = C.GlamConfig(n_iter=30, window1=10, window2=10, burnin_length=8, global_stage_length=6, local_stage_length=6,
+                          min_global_stage_length=3, min_local_stage_length=3, adapt_interval=5, save_every=50,
+                          log_every=0, minimum_anchor_distance=0.1)
+        out = os.path.join(d, "run")
+        res = ThreadWorld(2).run(lambda comm: run_glam(model, gc, comm, out, log=lambda *_: None))
+        assert res[0]["n_exchanges"] >= 2
