@@ -28,6 +28,9 @@ export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader
 export PETSC_OPTIONS="$EXT_PETSC_OPTIONS ${PETSC_OPTIONS:-}"
 mkdir -p logs "$GLAM_WORK"
+echo "python: $(which python)"; python -c "import numpy, scipy; print('numpy', numpy.__version__)"
+python -c "import mpi4py; print('mpi4py', mpi4py.__version__)" || echo "WARNING: mpi4py not importable"
+[ "${PHI_MODE:-gpu}" = gpu ] && { python -c "import cupy; print('cupy', cupy.__version__)" || echo "WARNING: cupy not importable (needed for --phi-mode gpu and the tracer)"; }
 [ -f "$GLAM_FITS" ] || { echo "GLAM_FITS=$GLAM_FITS not found: point it at the E3 curve study's fits.json, e.g. GLAM_FITS=../brho_runs/tables/e3_external/fits.json sbatch ..."; exit 1; }
 echo "PETSC_OPTIONS=$PETSC_OPTIONS  ranks=$SLURM_NTASKS"
 
