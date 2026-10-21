@@ -235,3 +235,30 @@ def test_external_model_build_simulate_and_run_with_mock_solver():
         out = os.path.join(d, "run")
         res = ThreadWorld(2).run(lambda comm: run_glam(model, gc, comm, out, log=lambda *_: None))
         assert res[0]["n_exchanges"] >= 2
+
+
+def test_world_refuses_to_fall_back_to_serial_under_a_launcher(monkeypatch=None):
+    import builtins
+    from brho.glam import comm as cm
+    old, real = os.environ.get("OMPI_COMM_WORLD_SIZE"), builtins.__import__
+
+    def no_mpi(name, *a, **k):
+        if name.startswith("mpi4py"):
+            raise ImportError("no mpi4py")
+        return real(name, *a, **k)
+    builtins.__import__ = no_mpi
+    try:
+        os.environ.pop("OMPI_COMM_WORLD_SIZE", None)
+        assert isinstance(cm.world(), cm.SerialComm)          # no launcher: serial is fine
+        os.environ["OMPI_COMM_WORLD_SIZE"] = "64"
+        try:
+            cm.world()
+            raise AssertionError("expected RuntimeError")
+        except RuntimeError as e:
+            assert "mpi4py" in str(e)
+    finally:
+        builtins.__import__ = real
+        if old is None:
+            os.environ.pop("OMPI_COMM_WORLD_SIZE", None)
+        else:
+            os.environ["OMPI_COMM_WORLD_SIZE"] = old

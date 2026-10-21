@@ -37,6 +37,9 @@ if [ ! -f "$PHI_NPY" ]; then
 fi
 export EXT_PHI_NPY="$PHI_NPY"
 
+# preflight: mpi4py must see the world mpirun creates (if not, every process would think it is rank 0)
+mpirun -np 4 python -c "from mpi4py import MPI; c = MPI.COMM_WORLD; assert c.Get_size() == 4, c.Get_size(); print('mpi4py ok, rank', c.Get_rank(), 'of', c.Get_size())"
+
 mpirun -np "$SLURM_NTASKS" python experiments/run_glam.py --cfg "$EXT_CFG" --matrix-dir "$EXT_MATRICES" \
     --tag "$EXT_TAG" --whitening "$EXT_WHITENING" --phi-npy "$PHI_NPY" --fits-json "$GLAM_FITS" \
     --conc "$EXT_DATA_CONC" --pdrop "$EXT_REF_PDROP" --work "$GLAM_WORK" --phi-mode "${PHI_MODE:-gpu}" ${TRACER_DIR:+--tracer-dir "$TRACER_DIR"} $GLAM_ARGS
