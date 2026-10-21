@@ -83,8 +83,10 @@ def pcn_propose(theta, blocks, beta, rng):
     return prop
 
 
-def make_manager(cfg, n_sub, rank, start_iteration=0):
+def make_manager(cfg, n_sub, rank, start_iteration=0, n_chains=1):
+    max_anchors = None if cfg.max_anchors < 0 else (cfg.max_anchors or 2 * max(int(n_chains), 1))
     return GlobalLocalAnchorManager(
+        max_anchors=max_anchors,
         numsubd=n_sub,
         global_stage_length=cfg.global_stage_length, local_stage_length=cfg.local_stage_length,
         num_cycles=10 ** 9,
@@ -117,7 +119,7 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print):
     n_sub = model.n_sub
     os.makedirs(out_dir, exist_ok=True)
     rng = np.random.default_rng([cfg.seed0, rank])
-    mgr = make_manager(cfg, n_sub, rank)
+    mgr = make_manager(cfg, n_sub, rank, n_chains=P)
     adapter = TwoStepAdapter(comm, cfg.beta_g0, cfg.beta_l0, cfg.target, adapt_start=0, adapt_stop=cfg.window1,
                              adapt_interval=cfg.adapt_interval)
     snap_dir = os.path.join(out_dir, "anchor_state")
