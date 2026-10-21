@@ -85,7 +85,7 @@ def clean_env():
     """Environment for a solver started from inside an MPI rank (GLAM runs one chain per rank): drop the parent's
     OpenMPI/PMIx/PMI process-manager variables so the solver starts as an independent single-rank (singleton) job
     instead of trying to join the parent's MPI world.  Tuning variables OMPI_MCA_* are kept."""
-    drop = ("PMIX_", "PMI_", "OMPI_COMM_", "OMPI_UNIVERSE", "OMPI_NUM_APP", "OMPI_FIRST", "OMPI_APP", "OMPI_MCA_ess",
+    drop = ("PMIX_", "PMI_", "HYDRA_", "MPIEXEC_", "OMPI_COMM_", "OMPI_UNIVERSE", "OMPI_NUM_APP", "OMPI_FIRST", "OMPI_APP", "OMPI_MCA_ess",
             "OMPI_MCA_orte", "OMPI_MCA_pmix", "OMPI_MCA_mca_base_env", "SLURM_PROCID", "SLURM_LOCALID", "SLURM_NODEID",
             "SLURM_STEP", "SLURM_TASK_PID", "SLURM_GTIDS", "SLURM_NTASKS", "SLURM_NPROCS", "SLURM_STEPID")
     return {k: v for k, v in os.environ.items() if not k.startswith(drop)}

@@ -40,9 +40,18 @@ if [ ! -f "$PHI_NPY" ]; then
 fi
 export EXT_PHI_NPY="$PHI_NPY"
 
-# preflight: mpi4py must see the world mpirun creates (if not, every process would think it is rank 0)
-mpirun -np 4 python -c "from mpi4py import MPI; c = MPI.COMM_WORLD; assert c.Get_size() == 4, c.Get_size(); print('mpi4py ok, rank', c.Get_rank(), 'of', c.Get_size())"
+# Launcher: it must come from the same MPI library that mpi4py was built against (a mismatch gives
+# "Runtime environment uses unsupported PMI version PMIx" for MPICH-built mpi4py under OpenMPI's mpirun).
+MPILIB=$(python -c "from mpi4py import MPI; print(MPI.Get_library_version())" | head -3 | tr '\n' ' ')
+echo "mpi4py library: $MPILIB"
+if [ -n "${MPI_LAUNCH:-}" ]; then LAUNCH="$MPI_LAUNCH"                          # explicit override, e.g. MPI_LAUNCH="srun --mpi=pmi2"
+elif echo "$MPILIB" | grep -qi "mpich" && [ -x "${CONDA_PREFIX:-/none}/bin/mpiexec" ]; then LAUNCH="$CONDA_PREFIX/bin/mpiexec"
+elif echo "$MPILIB" | grep -qi "mpich"; then LAUNCH="srun --mpi=pmi2"
+else LAUNCH="mpirun"; fi
+echo "launcher: $LAUNCH   (mpirun is $(which mpirun 2>/dev/null || echo none))"
+# preflight: mpi4py must see the world the launcher creates (if not, every process would think it is rank 0)
+$LAUNCH -n 4 python -c "from mpi4py import MPI; c = MPI.COMM_WORLD; assert c.Get_size() == 4, c.Get_size(); print('mpi4py ok, rank', c.Get_rank(), 'of', c.Get_size())"
 
-mpirun -np "$SLURM_NTASKS" python experiments/run_glam.py --cfg "$EXT_CFG" --matrix-dir "$EXT_MATRICES" \
+$LAUNCH -n "$SLURM_NTASKS" python experiments/run_glam.py --cfg "$EXT_CFG" --matrix-dir "$EXT_MATRICES" \
     --tag "$EXT_TAG" --whitening "$EXT_WHITENING" --phi-npy "$PHI_NPY" --fits-json "$GLAM_FITS" \
     --conc "$EXT_DATA_CONC" --pdrop "$EXT_REF_PDROP" --work "$GLAM_WORK" --phi-mode "${PHI_MODE:-gpu}" ${TRACER_DIR:+--tracer-dir "$TRACER_DIR"} $GLAM_ARGS
