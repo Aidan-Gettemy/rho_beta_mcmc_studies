@@ -12,6 +12,8 @@
 # GPU projection benchmark (P processes share the GPUs round-robin):  sbatch cluster/slurm/bench_projection_gpu.sbatch
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
+# the GPU tracer and CuPy live in the darcyMCMC environment (cupy 13.4.1, petsc4py 3.21.4); override with BRHO_CONDA_ENV=...
+export BRHO_CONDA_ENV="${BRHO_CONDA_ENV-/home/arg210006/.conda/envs/darcyMCMC}"
 source cluster/env.sh
 set -a; source external/solver.local; set +a
 set +u
