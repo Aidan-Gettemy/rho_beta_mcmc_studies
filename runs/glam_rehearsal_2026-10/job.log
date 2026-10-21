@@ -1,0 +1,100 @@
+python: /home/arg210006/.conda/envs/gd24_numba/bin/python
+numpy 1.26.4
+mpi4py 4.1.2
+PETSC_OPTIONS=-pc_type jacobi -ksp_max_it 100000   ranks=64
+mpi4py library: [1792616874.253598] [c-01-06:2154778:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error MPICH Version:      5.0.1 MPICH Release date: Fri Apr 10 09:45:31 AM CDT 2026 
+launcher: /home/arg210006/.conda/envs/gd24_numba/bin/mpiexec   (mpirun is /opt/ohpc/pub/mpi/openmpi5-gnu14/5.0.7/bin/mpirun)
+[1792616875.539693] [c-01-06:2154831:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616875.708545] [c-01-06:2154833:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616875.717960] [c-01-06:2154830:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616875.718006] [c-01-06:2154832:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+mpi4py ok, rank 1 of 4
+mpi4py ok, rank 3 of 4
+mpi4py ok, rank 0 of 4
+mpi4py ok, rank 2 of 4
+[1792616886.539393] [c-01-06:2154973:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616886.641001] [c-01-06:2154971:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616886.779020] [c-01-06:2155039:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616886.781339] [c-01-06:2154992:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616886.971335] [c-01-06:2154967:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616887.091194] [c-01-06:2154972:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616887.202554] [c-01-06:2155056:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616887.326195] [c-01-06:2154990:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616887.333350] [c-01-06:2154975:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616887.618427] [c-01-06:2154996:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616887.620623] [c-01-06:2154970:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616887.649926] [c-01-06:2155031:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616887.731500] [c-01-06:2155032:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616887.765364] [c-01-06:2155044:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616887.777804] [c-01-06:2154976:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616887.794487] [c-01-06:2154987:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616887.955006] [c-01-06:2155028:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616887.998442] [c-01-06:2155000:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.034544] [c-01-06:2155034:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.076553] [c-01-06:2154994:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.093008] [c-01-06:2155024:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.122161] [c-01-06:2155025:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.168292] [c-01-06:2155022:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.189065] [c-01-06:2155009:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.241046] [c-01-06:2155016:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.267787] [c-01-06:2155030:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.281541] [c-01-06:2155033:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.286453] [c-01-06:2155026:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.306874] [c-01-06:2155052:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.322365] [c-01-06:2154981:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.327785] [c-01-06:2155038:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.330247] [c-01-06:2155014:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.352079] [c-01-06:2155005:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.355173] [c-01-06:2155002:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.356939] [c-01-06:2154998:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.393332] [c-01-06:2155020:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.393375] [c-01-06:2155054:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.400160] [c-01-06:2155036:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.401621] [c-01-06:2155018:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.411385] [c-01-06:2154986:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.411953] [c-01-06:2155035:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.424921] [c-01-06:2155010:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.430585] [c-01-06:2154978:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.457977] [c-01-06:2155029:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.458478] [c-01-06:2155027:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.467361] [c-01-06:2155048:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.488025] [c-01-06:2154977:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.491712] [c-01-06:2154974:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.494170] [c-01-06:2154983:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.496402] [c-01-06:2155046:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.509356] [c-01-06:2155042:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.509408] [c-01-06:2154982:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.518106] [c-01-06:2155037:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.521722] [c-01-06:2154980:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.526977] [c-01-06:2154968:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.530650] [c-01-06:2155017:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.531177] [c-01-06:2155050:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.531755] [c-01-06:2154979:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.535668] [c-01-06:2155023:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.537954] [c-01-06:2155040:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.538226] [c-01-06:2154969:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.538373] [c-01-06:2155021:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.538495] [c-01-06:2155012:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[1792616888.538771] [c-01-06:2155019:0]        cuda_ctx.c:52   UCX  ERROR cuDeviceGetCount(&num_devices) failed: initialization error
+[glam] e6_glam_rehearsal: 64 ranks, forward toy, 2000 iterations (window1 600, window2 600)
+[glam] it 100/2000 phase BURN_IN cycle 0 Phi 33.833 beta_G 0.0617 beta_L 0.1000 acc(G,L) 0.67,0.00 rho 0.519 0s
+[glam] it 200/2000 phase LOCAL cycle 0 Phi 34.593 beta_G 0.0617 beta_L 0.1376 acc(G,L) 0.00,0.93 rho 0.439 1s
+[glam] it 300/2000 phase GLOBAL cycle 1 Phi 20.988 beta_G 0.0750 beta_L 0.1668 acc(G,L) 0.96,1.00 rho 0.164 1s
+[glam] it 400/2000 phase LOCAL cycle 1 Phi 21.379 beta_G 0.0880 beta_L 0.1942 acc(G,L) 1.00,0.99 rho 0.200 2s
+[glam] it 500/2000 phase GLOBAL cycle 2 Phi 21.825 beta_G 0.1000 beta_L 0.2197 acc(G,L) 0.86,1.00 rho 0.293 3s
+[glam] it 600/2000 phase LOCAL cycle 2 Phi 27.225 beta_G 0.1115 beta_L 0.2437 acc(G,L) 1.00,0.92 rho 0.364 4s
+[glam] it 700/2000 phase GLOBAL cycle 3 Phi 20.513 beta_G 0.1115 beta_L 0.2437 acc(G,L) 0.85,0.80 rho 0.173 6s
+[glam] it 800/2000 phase LOCAL cycle 3 Phi 19.281 beta_G 0.1115 beta_L 0.2437 acc(G,L) 0.83,0.96 rho 0.121 7s
+[glam] it 900/2000 phase GLOBAL cycle 4 Phi 17.756 beta_G 0.1115 beta_L 0.2437 acc(G,L) 0.86,1.00 rho 0.277 9s
+[glam] it 1000/2000 phase LOCAL cycle 4 Phi 15.005 beta_G 0.1115 beta_L 0.2437 acc(G,L) 0.75,0.96 rho 0.255 12s
+[glam] it 1100/2000 phase GLOBAL cycle 5 Phi 18.137 beta_G 0.1115 beta_L 0.2437 acc(G,L) 0.89,0.89 rho 0.244 15s
+[glam] it 1200/2000 phase LOCAL cycle 5 Phi 21.573 beta_G 0.1115 beta_L 0.2437 acc(G,L) 1.00,0.92 rho 0.234 19s
+[glam] it 1300/2000 phase GLOBAL cycle 6 Phi 19.195 beta_G 0.1115 beta_L 0.2437 acc(G,L) 0.97,0.73 rho 0.103 23s
+[glam] it 1400/2000 phase GLOBAL cycle 7 Phi 19.773 beta_G 0.1115 beta_L 0.2437 acc(G,L) 0.85,0.00 rho 0.079 29s
+[glam] it 1500/2000 phase GLOBAL cycle 8 Phi 19.629 beta_G 0.1115 beta_L 0.2437 acc(G,L) 0.80,0.00 rho 0.265 36s
+[glam] it 1600/2000 phase GLOBAL cycle 9 Phi 19.697 beta_G 0.1115 beta_L 0.2437 acc(G,L) 0.94,0.00 rho 0.063 46s
+[glam] it 1700/2000 phase GLOBAL cycle 10 Phi 16.336 beta_G 0.1115 beta_L 0.2437 acc(G,L) 0.84,0.00 rho 0.141 59s
+[glam] it 1800/2000 phase GLOBAL cycle 11 Phi 14.933 beta_G 0.1115 beta_L 0.2437 acc(G,L) 0.76,0.00 rho 0.205 76s
+[glam] it 1900/2000 phase GLOBAL cycle 12 Phi 20.589 beta_G 0.1115 beta_L 0.2437 acc(G,L) 0.82,0.00 rho 0.311 98s
+[glam] it 2000/2000 phase GLOBAL cycle 13 Phi 18.904 beta_G 0.1115 beta_L 0.2437 acc(G,L) 0.90,0.00 rho 0.124 125s
+[glam] done: /scratch/juno/arg210006/rho_beta_mcmc_studies/runs/cluster/results/e6_glam_rehearsal
