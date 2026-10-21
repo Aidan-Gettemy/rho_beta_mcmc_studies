@@ -10,18 +10,39 @@ so the exchange / restart / adaptation logic can be tested without an MPI instal
 (pickle) `allreduce`, which for NumPy arrays is the elementwise sum under both mpi4py and ThreadComm.
 """
 import copy
+import os
 import threading
 
 REQUIRED = ("Get_rank", "Get_size", "Barrier", "gather", "bcast", "allreduce", "allgather")
 
 
+def launcher_size():
+    """Number of processes the MPI launcher (mpirun/prterun/srun --mpi) started, 1 if run without one."""
+    for k in ("OMPI_COMM_WORLD_SIZE", "PMI_SIZE", "PMIX_SIZE"):
+        v = os.environ.get(k)
+        if v and v.isdigit():
+            return int(v)
+    return 1
+
+
 def world():
-    """mpi4py COMM_WORLD if mpi4py is importable, else a SerialComm."""
+    """mpi4py COMM_WORLD.  Without a launcher a SerialComm is fine (tests, toy runs, post-processing on one core).
+    Under mpirun, a missing or mismatched mpi4py must be an ERROR: falling back to SerialComm would start P independent
+    rank-0 chains that overwrite each other's files."""
+    n = launcher_size()
     try:
         from mpi4py import MPI
-        return MPI.COMM_WORLD
-    except Exception:
+        comm = MPI.COMM_WORLD
+    except Exception as e:
+        if n > 1:
+            raise RuntimeError(f"started by an MPI launcher with {n} processes, but mpi4py cannot be imported ({e!r}). "
+                               "Install mpi4py against the same MPI as mpirun (module load the MPI, then "
+                               "`pip install --no-binary=mpi4py mpi4py`).") from e
         return SerialComm()
+    if n > 1 and comm.Get_size() != n:
+        raise RuntimeError(f"the launcher started {n} processes but mpi4py sees a world of {comm.Get_size()}: mpi4py was "
+                           "built against a different MPI than mpirun. Rebuild it against the loaded MPI module.")
+    return comm
 
 
 class SerialComm:

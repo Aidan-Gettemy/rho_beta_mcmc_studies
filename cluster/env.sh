@@ -12,6 +12,12 @@ set +u
 # module load gnu9/9.4.0
 # module load conda/22.11.1
 # source activate $HOME/.conda/envs/gd24_numba
+# Juno (2026-10): the environment with numba, mpi4py (and the project's other packages).  Override at submit time:
+#   BRHO_CONDA_ENV=/path/to/env sbatch ...      or BRHO_CONDA_ENV="" to keep the environment you submitted from.
+if [ -z "${BRHO_NO_CONDA:-}" ]; then
+  module load miniconda/24.11.1 2>/dev/null || true
+  source activate "${BRHO_CONDA_ENV-/home/arg210006/.conda/envs/gd24_numba}" 2>/dev/null || true
+fi
 set -u
 # record which Python the job got (should be inside the conda env):
 # echo "python: $(which python)"; python -c "import numba; print('numba', numba.__version__)"
