@@ -18,6 +18,7 @@ cd "$SLURM_SUBMIT_DIR"
 export BRHO_CONDA_ENV="${BRHO_CONDA_ENV-/home/arg210006/.conda/envs/darcyMCMC}"
 source cluster/env.sh
 set -a; source external/solver.local; set +a
+export TRACER_DIR="${TRACER_DIR:-$SOLVER_DIR/transport}"      # transpTracer.py + rwPETSc.py live in the solver repository
 set +u
 [ -n "${SOLVER_ENV:-}" ] && source "$SOLVER_ENV"
 set -u
