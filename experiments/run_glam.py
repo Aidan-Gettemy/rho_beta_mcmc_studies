@@ -93,6 +93,9 @@ def main():
     comm = world()
     rank = comm.Get_rank()
     exp = io.EXP_GLAM + (f"_{args.exp_tag}" if args.exp_tag else "")
+    if cfg.window1 >= cfg.n_iter:
+        raise SystemExit(f"window1 ({cfg.window1}) must be smaller than n_iter ({cfg.n_iter}): step-size adaptation would never "
+                         "freeze and the post-processing tail would be empty. For short runs set --window1 and --window2 too.")
     out = io.results_dir(exp)
     if rank == 0:
         io.write_manifest(exp, C.to_dict(cfg), extra=dict(forward=args.forward, ranks=comm.Get_size(),
