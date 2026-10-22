@@ -297,7 +297,9 @@ class GlamConfig:
     quality_tolerance: float = 20.0
     minimum_anchor_distance: float = 5.0
     restart_scale: float = 0.2
-    anchor_current_only: bool = False
+    anchor_include_previous: bool = True   # candidate pool of an exchange includes the anchors of the previous exchange
+    anchor_use_best_state: bool = True     # ... and each chain's best visited state of the stage, besides its final state
+    anchor_current_only: bool = False      # deprecated alias: True is the same as anchor_use_best_state = False
     rho_distance_weight: float = 1.0
     max_anchors: int = 0            # archive size cap: 0 = 2 x number of chains (the manager's recommended setting), <0 = unlimited
     save_every: int = 200           # chain records per output part

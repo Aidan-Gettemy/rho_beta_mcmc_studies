@@ -303,7 +303,7 @@ def test_every_manager_setting_is_a_config_field_with_the_manager_default():
                                    "minimum_global_stage_length", "minimum_local_stage_length", "global_stage_decay",
                                    "local_stage_decay", "disable_local_after_iteration", "current_iteration_only",
                                    "start_iteration", "seed", "extra_state_blocks", "extra_block_weights",
-                                   "relative_error_fn", "restart_basis"}
+                                   "relative_error_fn", "restart_basis", "include_previous_anchors"}
     assert set(sig) - {"self"} <= covered, set(sig) - {"self"} - covered
     # negative sentinel -> None, and values reach the manager
     cfg = C.GlamConfig(max_restart_attempts=7, frontier_target_phi=12.5, restart_phi_tolerance=9.0, random_reach_attempts=0)
@@ -312,3 +312,21 @@ def test_every_manager_setting_is_a_config_field_with_the_manager_default():
     assert mgr.max_anchors == 16
     assert make_manager(C.GlamConfig(), 4, 0).frontier_target_phi is None
     assert "max_restart_attempts" in C.to_dict(cfg)["GlamConfig"]
+
+
+def test_anchor_pool_toggles_change_the_candidate_pool():
+    P = 4
+    raw = {}
+    for name, kw in dict(default=dict(), no_prev=dict(anchor_include_previous=False),
+                         final_only=dict(anchor_use_best_state=False),
+                         neither=dict(anchor_include_previous=False, anchor_use_best_state=False),
+                         old_alias=dict(anchor_current_only=True)).items():
+        _, cfg, res = _toy_run(160, tempfile.mkdtemp(), **kw)
+        raw[name] = [e["archive"]["candidate_count_raw"] for e in res[0]["exchanges"]]
+        assert len(raw[name]) >= 3
+    # the first exchange has no previous archive; later ones differ by the size of the previous archive
+    assert raw["default"][0] == 2 * P and raw["final_only"][0] == P
+    assert raw["no_prev"][1:] == [2 * P] * (len(raw["no_prev"]) - 1)
+    assert raw["neither"] == [P] * len(raw["neither"])
+    assert all(a > b for a, b in zip(raw["default"][1:], raw["no_prev"][1:]))
+    assert raw["old_alias"] == raw["final_only"]                     # deprecated alias = anchor_use_best_state False
