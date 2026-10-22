@@ -303,6 +303,58 @@ class GlamConfig:
     save_every: int = 200           # chain records per output part
     log_every: int = 100
     seed0: int = 2026
+    # ---- anchor-manager settings (names and defaults of GlobalLocalAnchorManager; a negative value of a setting
+    # marked "None" in its comment means None).  Recorded in the manifest like everything else.
+    num_cycles: int = 1000000000
+    archive_selection_mode: str = "diversity"      # diversity | logdet | farthest
+    covariance_regularization: float = 1.0e-6
+    pressure_covariance_regularization: float = 1.0e-6
+    permeability_logdet_weight: float = 1.0        # (the manager's own default is 0.5)
+    pressure_logdet_weight: float = 0.0            # no simulation data in the archive geometry (manager: 0.5)
+    normalize_logdet_by_dimension: bool = True
+    distance_score_weight: float = 0.02
+    quality_score_weight: float = 0.50
+    minimum_logdet_gain: float = -1.0              # None
+    diversity_alpha: float = 0.70
+    logdet_gain_scale: float = 1.0
+    minimum_diversity_score: float = 0.20
+    archive_selection_temperature: float = 0.10
+    exploit_fraction: float = 0.25
+    frontier_fraction: float = 0.40
+    explore_fraction: float = 0.35
+    exploit_restart_scale: float = 0.20
+    frontier_restart_scale: float = 0.35
+    exploration_restart_scale: float = 0.35
+    frontier_target_phi: float = -1.0              # None
+    frontier_minimum_distance: float = -1.0        # None
+    successful_region_distance: float = -1.0       # None
+    successful_region_merge_distance: float = -1.0  # None
+    frontier_max_rounds: int = 3
+    frontier_minimum_improvement: float = 0.0
+    frontier_cooldown_rounds: int = 3
+    frontier_relative_quality_tolerance: float = -1.0   # None
+    frontier_reseed_interval: int = 0
+    frontier_quality_weight: float = 0.60
+    frontier_distance_weight: float = 0.40
+    preserve_frontier_exact: bool = True
+    minimum_anchor_occupancy: int = 1
+    anchor_temperature: float = 1.0
+    uniform_allocation_weight: float = 0.30
+    equilibrium_allocation_enabled: bool = True
+    equilibrium_positive_fraction_threshold: float = 0.60
+    equilibrium_drift_tolerance: float = 0.0
+    equilibrium_min_observations: int = 8
+    equilibrium_dispersion_strength: float = 0.75
+    equilibrium_distance_bias_max: float = 0.85
+    preserve_exact_anchor: bool = True
+    max_exact_anchor_copies: int = -1              # None = one exact copy per active anchor
+    restart_phi_tolerance: float = 5.0
+    max_restart_attempts: int = 3
+    restart_scale_decay: float = 0.8
+    random_reach_attempts: int = 10
+    random_reach_initial_scale: float = -1.0       # None
+    random_reach_decay: float = 0.95
+    duplicate_tolerance: float = 1.0e-12
 
 
 # ------------------------------------------------------------ quick budgets

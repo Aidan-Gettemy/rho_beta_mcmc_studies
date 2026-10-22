@@ -285,3 +285,30 @@ def test_resume_survives_an_incomplete_newest_snapshot_and_a_run_with_no_snapsho
     for r in range(4):
         ca, cc = load_chain(full, r), load_chain(empty, r)
         assert np.array_equal(ca["start"], cc["start"]) and np.array_equal(ca["theta"], cc["theta"])
+
+
+def test_every_manager_setting_is_a_config_field_with_the_manager_default():
+    import inspect
+    from brho.glam.anchors import GlobalLocalAnchorManager as M
+    from brho.glam.sampler import _NONE_IF_NEGATIVE, _PASSTHROUGH, make_manager, manager_kwargs
+    sig = inspect.signature(M.__init__).parameters
+    kw = manager_kwargs(C.GlamConfig())
+    deliberate = {"num_cycles", "permeability_logdet_weight", "pressure_logdet_weight"}   # brho's own choices
+    for k in _PASSTHROUGH:
+        if k not in deliberate:
+            assert kw[k] == sig[k].default, k
+    # parameters the manager has that GlamConfig reaches under another name, derives, or deliberately omits
+    covered = set(_PASSTHROUGH) | {"numsubd", "global_stage_length", "local_stage_length", "quality_tolerance",
+                                   "minimum_anchor_distance", "restart_scale", "max_anchors", "initial_burnin_length",
+                                   "minimum_global_stage_length", "minimum_local_stage_length", "global_stage_decay",
+                                   "local_stage_decay", "disable_local_after_iteration", "current_iteration_only",
+                                   "start_iteration", "seed", "extra_state_blocks", "extra_block_weights",
+                                   "relative_error_fn", "restart_basis"}
+    assert set(sig) - {"self"} <= covered, set(sig) - {"self"} - covered
+    # negative sentinel -> None, and values reach the manager
+    cfg = C.GlamConfig(max_restart_attempts=7, frontier_target_phi=12.5, restart_phi_tolerance=9.0, random_reach_attempts=0)
+    mgr = make_manager(cfg, 4, 0, n_chains=8)
+    assert mgr.max_restart_attempts == 7 and mgr.restart_phi_tolerance == 9.0 and mgr.random_reach_attempts == 0
+    assert mgr.max_anchors == 16
+    assert make_manager(C.GlamConfig(), 4, 0).frontier_target_phi is None
+    assert "max_restart_attempts" in C.to_dict(cfg)["GlamConfig"]
