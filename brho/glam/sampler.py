@@ -84,25 +84,57 @@ def pcn_propose(theta, blocks, beta, rng):
     return prop
 
 
+# GlamConfig fields passed one-to-one to the manager (same names); a negative value of the fields in _NONE_IF_NEGATIVE is None
+_PASSTHROUGH = (
+    "num_cycles", "archive_selection_mode", "covariance_regularization", "pressure_covariance_regularization",
+    "permeability_logdet_weight", "pressure_logdet_weight", "normalize_logdet_by_dimension", "distance_score_weight",
+    "quality_score_weight", "minimum_logdet_gain", "diversity_alpha", "logdet_gain_scale", "minimum_diversity_score",
+    "archive_selection_temperature", "exploit_fraction", "frontier_fraction", "explore_fraction",
+    "exploit_restart_scale", "frontier_restart_scale", "exploration_restart_scale", "frontier_target_phi",
+    "frontier_minimum_distance", "successful_region_distance", "successful_region_merge_distance",
+    "frontier_max_rounds", "frontier_minimum_improvement", "frontier_cooldown_rounds",
+    "frontier_relative_quality_tolerance", "frontier_reseed_interval", "frontier_quality_weight",
+    "frontier_distance_weight", "preserve_frontier_exact", "minimum_anchor_occupancy", "anchor_temperature",
+    "uniform_allocation_weight", "equilibrium_allocation_enabled", "equilibrium_positive_fraction_threshold",
+    "equilibrium_drift_tolerance", "equilibrium_min_observations", "equilibrium_dispersion_strength",
+    "equilibrium_distance_bias_max", "preserve_exact_anchor", "max_exact_anchor_copies", "restart_phi_tolerance",
+    "max_restart_attempts", "restart_scale_decay", "random_reach_attempts", "random_reach_initial_scale",
+    "random_reach_decay", "duplicate_tolerance",
+)
+_NONE_IF_NEGATIVE = frozenset((
+    "minimum_logdet_gain", "frontier_target_phi", "frontier_minimum_distance", "successful_region_distance",
+    "successful_region_merge_distance", "frontier_relative_quality_tolerance", "random_reach_initial_scale",
+    "max_exact_anchor_copies",
+))
+
+
+def manager_kwargs(cfg):
+    kw = {}
+    for name in _PASSTHROUGH:
+        v = getattr(cfg, name)
+        kw[name] = None if (name in _NONE_IF_NEGATIVE and v < 0) else v
+    return kw
+
+
 def make_manager(cfg, n_sub, rank, start_iteration=0, n_chains=1):
     max_anchors = None if cfg.max_anchors < 0 else (cfg.max_anchors or 2 * max(int(n_chains), 1))
     return GlobalLocalAnchorManager(
-        max_anchors=max_anchors,
         numsubd=n_sub,
+        max_anchors=max_anchors,
         global_stage_length=cfg.global_stage_length, local_stage_length=cfg.local_stage_length,
-        num_cycles=10 ** 9,
         quality_tolerance=cfg.quality_tolerance, minimum_anchor_distance=cfg.minimum_anchor_distance,
         restart_scale=cfg.restart_scale,
-        permeability_logdet_weight=1.0, pressure_logdet_weight=0.0,      # no simulation data in the archive geometry
         initial_burnin_length=cfg.burnin_length,
         minimum_global_stage_length=cfg.min_global_stage_length,
         minimum_local_stage_length=cfg.min_local_stage_length,
         global_stage_decay=cfg.global_stage_decay, local_stage_decay=cfg.local_stage_decay,
         disable_local_after_iteration=cfg.window1 + cfg.window2,
-        current_iteration_only=cfg.anchor_current_only,
+        current_iteration_only=(cfg.anchor_current_only or not cfg.anchor_use_best_state),
+        include_previous_anchors=cfg.anchor_include_previous,
         start_iteration=start_iteration,
         extra_state_blocks=1, extra_block_weights=[cfg.rho_distance_weight],
         seed=cfg.seed0 + 7919 * rank,
+        **manager_kwargs(cfg),
     )
 
 

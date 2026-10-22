@@ -412,6 +412,7 @@ class GlobalLocalAnchorManager:
         start_iteration: int = 0,
         duplicate_tolerance: float = 1.0e-12,
         current_iteration_only: bool = False,
+        include_previous_anchors: bool = True,
         seed: int | None = None,
         # --- brho extension: extra state blocks (rho) that belong to the full state ---
         extra_state_blocks: int = 0,
@@ -444,6 +445,15 @@ class GlobalLocalAnchorManager:
             candidates come only from the chains' states at the exchange
             iteration. The previous archive, the persistent best-ever anchor
             and the successful/frontier bookkeeping are unchanged.
+
+        include_previous_anchors:
+            If True (default) the candidate pool of an archive rebuild contains
+            the anchors produced by the previous rebuild. If False it contains
+            only the new candidates (every rank's current state and, unless
+            ``current_iteration_only``, its stage best). False also means
+            "forget everything": the best-ever anchor, successful regions and
+            frontier campaign are cleared at every rebuild, so the archive's
+            phi_min is allowed to increase. True keeps all protected memory.
 
         max_exact_anchor_copies:
             Maximum number of active anchors that receive an exact copy at a
@@ -704,6 +714,7 @@ class GlobalLocalAnchorManager:
 
         self.quality_tolerance = float(quality_tolerance)
         self.current_iteration_only = bool(current_iteration_only)
+        self.include_previous_anchors = bool(include_previous_anchors)
         self.minimum_anchor_distance = float(minimum_anchor_distance)
         self.duplicate_tolerance = float(duplicate_tolerance)
 
@@ -1134,7 +1145,9 @@ class GlobalLocalAnchorManager:
         if rank != 0:
             return None
 
-        candidates = [anchor.clone() for anchor in self.anchors]
+        candidates = (
+            [anchor.clone() for anchor in self.anchors] if self.include_previous_anchors else []
+        )
         for rank_candidates in gathered:
             candidates.extend(anchor.clone() for anchor in rank_candidates)
         return candidates
@@ -2300,8 +2313,32 @@ class GlobalLocalAnchorManager:
             **self._successful_anchor_statistics(),
         }
 
+    def _forget_memory(self) -> None:
+        """Bypass for ``include_previous_anchors=False``: forget everything.
+
+        Clears the persistent best-ever anchor, successful regions (with their
+        aliases and merge history) and the frontier campaign, so each rebuild
+        depends only on the current candidates.  The archive's phi_min may then
+        increase.  Anchor ids keep increasing; per-phase best-state machinery
+        is untouched.
+        """
+        self.best_anchor = None
+        self.frontier_anchor_id = None
+        self.frontier_start_phi = None
+        self.frontier_previous_phi = None
+        self.frontier_best_phi = None
+        self.frontier_rounds = 0
+        self.frontier_status = "NONE"
+        self.frontier_cooldown_until = {}
+        self.successful_anchors = []
+        self.successful_region_ids = []
+        self.successful_region_aliases = {}
+        self.successful_region_merge_history = []
+
     def build_anchor_set(self, candidates: Sequence[Anchor]) -> list[Anchor]:
         """Rebuild the stochastic diversity archive with persistent best/frontier."""
+        if not self.include_previous_anchors:
+            self._forget_memory()
         raw_count = len(candidates)
         previous_best_phi = (
             np.nan if self.best_anchor is None else float(self.best_anchor.phi)

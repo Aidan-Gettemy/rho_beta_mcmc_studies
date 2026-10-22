@@ -285,3 +285,68 @@ def test_resume_survives_an_incomplete_newest_snapshot_and_a_run_with_no_snapsho
     for r in range(4):
         ca, cc = load_chain(full, r), load_chain(empty, r)
         assert np.array_equal(ca["start"], cc["start"]) and np.array_equal(ca["theta"], cc["theta"])
+
+
+def test_every_manager_setting_is_a_config_field_with_the_manager_default():
+    import inspect
+    from brho.glam.anchors import GlobalLocalAnchorManager as M
+    from brho.glam.sampler import _NONE_IF_NEGATIVE, _PASSTHROUGH, make_manager, manager_kwargs
+    sig = inspect.signature(M.__init__).parameters
+    kw = manager_kwargs(C.GlamConfig())
+    deliberate = {"num_cycles", "permeability_logdet_weight", "pressure_logdet_weight"}   # brho's own choices
+    for k in _PASSTHROUGH:
+        if k not in deliberate:
+            assert kw[k] == sig[k].default, k
+    # parameters the manager has that GlamConfig reaches under another name, derives, or deliberately omits
+    covered = set(_PASSTHROUGH) | {"numsubd", "global_stage_length", "local_stage_length", "quality_tolerance",
+                                   "minimum_anchor_distance", "restart_scale", "max_anchors", "initial_burnin_length",
+                                   "minimum_global_stage_length", "minimum_local_stage_length", "global_stage_decay",
+                                   "local_stage_decay", "disable_local_after_iteration", "current_iteration_only",
+                                   "start_iteration", "seed", "extra_state_blocks", "extra_block_weights",
+                                   "relative_error_fn", "restart_basis", "include_previous_anchors"}
+    assert set(sig) - {"self"} <= covered, set(sig) - {"self"} - covered
+    # negative sentinel -> None, and values reach the manager
+    cfg = C.GlamConfig(max_restart_attempts=7, frontier_target_phi=12.5, restart_phi_tolerance=9.0, random_reach_attempts=0)
+    mgr = make_manager(cfg, 4, 0, n_chains=8)
+    assert mgr.max_restart_attempts == 7 and mgr.restart_phi_tolerance == 9.0 and mgr.random_reach_attempts == 0
+    assert mgr.max_anchors == 16
+    assert make_manager(C.GlamConfig(), 4, 0).frontier_target_phi is None
+    assert "max_restart_attempts" in C.to_dict(cfg)["GlamConfig"]
+
+
+def test_anchor_pool_toggles_change_the_candidate_pool():
+    P = 4
+    raw = {}
+    for name, kw in dict(default=dict(), no_prev=dict(anchor_include_previous=False),
+                         final_only=dict(anchor_use_best_state=False),
+                         neither=dict(anchor_include_previous=False, anchor_use_best_state=False),
+                         old_alias=dict(anchor_current_only=True)).items():
+        _, cfg, res = _toy_run(160, tempfile.mkdtemp(), **kw)
+        raw[name] = [e["archive"]["candidate_count_raw"] for e in res[0]["exchanges"]]
+        assert len(raw[name]) >= 3
+    # the first exchange has no previous archive; later ones differ by the size of the previous archive
+    assert raw["default"][0] == 2 * P and raw["final_only"][0] == P
+    assert raw["no_prev"][1:] == [2 * P] * (len(raw["no_prev"]) - 1)
+    assert raw["neither"] == [P] * len(raw["neither"])
+    assert all(a > b for a, b in zip(raw["default"][1:], raw["no_prev"][1:]))
+    assert raw["old_alias"] == raw["final_only"]                     # deprecated alias = anchor_use_best_state False
+
+
+def test_include_previous_false_forgets_persistent_memory():
+    from brho.glam.anchors import Anchor  # noqa: F401
+    mgr = make_manager(C.GlamConfig(anchor_include_previous=False), 4, 0, n_chains=4)
+    mgr.best_anchor = object()
+    mgr.frontier_anchor_id, mgr.frontier_rounds, mgr.frontier_status = 3, 2, "ACTIVE"
+    mgr.frontier_cooldown_until = {1: 5}
+    mgr.successful_anchors, mgr.successful_region_ids = [object()], [1]
+    mgr.successful_region_aliases = {2: 1}
+    mgr.successful_region_merge_history = [{"x": 1}]
+    mgr._forget_memory()
+    assert mgr.best_anchor is None and mgr.frontier_anchor_id is None
+    assert mgr.frontier_rounds == 0 and mgr.frontier_status == "NONE" and mgr.frontier_cooldown_until == {}
+    assert mgr.successful_anchors == [] and mgr.successful_region_ids == []
+    assert mgr.successful_region_aliases == {} and mgr.successful_region_merge_history == []
+    # full toy runs complete (no invariant violation) with and without the toggle
+    for kw in (dict(anchor_include_previous=False), dict()):
+        _, cfg, res = _toy_run(160, tempfile.mkdtemp(), **kw)
+        assert len(res[0]["exchanges"]) >= 3
