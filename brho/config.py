@@ -297,7 +297,7 @@ class GlamConfig:
     quality_tolerance: float = 20.0
     minimum_anchor_distance: float = 5.0
     restart_scale: float = 0.2
-    anchor_include_previous: bool = True   # candidate pool of an exchange includes the anchors of the previous exchange
+    anchor_include_previous: bool = True   # False = forget everything: previous anchors, best-ever, successful regions, frontier (phi_min may rise)
     anchor_use_best_state: bool = True     # ... and each chain's best visited state of the stage, besides its final state
     anchor_current_only: bool = False      # deprecated alias: True is the same as anchor_use_best_state = False
     rho_distance_weight: float = 1.0

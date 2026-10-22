@@ -330,3 +330,23 @@ def test_anchor_pool_toggles_change_the_candidate_pool():
     assert raw["neither"] == [P] * len(raw["neither"])
     assert all(a > b for a, b in zip(raw["default"][1:], raw["no_prev"][1:]))
     assert raw["old_alias"] == raw["final_only"]                     # deprecated alias = anchor_use_best_state False
+
+
+def test_include_previous_false_forgets_persistent_memory():
+    from brho.glam.anchors import Anchor  # noqa: F401
+    mgr = make_manager(C.GlamConfig(anchor_include_previous=False), 4, 0, n_chains=4)
+    mgr.best_anchor = object()
+    mgr.frontier_anchor_id, mgr.frontier_rounds, mgr.frontier_status = 3, 2, "ACTIVE"
+    mgr.frontier_cooldown_until = {1: 5}
+    mgr.successful_anchors, mgr.successful_region_ids = [object()], [1]
+    mgr.successful_region_aliases = {2: 1}
+    mgr.successful_region_merge_history = [{"x": 1}]
+    mgr._forget_memory()
+    assert mgr.best_anchor is None and mgr.frontier_anchor_id is None
+    assert mgr.frontier_rounds == 0 and mgr.frontier_status == "NONE" and mgr.frontier_cooldown_until == {}
+    assert mgr.successful_anchors == [] and mgr.successful_region_ids == []
+    assert mgr.successful_region_aliases == {} and mgr.successful_region_merge_history == []
+    # full toy runs complete (no invariant violation) with and without the toggle
+    for kw in (dict(anchor_include_previous=False), dict()):
+        _, cfg, res = _toy_run(160, tempfile.mkdtemp(), **kw)
+        assert len(res[0]["exchanges"]) >= 3

@@ -450,10 +450,10 @@ class GlobalLocalAnchorManager:
             If True (default) the candidate pool of an archive rebuild contains
             the anchors produced by the previous rebuild. If False it contains
             only the new candidates (every rank's current state and, unless
-            ``current_iteration_only``, its stage best). The protected memory
-            is unaffected either way: the best-ever anchor, the successful
-            regions and the frontier campaign are retained by their own
-            bookkeeping and still enter the new archive.
+            ``current_iteration_only``, its stage best). False also means
+            "forget everything": the best-ever anchor, successful regions and
+            frontier campaign are cleared at every rebuild, so the archive's
+            phi_min is allowed to increase. True keeps all protected memory.
 
         max_exact_anchor_copies:
             Maximum number of active anchors that receive an exact copy at a
@@ -2313,8 +2313,32 @@ class GlobalLocalAnchorManager:
             **self._successful_anchor_statistics(),
         }
 
+    def _forget_memory(self) -> None:
+        """Bypass for ``include_previous_anchors=False``: forget everything.
+
+        Clears the persistent best-ever anchor, successful regions (with their
+        aliases and merge history) and the frontier campaign, so each rebuild
+        depends only on the current candidates.  The archive's phi_min may then
+        increase.  Anchor ids keep increasing; per-phase best-state machinery
+        is untouched.
+        """
+        self.best_anchor = None
+        self.frontier_anchor_id = None
+        self.frontier_start_phi = None
+        self.frontier_previous_phi = None
+        self.frontier_best_phi = None
+        self.frontier_rounds = 0
+        self.frontier_status = "NONE"
+        self.frontier_cooldown_until = {}
+        self.successful_anchors = []
+        self.successful_region_ids = []
+        self.successful_region_aliases = {}
+        self.successful_region_merge_history = []
+
     def build_anchor_set(self, candidates: Sequence[Anchor]) -> list[Anchor]:
         """Rebuild the stochastic diversity archive with persistent best/frontier."""
+        if not self.include_previous_anchors:
+            self._forget_memory()
         raw_count = len(candidates)
         previous_best_phi = (
             np.nan if self.best_anchor is None else float(self.best_anchor.phi)
