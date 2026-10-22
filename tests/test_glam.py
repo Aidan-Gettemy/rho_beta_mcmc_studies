@@ -17,7 +17,8 @@ from brho.glam.sampler import pcn_propose, run_glam  # noqa: E402
 from brho.glam.stepsize import GLOBAL, LOCAL, TwoStepAdapter  # noqa: E402
 from brho.glam.toy import LinearGaussianModel, ToyModel  # noqa: E402
 
-FITS = os.path.join(REPO, "runs", "juno_external_2026-10", "tables", "e3_external", "fits.json")
+FITS = os.environ.get("GLAM_FITS") or os.path.join(
+    REPO, "runs", "juno_external_2026-10", "tables", "e3_external", "fits.json")  # runs/ is not in the sparse checkout: set GLAM_FITS
 
 
 def _beta():
@@ -333,7 +334,7 @@ def test_anchor_pool_toggles_change_the_candidate_pool():
 
 
 def test_include_previous_false_forgets_persistent_memory():
-    from brho.glam.anchors import Anchor  # noqa: F401
+    from brho.glam.sampler import make_manager
     mgr = make_manager(C.GlamConfig(anchor_include_previous=False), 4, 0, n_chains=4)
     mgr.best_anchor = object()
     mgr.frontier_anchor_id, mgr.frontier_rounds, mgr.frontier_status = 3, 2, "ACTIVE"
