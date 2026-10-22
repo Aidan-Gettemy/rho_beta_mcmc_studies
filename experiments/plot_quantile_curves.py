@@ -53,6 +53,11 @@ def main():
     os.makedirs(os.path.dirname(fig), exist_ok=True)
     make_figure(rhos, keff, K0, args.Kexp, grid, Q, taus, names, cov, fit, fig)
     print("saved", fig)
+    fdir = os.path.dirname(fig)
+    print("saved", make_overlay(rhos, keff, K0, args.Kexp, grid, Q, taus, names, os.path.join(fdir, "quantile_beta_overlay.png")))
+    for nm in names:
+        print("saved", make_beta_panel(rhos, keff, K0, args.Kexp, grid, Q, taus, nm,
+                                       os.path.join(fdir, f"quantile_beta_{nm}.png")))
 
     base = os.path.splitext(fig)[0] if args.out else os.path.join(io.tables_dir(exp), "fit_quantile")
     os.makedirs(os.path.dirname(base), exist_ok=True)
@@ -76,6 +81,92 @@ def main():
     with open(base + ".json", "w") as f:
         json.dump(summary, f, indent=1)
     print("saved", base + ".csv", base + ".json")
+
+
+_STYLE = dict(ink="#0b0b0b", ink2="#52514e", surface="#fcfcfb", grid="#e7e6e2", dots="#9a9992")
+_COLORS = {"poly2": "#2a78d6", "poly4": "#e07b1f", "poly6": "#2f9e5b", "pchip": "#8a4fc7"}
+_UNIT = 1.0e-13
+
+
+def _style_axes(a):
+    st = _STYLE
+    a.set_facecolor(st["surface"])
+    a.grid(color=st["grid"], lw=0.6, zorder=0, which="both")
+    a.set_axisbelow(True)
+    for sp in ("top", "right"):
+        a.spines[sp].set_visible(False)
+    for sp in ("left", "bottom"):
+        a.spines[sp].set_color(st["ink2"])
+    a.tick_params(colors=st["ink2"], labelsize=9)
+
+
+def make_overlay(rhos, keff, K0, Kexp, grid, Q, taus, names, path):
+    """50% quantile beta(rho) of every model on one axis; shaded 90% region of the data scatter."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    st = _STYLE
+    lo, mid, hi = taus
+    logk = np.log(keff / K0)
+    q_lo, q_hi = np.quantile(logk, [lo, hi], axis=1)          # data quantiles at the rho nodes
+    fig, a = plt.subplots(figsize=(7.6, 5.4), facecolor=st["surface"])
+    _style_axes(a)
+    # beta = Kexp exp(-h): reversed interval
+    a.fill_between(rhos, Kexp * np.exp(-q_hi) / _UNIT, Kexp * np.exp(-q_lo) / _UNIT, color=st["dots"], alpha=0.35, lw=0,
+                   zorder=1, label=f"{round(100 * (hi - lo))}% of the data scatter ({round(lo * 100)}-{round(hi * 100)}%)")
+    labels = {"pchip": "PCHIP"}
+    for nm in names:
+        a.plot(grid, Kexp * np.exp(-Q[nm][mid]) / _UNIT, color=_COLORS.get(nm, "k"), lw=2.0, zorder=3,
+               label=labels.get(nm, f"degree {nm[4:]}") + f" ({round(mid * 100)}%)")
+    a.set_yscale("log")
+    a.set_xlabel(r"$\rho$", color=st["ink2"])
+    a.set_ylabel(r"$\beta(\rho)$  [$10^{-13}$ m$^2$]", color=st["ink2"])
+    a.set_title(f"Median beta(rho) of each model against the {round(100 * (hi - lo))}% data spread",
+                fontsize=11, color=st["ink"], loc="left")
+    a.legend(frameon=False, fontsize=9, loc="upper left")
+    fig.tight_layout()
+    fig.savefig(path, dpi=150, facecolor=st["surface"])
+    plt.close(fig)
+    return path
+
+
+def make_beta_panel(rhos, keff, K0, Kexp, grid, Q, taus, nm, path, seed=0):
+    """beta(rho) of one model: scatter of all points and the model's 5/50/95% quantile curves."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    st = _STYLE
+    lo, mid, hi = taus
+    n = keff.shape[1]
+    rng = np.random.default_rng(seed)
+    dr = float(np.median(np.diff(rhos)))
+    beta_pts = Kexp * np.exp(-np.log(keff / K0)) / _UNIT
+    fig, a = plt.subplots(figsize=(7.6, 5.4), facecolor=st["surface"])
+    _style_axes(a)
+    xs = np.repeat(rhos, n) + rng.uniform(-0.38 * dr, 0.38 * dr, size=beta_pts.size)
+    a.scatter(xs, beta_pts.ravel(), s=1.8, color=st["dots"], alpha=0.18, linewidths=0, rasterized=True, zorder=1,
+              label="realizations")
+    c = _COLORS.get(nm, "k")
+    b = lambda t: Kexp * np.exp(-Q[nm][t]) / _UNIT  # noqa: E731
+    a.fill_between(grid, b(hi), b(lo), color=c, alpha=0.18, lw=0, zorder=2)
+    a.plot(grid, b(lo), color=c, lw=1.2, ls=(0, (4, 3)), zorder=3, label=f"{round(lo * 100)}% / {round(hi * 100)}% quantile")
+    a.plot(grid, b(hi), color=c, lw=1.2, ls=(0, (4, 3)), zorder=3)
+    a.plot(grid, b(mid), color=c, lw=2.4, zorder=4, label=f"{round(mid * 100)}% quantile")
+    a.set_yscale("log")
+    a.set_xlabel(r"$\rho$", color=st["ink2"])
+    a.set_ylabel(r"$\beta(\rho)$  [$10^{-13}$ m$^2$]", color=st["ink2"])
+    title = "PCHIP" if nm == "pchip" else f"Degree {nm[4:]} polynomial"
+    a.set_title(f"{title}: quantile curves of beta(rho) over all {beta_pts.size:,} points", fontsize=11,
+                color=st["ink"], loc="left")
+    leg = a.legend(frameon=False, fontsize=9, loc="upper left", markerscale=4)
+    for h in leg.legend_handles[:1]:
+        h.set_alpha(1)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150, facecolor=st["surface"])
+    plt.close(fig)
+    return path
 
 
 def make_figure(rhos, keff, K0, Kexp, grid, Q, taus, names, cov, fit, path, seed=0):
