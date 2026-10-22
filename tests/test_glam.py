@@ -262,3 +262,26 @@ def test_world_refuses_to_fall_back_to_serial_under_a_launcher(monkeypatch=None)
             os.environ.pop("OMPI_COMM_WORLD_SIZE", None)
         else:
             os.environ["OMPI_COMM_WORLD_SIZE"] = old
+
+
+def test_resume_survives_an_incomplete_newest_snapshot_and_a_run_with_no_snapshot():
+    # preemption: the newest chain snapshot is missing on one rank -> resume from the previous common one
+    full, part = tempfile.mkdtemp(), tempfile.mkdtemp()
+    _, cfg, a = _toy_run(200, full)
+    _toy_run(150, part)
+    snaps = sorted(glob.glob(os.path.join(part, "anchor_state", "chain_r001_ite*.pkl")),
+                   key=lambda p: int(os.path.basename(p)[len("chain_r001_ite"):-4]))
+    os.remove(snaps[-1])                                   # rank 1 never wrote its newest snapshot
+    _, _, b = _toy_run(200, part, resume=True)
+    for ra, rb in zip(a, b):
+        assert all(np.array_equal(x, y) for x, y in zip(ra["theta"], rb["theta"]))
+    # killed before the first exchange: no snapshot at all -> start from scratch, stale parts are removed
+    empty = tempfile.mkdtemp()
+    _toy_run(25, empty, save_every=5)
+    __import__("shutil").rmtree(os.path.join(empty, "anchor_state"))
+    _, _, c = _toy_run(200, empty, resume=True)
+    for ra, rc in zip(a, c):
+        assert all(np.array_equal(x, y) for x, y in zip(ra["theta"], rc["theta"]))
+    for r in range(4):
+        ca, cc = load_chain(full, r), load_chain(empty, r)
+        assert np.array_equal(ca["start"], cc["start"]) and np.array_equal(ca["theta"], cc["theta"])

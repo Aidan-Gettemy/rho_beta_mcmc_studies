@@ -7,6 +7,8 @@
 #SBATCH --gres=gpu:2                  # --gres=gpu:<n> is required for GPU access; the 64 ranks share these GPUs round-robin
 #SBATCH --time=24:00:00                   # partition limit 2 days
 #SBATCH -J brho-glam
+#SBATCH --requeue                    # preemptible partitions: a killed job goes back in the queue and resumes from its last snapshot
+#SBATCH --open-mode=append           # keep the log of earlier attempts
 #SBATCH -o logs/brho-glam-%j.out
 #
 # GLAM (global-local anchored multistage sampling) on top of the offline PCHIP beta(rho) curve.
@@ -64,6 +66,9 @@ $LAUNCH -n 4 python -c "from mpi4py import MPI; c = MPI.COMM_WORLD; assert c.Get
 GPUMON=$!
 trap 'kill $GPUMON 2>/dev/null || true' EXIT
 
+# after a requeue (preemption, node failure) continue from the newest complete snapshot instead of starting over
+RESUME_FLAG=""
+if [ "${SLURM_RESTART_COUNT:-0}" -gt 0 ]; then RESUME_FLAG="--resume"; echo "requeued (restart $SLURM_RESTART_COUNT): resuming"; fi
 $LAUNCH -n "$SLURM_NTASKS" python experiments/run_glam.py --cfg "$EXT_CFG" --matrix-dir "$EXT_MATRICES" \
     --tag "$EXT_TAG" --whitening "$EXT_WHITENING" --phi-npy "$PHI_NPY" --fits-json "$GLAM_FITS" \
-    --conc "$EXT_DATA_CONC" --pdrop "$EXT_REF_PDROP" --work "$GLAM_WORK" --phi-mode "${PHI_MODE:-gpu}" ${TRACER_DIR:+--tracer-dir "$TRACER_DIR"} $GLAM_ARGS
+    --conc "$EXT_DATA_CONC" --pdrop "$EXT_REF_PDROP" --work "$GLAM_WORK" --phi-mode "${PHI_MODE:-gpu}" ${TRACER_DIR:+--tracer-dir "$TRACER_DIR"} $GLAM_ARGS $RESUME_FLAG

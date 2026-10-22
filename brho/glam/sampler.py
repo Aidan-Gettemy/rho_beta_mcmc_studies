@@ -23,6 +23,7 @@ balance; adaptation is confined to window 1, which is excluded from the post-pro
 """
 import json
 import os
+import re
 import pickle
 import time
 
@@ -136,10 +137,17 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print):
 
     # --- initial state or resume
     it0, writer_part = 0, 0
+    it_s = None
     if resume and os.path.isdir(snap_dir):
-        it_s = mgr.load_anchor_state(snap_dir, max_iteration=10 ** 15, rank=rank, comm=comm)
-    else:
-        it_s = None
+        # newest iteration for which EVERY rank has its chain snapshot (a job killed mid-write, e.g. preempted, can
+        # leave the newest generation incomplete); the anchor state of that generation was written before it
+        mine = {int(m.group(1)) for fn in os.listdir(snap_dir)
+                if (m := re.fullmatch(rf"chain_r{rank:03d}_ite(\d+)\.pkl", fn))}
+        common = set.intersection(*comm.allgather(mine))
+        if common:
+            it_s = mgr.load_anchor_state(snap_dir, max_iteration=max(common), rank=rank, comm=comm)
+        if it_s is not None and int(it_s) not in common:
+            raise RuntimeError(f"rank {rank}: anchor state of iteration {it_s} has no chain snapshot on every rank")
     if it_s is not None:
         with open(os.path.join(snap_dir, f"chain_r{rank:03d}_ite{it_s}.pkl"), "rb") as f:
             cs = pickle.load(f)
@@ -153,8 +161,8 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print):
         theta, phi_cur, _, _ = _init_state(model, rng, rank)
         cur_start = 0
     writer = ChainWriter(out_dir, rank, n_sub, cfg.save_every, part=writer_part)
-    if it_s is not None:                       # drop parts written after the snapshot (they will be rewritten)
-        for fn in os.listdir(writer.dir):
+    if resume:                                 # drop parts written after the snapshot (they will be rewritten);
+        for fn in os.listdir(writer.dir):      # with no snapshot at all, that is every part of an earlier attempt
             if fn.startswith(f"rank{rank:03d}_part") and int(fn[-8:-4]) >= writer_part:
                 os.remove(os.path.join(writer.dir, fn))
     if mgr.phase_best_theta is None:
