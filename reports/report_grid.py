@@ -3,6 +3,9 @@ E2 figures and tables (non-uniqueness report Figs. 2-5 + two extras).
 
     fig_grid_beta_rho.png   MAIN: disks at the 25 pairs, colored/labelled by
                             posterior-mean RMS/sigma_p; truth star
+    fig_grid_beta_rho_relerr.png  same disks, colored by the posterior mean of
+                            the samples' relative error ||d - G|| / ||d||
+                            (relative likelihood only; + grid_relerr table)
     fig_grid_fit.png        posterior-mean predicted vs observed pressure, 25 chains
     fig_grid_slice.png      posterior-mean log K along y=0.53 for 3 pairs + truth
     fig_grid_traces.png     misfit traces of all 25 chains vs the noise floor E[Phi(truth)]
@@ -20,6 +23,52 @@ from brho import plotting as P
 
 EXP = io.EXP_GRID
 PICKS = [(0.5, 0.5), (2.3, 1.5), (10.0, 3.0)]
+
+
+def relerr_grid(prob, z, n_burn):
+    """fig_grid_beta_rho_relerr.png: the 25 pairs colored by the posterior mean
+    of the samples' pressure relative error ||d - G(theta)|| / ||d||.  Under the
+    relative likelihood Phi = relerr^2 / (2 sigma_rel^2), so each stored misfit
+    trace gives relerr = sigma_rel sqrt(2 Phi) exactly, sample by sample.
+    Reference: the truth's own relative error ||d - G(truth)|| / ||d|| (the
+    noise), marked on the colorbar.  Table: grid_relerr.{md,csv}."""
+    syn = prob.syn
+    beta, rho = z["beta"], z["rho"]
+    re = prob.sigma_rel * np.sqrt(2.0 * z["traces"][:, n_burn:])        # (25, n_post)
+    mean_re = re.mean(1)
+    d = syn.d_p
+    re_truth = float(np.linalg.norm(d - syn.p_true[syn.obs_mask]) / np.linalg.norm(d))
+
+    fig, ax = plt.subplots(figsize=(7.2, 5.6))
+    vmin, vmax = 0.98 * min(re_truth, mean_re.min()), mean_re.max()
+    sc = ax.scatter(beta, rho, c=100 * mean_re, s=420, cmap="viridis",
+                    vmin=100 * vmin, vmax=100 * vmax, edgecolors="k", zorder=3)
+    for b_, r_, m_ in zip(beta, rho, mean_re):
+        light = (m_ - vmin) / (vmax - vmin) > 0.6
+        at_truth = np.isclose(b_, syn.beta_true) and np.isclose(r_, syn.rho_true)
+        ax.annotate(f"{100 * m_:.2f}", (b_, r_), ha="center", va="center", fontsize=7.5,
+                    color="k" if (light or at_truth) else "w", zorder=6,
+                    xytext=(0, -19) if at_truth else (0, 0), textcoords="offset points")
+    P.truth_star(ax, syn.beta_true, syn.rho_true)
+    ax.set_xscale("log")
+    ax.set_xlabel(rf"$\beta$ (truth {syn.beta_true})")
+    ax.set_ylabel(rf"$\rho$ (truth {syn.rho_true})")
+    ax.set_title("Posterior mean of the samples' relative error "
+                 r"$\|d - G(\theta)\| / \|d\|$ (%)" "\nper fixed-$(\\beta,\\rho)$ pCN chain; "
+                 f"truth: {syn.mode}")
+    cb = plt.colorbar(sc, ax=ax, label="relative error of the samples (%)")
+    cb.ax.axhline(100 * re_truth, color="r", lw=2)
+    cb.ax.text(1.05, 100 * re_truth, f" truth {100 * re_truth:.2f}%", color="r",
+               transform=cb.ax.get_yaxis_transform(), va="center", fontsize=8)
+    P.save(fig, EXP, "fig_grid_beta_rho_relerr")
+
+    rows = [dict(beta=float(b_), rho=float(r_), relerr_mean=float(m_),
+                 relerr_median=float(np.median(x)), relerr_q05=float(np.percentile(x, 5)),
+                 relerr_q95=float(np.percentile(x, 95)), relerr_truth=re_truth)
+            for b_, r_, m_, x in zip(beta, rho, mean_re, re)]
+    io.write_table(EXP, "grid_relerr", rows)
+    print(f"E2 relative error: samples {100 * mean_re.min():.2f}-{100 * mean_re.max():.2f}%, "
+          f"truth {100 * re_truth:.2f}%")
 
 
 def main():
@@ -49,6 +98,10 @@ def main():
                  f"truth: {syn.mode}")
     plt.colorbar(sc, ax=ax, label=r"RMS / $\sigma_p$")
     P.save(fig, EXP, "fig_grid_beta_rho")
+
+    # ---- same picture, colored by the samples' own relative error
+    if prob.pc.likelihood == "relative":
+        relerr_grid(prob, z, n_burn)
 
     # ---- data fit overlay
     fig, ax = plt.subplots(figsize=(6.2, 5.2))
