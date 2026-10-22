@@ -7,11 +7,16 @@
 #SBATCH --gres=gpu:2                  # --gres=gpu:<n> is required for GPU access; the 64 ranks share these GPUs round-robin
 #SBATCH --time=24:00:00                   # partition limit 2 days
 #SBATCH -J brho-glam
+#SBATCH --requeue                    # preemptible partitions: a killed job goes back in the queue and resumes from its last snapshot
+#SBATCH --open-mode=append           # keep the log of earlier attempts
 #SBATCH -o logs/brho-glam-%j.out
 #
 # GLAM (global-local anchored multistage sampling) on top of the offline PCHIP beta(rho) curve.
 # Submit from the repo root; settings come from cluster/env.sh, GLAM options via GLAM_ARGS:
 #   GLAM_ARGS="--forward toy --exp-tag rehearsal --n-iter 2000 --window1 600 --window2 600 --burnin-length 100 --global-stage-length 100 --local-stage-length 100" PHI_MODE=ram  sbatch --partition=normal --gres=none --time=00:30:00 cluster/slurm/node_glam.sbatch   # dress rehearsal, no solver/tracer
+#   Small test that starts quickly (8 chains on one A30, shared partition):
+#   GLAM_ARGS="--exp-tag small --n-iter 400 --window1 150 --window2 150 --burnin-length 50 --global-stage-length 50 --local-stage-length 50" \
+#     sbatch --partition=dev-a30 --gres=gpu:1 --ntasks=8 --mem=32G --time=01:00:00 cluster/slurm/node_glam.sbatch
 #   GLAM_ARGS="--exp-tag run1"                                    sbatch cluster/slurm/node_glam.sbatch                   # real run
 #   GLAM_ARGS="--exp-tag run1 --resume"                           sbatch cluster/slurm/node_glam.sbatch                   # continue after a time-out
 # PHI_MODE=ram uses the CPU projection (6x slower at 64 processes, see cluster/slurm/bench_projection.sbatch).
@@ -56,6 +61,14 @@ echo "launcher: $LAUNCH   (mpirun is $(which mpirun 2>/dev/null || echo none))"
 # preflight: mpi4py must see the world the launcher creates (if not, every process would think it is rank 0)
 $LAUNCH -n 4 python -c "from mpi4py import MPI; c = MPI.COMM_WORLD; assert c.Get_size() == 4, c.Get_size(); print('mpi4py ok, rank', c.Get_rank(), 'of', c.Get_size())"
 
+# GPU memory over time (every 30 s) next to the job log: tells how many ranks fit on a GPU
+( while true; do date +%T; nvidia-smi --query-gpu=index,memory.used,memory.total --format=csv,noheader 2>/dev/null; sleep 30; done > "logs/brho-glam-${SLURM_JOB_ID:-local}.gpumem" ) &
+GPUMON=$!
+trap 'kill $GPUMON 2>/dev/null || true' EXIT
+
+# after a requeue (preemption, node failure) continue from the newest complete snapshot instead of starting over
+RESUME_FLAG=""
+if [ "${SLURM_RESTART_COUNT:-0}" -gt 0 ]; then RESUME_FLAG="--resume"; echo "requeued (restart $SLURM_RESTART_COUNT): resuming"; fi
 $LAUNCH -n "$SLURM_NTASKS" python experiments/run_glam.py --cfg "$EXT_CFG" --matrix-dir "$EXT_MATRICES" \
     --tag "$EXT_TAG" --whitening "$EXT_WHITENING" --phi-npy "$PHI_NPY" --fits-json "$GLAM_FITS" \
-    --conc "$EXT_DATA_CONC" --pdrop "$EXT_REF_PDROP" --work "$GLAM_WORK" --phi-mode "${PHI_MODE:-gpu}" ${TRACER_DIR:+--tracer-dir "$TRACER_DIR"} $GLAM_ARGS
+    --conc "$EXT_DATA_CONC" --pdrop "$EXT_REF_PDROP" --work "$GLAM_WORK" --phi-mode "${PHI_MODE:-gpu}" ${TRACER_DIR:+--tracer-dir "$TRACER_DIR"} $GLAM_ARGS $RESUME_FLAG
