@@ -419,3 +419,23 @@ def test_round_robin_local_blocks_cover_every_block_and_match_the_moves():
         return seen
     assert visited("fixed") == {0, 1, 2}
     assert visited("round_robin") == {0, 1, 2, 3}
+
+def test_run_template_lists_every_config_field_and_parses_to_the_intended_config():
+    """cluster/slurm/glam_run_template.sbatch is the self-contained record of a run: every GlamConfig field must be
+    written out (so a new field cannot be silently missing), the flags must parse, and the conda env is pinned."""
+    import dataclasses, subprocess, sys
+    sys.path.insert(0, os.path.join(REPO, "experiments"))
+    import run_glam
+    path = os.path.join(REPO, "cluster", "slurm", "glam_run_template.sbatch")
+    script = open(path).read()
+    out = subprocess.run(["bash", "-c", f'source <(sed -n "/^GLAM_FLAGS=(/,/^)/p" {path}); printf "%s\\n" "${{GLAM_FLAGS[@]}}"'],
+                         capture_output=True, text=True, check=True).stdout.split("\n")[:-1]
+    cfg = C.from_cli(run_glam.build_parser().parse_args(out), C.GlamConfig)
+    flags = {a[2:].replace("-", "_") for a in out if a.startswith("--")}
+    assert {f.name for f in dataclasses.fields(C.GlamConfig)} <= flags, \
+        {f.name for f in dataclasses.fields(C.GlamConfig)} - flags
+    assert cfg.local_block_schedule == "round_robin" and cfg.max_anchors == 1 and not cfg.anchor_include_previous
+    assert not cfg.anchor_use_best_state and cfg.restart_scale == cfg.exploit_restart_scale == 0.01
+    assert cfg.window1 < cfg.n_iter
+    assert "export BRHO_CONDA_ENV=/home/arg210006/.conda/envs/darcyMCMC" in script      # pinned, not inherited
+    assert '[ "${CONDA_PREFIX:-}" = "$BRHO_CONDA_ENV" ]' in script
