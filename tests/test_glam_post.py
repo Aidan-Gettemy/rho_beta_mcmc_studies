@@ -73,3 +73,65 @@ def test_gpu_projector_matches_cpu_projection_with_numpy_backend():
     attach_gpu_projector(f, np)
     assert np.allclose(f.whiten_project(Y), ref, rtol=1e-4, atol=1e-5)
     assert np.allclose(f.whiten_project(np.stack([Y, 2 * Y], 1)), refk, rtol=1e-4, atol=1e-5)
+
+
+def test_best_record_is_the_lowest_phi_state():
+    out = tempfile.mkdtemp()
+    _, cfg, _ = _toy_run(240, out)
+    for tail in (0, 100):
+        b = post.best_record(out, 4, tail)
+        best = (np.inf, None)
+        for r in range(4):
+            th, w, ph = _expand(post.load_chain(out, r))
+            ph = ph[tail:]
+            j = int(np.argmin(ph))
+            if ph[j] < best[0]:
+                best = (ph[j], (r, j + tail, th[j + tail], w[j + tail]))
+        assert b["phi"] == best[0] and b["rank"] == best[1][0]
+        assert np.allclose(b["theta"], best[1][2]) and np.isclose(b["w"], best[1][3])
+        assert b["iteration"] >= tail
+
+
+def test_plug_mask_and_best_fields():
+    m = post.plug_mask(38, 38, 45).reshape((38, 38, 45), order="F")
+    assert m.shape == (38, 38, 45) and np.all(m == m[:, :, :1])            # same disc in every layer
+    assert 0.74 < m[:, :, 0].mean() < 0.80 and m[19, 19, 0] and not m[0, 0, 0]   # pi/4 of the square, centre in, corner out
+    out = tempfile.mkdtemp()
+    model, cfg, _ = _toy_run(160, out)
+    b = post.best_record(out, 4)
+    bf = post.best_fields(model, b)
+    assert np.isclose(bf["phi"], b["phi"], rtol=1e-6) and bf["conc"].shape[0] == 60 and bf["logperm"].shape == (60,)
+
+
+def test_conc_z_statistics_match_brute_force():
+    out = tempfile.mkdtemp()
+    model, cfg, _ = _toy_run(200, out)
+    s = post.strided_samples(out, 4, cfg.window1, 20, cfg.n_iter)
+    grid = (5, 4, 3)                                         # the toy has 60 cells
+    plug = np.zeros((5, 4, 3), bool); plug[1:4, 1:3, :] = True; plug = plug.reshape(-1, order="F")
+    zs, ps = [], []
+    for i in range(len(s["w"])):
+        st = post.split_state(model, s["theta"][i], s["w"][i])
+        c = model.simulate(model.build(st), 0).conc.reshape((5, 4, 3, -1), order="F")
+        disc = plug.reshape((5, 4, 3), order="F")[:, :, 0]
+        zs.append(np.stack([c[:, :, k][disc].mean(0) for k in range(3)])); ps.append(c[disc].mean((0, 1)))
+    res = ThreadWorld(3).run(lambda comm: post.field_statistics(model, s, comm, plug=plug, grid=grid))[0]
+    assert np.allclose(res["conc_z_mean"], np.mean(zs, 0)) and np.allclose(res["conc_z_std"], np.std(zs, 0, ddof=1))
+    assert np.allclose(res["conc_plug_mean"], np.mean(ps, 0)) and np.allclose(res["conc_plug_std"], np.std(ps, 0, ddof=1))
+    assert res["conc_z_mean"].shape == (3, 3)
+
+
+def test_field_figures_are_written():
+    from brho.glam import fieldplots as fp
+    nx, ny, nz, nt = 10, 10, 6, 4
+    rng = np.random.default_rng(1)
+    v = rng.standard_normal(nx * ny * nz); S = rng.random((nx * ny * nz, nt)); d = tempfile.mkdtemp()
+    grid, dom = (nx, ny, nz), (10.0, 10.0)
+    paths = [fp.plot_logperm_slice_stat(v, v, v, np.abs(v), grid, 2, os.path.join(d, "a.png"), dom),
+             fp.plot_slices(v, grid, [1, 3, 6], os.path.join(d, "b.png"), dom),
+             fp.plot_tracer_maps(S, grid, [1, 2, 3, 4], 3, os.path.join(d, "c.png"), dom),
+             fp.plot_conc_vs_time(np.arange(nt), S.mean(0), S.mean(0), S.mean(0), 0.1 * S.std(0),
+                                  os.path.join(d, "d.png")),
+             fp.plot_conc_z_vs_time(np.arange(nt), np.arange(nz) + .5, rng.random((nz, nt)), 0.05 * np.ones((nz, nt)),
+                                    [1, 3, 6], os.path.join(d, "e.png"), rng.random((nz, nt)), rng.random((nz, nt)))]
+    assert all(os.path.getsize(p) > 5000 for p in paths)

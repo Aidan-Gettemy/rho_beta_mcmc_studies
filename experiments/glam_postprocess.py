@@ -7,8 +7,14 @@ Samples: for every chain, the state at iterations window1, window1 + stride, ...
 adaptation ends; rejected moves count with their repetitions).  Written to results/e6_glam_<tag>/post/:
   samples.npz   theta (n, 6000, float32 unless --float64), w_rho, rho, beta = PCHIP(rho) [m^2], Phi, rank, iteration
   samples_summary.csv   quantiles of rho, beta, Phi
+  best_state.npz        the lowest-Phi state of all chains (theta, w_rho, rho, beta, Phi, rank, iteration); --best-scope
+                        picks the whole run (default) or the tail only
+  best_fields.npz       (--fields) forward model on the best state: logperm (= log K), conc (cells x times), pressure,
+                        dp_pa, recomputed Phi
   field_stats.npz       (--fields) pointwise mean and std of pressure, concentration (cells x times) and log K
-                        (= log beta(rho) + rho Y_P), plus the pressure drop; obtained by re-running the forward model on
+                        (= log beta(rho) + rho Y_P), plus the pressure drop; for the external forward model also
+                        conc_z (per-sample concentration averaged over the plug disc of every z-layer, layers x times)
+                        and conc_plug (whole plug, times), each with mean and std over the samples; obtained by re-running the forward model on
                         every strided sample, the samples being shared among the MPI ranks.
 """
 import _common  # noqa: F401
@@ -31,6 +37,7 @@ def main():
     ap.add_argument("--stride", type=int, default=50)
     ap.add_argument("--tail-start", type=int, default=None, help="default: window1 from the manifest")
     ap.add_argument("--float64", action="store_true")
+    ap.add_argument("--best-scope", choices=["all", "tail"], default="all", help="best state over the whole run or the tail")
     ap.add_argument("--fields", action="store_true", help="re-run the forward model on the samples (MPI)")
     ap.add_argument("--forward", choices=["external", "toy"], default="external")
     args, rest = ap.parse_known_args()
@@ -58,6 +65,12 @@ def main():
             f.write("quantity," + ",".join(f"q{x}" for x in q) + "\n")
             for name, v in (("rho", rho), ("beta_m2", s["beta"]), ("Phi", s["phi"])):
                 f.write(name + "," + ",".join(f"{np.percentile(v, x):.6e}" for x in q) + "\n")
+        b = post.best_record(out, nchains, 0 if args.best_scope == "all" else tail)
+        b_rho = float(np.exp(cfgd["mu_logrho"] + cfgd["s_logrho"] * b["w"]))
+        np.savez(os.path.join(pdir, "best_state.npz"), theta=b["theta"], w=b["w"], phi=b["phi"], rank=b["rank"],
+                 iteration=b["iteration"], rho=b_rho, beta=float(beta.beta(b_rho)), scope=args.best_scope)
+        print(f"[glam-post] best state: Phi {b['phi']:.4g} (chain {b['rank']}, iteration {b['iteration']}, rho {b_rho:.4f})",
+              flush=True)
         print(f"[glam-post] {len(s['w'])} strided samples from {nchains} chains (tail {tail}, stride {args.stride})", flush=True)
     comm.Barrier()
     if args.fields:
@@ -69,7 +82,20 @@ def main():
         cfg = C.GlamConfig(**cfgd)
         cfg_ns.forward = args.forward
         model = run_glam.build_model(cfg_ns, cfg, rank)
-        res = post.field_statistics(model, s, comm, log=print)
+        plug = grid = None
+        if args.forward == "external":
+            from brho.darcy_external import physics_from_cfg
+            ph = physics_from_cfg(margs["cfg"])
+            grid = (ph["nx"], ph["ny"], ph["nz"])
+            plug = post.plug_mask(*grid)
+        if rank == 0:                                   # the best state first (one forward solve on rank 0)
+            bz = np.load(os.path.join(pdir, "best_state.npz"))
+            bf = post.best_fields(model, dict(theta=bz["theta"], w=float(bz["w"]), phi=float(bz["phi"]),
+                                              rank=int(bz["rank"]), iteration=int(bz["iteration"])), rank)
+            np.savez_compressed(os.path.join(pdir, "best_fields.npz"), **bf)
+            print(f"[glam-post] best fields: Phi recomputed {bf['phi']:.4g} (chain value {bf['phi_chain']:.4g})", flush=True)
+        comm.Barrier()
+        res = post.field_statistics(model, s, comm, log=print, plug=plug, grid=grid)
         if rank == 0:
             np.savez_compressed(os.path.join(pdir, "field_stats.npz"), **res)
             print(f"[glam-post] field statistics from {res['n_used']} samples ({res['n_failed']} failed)", flush=True)
