@@ -377,3 +377,45 @@ def test_include_previous_false_forgets_persistent_memory():
     for kw in (dict(anchor_include_previous=False), dict()):
         _, cfg, res = _toy_run(160, tempfile.mkdtemp(), **kw)
         assert len(res[0]["exchanges"]) >= 3
+
+
+def test_round_robin_local_blocks_cover_every_block_and_match_the_moves():
+    """fixed: chain r moves block r % n_sub in every local stage (3 chains of 4 blocks never touch block 3);
+    round_robin: block (r + k) % n_sub in the k-th local stage, so all blocks are visited; the manager's restart code
+    perturbs the same block that the sampler then moves."""
+    from brho.glam import sampler as S
+    from brho.glam.anchors import Phase
+    from brho.glam.sampler import make_manager
+    mgr = make_manager(C.GlamConfig(local_block_schedule="round_robin"), 12, 5, n_chains=12)
+    assert mgr.local_subdomain(5) == 5 and mgr.local_subdomain(0) == 0
+    mgr.cycle = 3
+    assert mgr.local_subdomain(5) == 8 and mgr.local_subdomain(10) == 1            # wraps around
+    mgr.phase = Phase.LOCAL
+    assert mgr.active_subdomain_indices(5).tolist() == [8] and mgr.subdomain_schedule(5)[0].tolist() == [8]
+    fixed = make_manager(C.GlamConfig(), 12, 5, n_chains=12)
+    fixed.cycle = 3
+    assert fixed.local_subdomain(5) == 5
+    try:
+        make_manager(C.GlamConfig(local_block_schedule="nonsense"), 12, 0)
+        raise AssertionError("an invalid schedule must be rejected")
+    except ValueError:
+        pass
+
+    def visited(schedule):
+        seen, orig = set(), S.pcn_propose
+        def spy(theta, blocks, beta, rng):
+            if len(blocks) == 1:
+                seen.add(blocks[0])
+            return orig(theta, blocks, beta, rng)
+        S.pcn_propose = spy
+        try:
+            model = ToyModel(_beta(), n_sub=4, m=4, n_cells=30, n_times=2)
+            cfg = C.GlamConfig(n_iter=240, window1=40, window2=200, burnin_length=10, global_stage_length=10,
+                               local_stage_length=10, min_global_stage_length=10, min_local_stage_length=10,
+                               adapt_interval=10, save_every=10 ** 6, log_every=0, local_block_schedule=schedule)
+            ThreadWorld(3).run(lambda comm: run_glam(model, cfg, comm, tempfile.mkdtemp(), log=lambda *_: None))
+        finally:
+            S.pcn_propose = orig
+        return seen
+    assert visited("fixed") == {0, 1, 2}
+    assert visited("round_robin") == {0, 1, 2, 3}

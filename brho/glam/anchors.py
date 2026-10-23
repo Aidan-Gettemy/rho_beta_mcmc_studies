@@ -406,6 +406,7 @@ class GlobalLocalAnchorManager:
         restart_phi_tolerance: float = 5.0,
         max_restart_attempts: int = 3,
         restart_scale_decay: float = 0.8,
+        local_block_schedule: str = "fixed",
         random_reach_attempts: int = 10,
         random_reach_initial_scale: float | None = None,
         random_reach_decay: float = 0.95,
@@ -582,6 +583,8 @@ class GlobalLocalAnchorManager:
             raise ValueError("random_reach_attempts must be nonnegative.")
         if not 0.0 < restart_scale_decay <= 1.0:
             raise ValueError("restart_scale_decay must lie in (0, 1].")
+        if local_block_schedule not in ("fixed", "round_robin"):
+            raise ValueError("local_block_schedule must be 'fixed' or 'round_robin'.")
         if not 0.0 < random_reach_decay <= 1.0:
             raise ValueError("random_reach_decay must lie in (0, 1].")
         if not 0.0 < global_stage_decay <= 1.0:
@@ -756,6 +759,7 @@ class GlobalLocalAnchorManager:
         self.restart_phi_tolerance = float(restart_phi_tolerance)
         self.max_restart_attempts = int(max_restart_attempts)
         self.restart_scale_decay = float(restart_scale_decay)
+        self.local_block_schedule = str(local_block_schedule)
 
         self.random_reach_attempts = int(random_reach_attempts)
         self.random_reach_initial_scale = float(
@@ -926,6 +930,19 @@ class GlobalLocalAnchorManager:
             return self.initial_burnin_length
         return self.phase_length_for(self.phase, self.cycle)
 
+    def local_subdomain(self, rank: int) -> int:
+        """
+        The subdomain block that chain ``rank`` moves in a LOCAL stage.
+
+        fixed        : rank % numsubd (the same block in every local stage).
+        round_robin  : (rank + k) % numsubd for the k-th local stage (k = ``cycle`` while a LOCAL phase runs), so
+                       every chain visits every block in turn and, with fewer chains than blocks, all blocks are
+                       covered.  The choice depends only on the schedule, not on the state, so each step is still a
+                       valid Metropolis-Hastings move.
+        """
+        shift = int(self.cycle) if self.local_block_schedule == "round_robin" else 0
+        return (int(rank) + shift) % self.numsubd
+
     def active_subdomain_indices(self, rank: int) -> np.ndarray:
         """
         Flat subdomain indices used internally by restart and random-reach code.
@@ -940,7 +957,7 @@ class GlobalLocalAnchorManager:
 
         if self.phase is Phase.LOCAL:
             return np.array(
-                [idtype(int(rank) % self.numsubd)],
+                [idtype(self.local_subdomain(rank))],
                 dtype=idtype,
             )
 
@@ -962,7 +979,7 @@ class GlobalLocalAnchorManager:
 
         if self.phase is Phase.LOCAL:
             return [
-                idtype(int(rank) % self.numsubd)
+                idtype(self.local_subdomain(rank))
             ]
 
         return []
@@ -988,7 +1005,7 @@ class GlobalLocalAnchorManager:
             ]
 
         if self.phase is Phase.LOCAL:
-            target_sub = int(rank) % self.numsubd
+            target_sub = self.local_subdomain(rank)
 
             return [
                 np.array(

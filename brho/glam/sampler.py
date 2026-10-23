@@ -4,7 +4,7 @@ Per iteration `it` (same order as the group's driver):
   1. if exchanges are on (it <= anchor_stop_iteration) and the current stage has ended: collective exchange
      (archive rebuild, schedule advance, population restart through GlobalLocalAnchorManager.close_phase_and_restart_mpi);
      the chain continues from its restarted state.
-  2. one pCN move.  GLOBAL stage: every theta block and w_rho move with beta_G.  LOCAL stage: only block rank % n_sub
+  2. one pCN move.  GLOBAL stage: every theta block and w_rho move with beta_G.  LOCAL stage: only block mgr.local_subdomain(rank) (rank % n_sub, or rotating with local_block_schedule=round_robin)
      moves, with beta_L; rho does not move.  The prior (N(0, I) for theta and for w_rho) cancels in pCN, so the
      acceptance probability is min(1, exp(Phi_current - Phi_proposed)); a proposal with rho outside the PCHIP range has
      Phi = +inf (truncated prior) and costs no forward solve.
@@ -100,7 +100,7 @@ _PASSTHROUGH = (
     "equilibrium_drift_tolerance", "equilibrium_min_observations", "equilibrium_dispersion_strength",
     "equilibrium_distance_bias_max", "preserve_exact_anchor", "max_exact_anchor_copies", "restart_phi_tolerance",
     "max_restart_attempts", "restart_scale_decay", "random_reach_attempts", "random_reach_initial_scale",
-    "random_reach_decay", "duplicate_tolerance",
+    "random_reach_decay", "duplicate_tolerance", "local_block_schedule",
 )
 _NONE_IF_NEGATIVE = frozenset((
     "minimum_logdet_gain", "frontier_target_phi", "frontier_minimum_distance", "successful_region_distance",
@@ -236,7 +236,7 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print):
         phase = mgr.phase
         local = phase is Phase.LOCAL and anchors_on
         kind = LOCAL if local else GLOBAL
-        blocks = [rank % n_sub] if local else list(range(n_sub + 1))
+        blocks = [mgr.local_subdomain(rank)] if local else list(range(n_sub + 1))
         beta = float(adapter.beta[kind])
         prop = pcn_propose(theta, blocks, beta, rng)
         if model.rho_ok(prop):
