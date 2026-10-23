@@ -16,7 +16,16 @@ set +u
 #   BRHO_CONDA_ENV=/path/to/env sbatch ...      or BRHO_CONDA_ENV="" to keep the environment you submitted from.
 if [ -z "${BRHO_NO_CONDA:-}" ]; then
   module load miniconda/24.11.1 2>/dev/null || true
-  source activate "${BRHO_CONDA_ENV-/home/arg210006/.conda/envs/gd24_numba}" 2>/dev/null || true
+  _env="${BRHO_CONDA_ENV-/home/arg210006/.conda/envs/gd24_numba}"
+  if [ -n "$_env" ]; then
+    # errors are shown (not swallowed): a failed activation silently leaves the base python without mpi4py/cupy
+    source activate "$_env" || { eval "$(conda shell.bash hook 2>/dev/null)" 2>/dev/null && conda activate "$_env"; } || true
+    if [ "${CONDA_PREFIX:-}" != "$_env" ]; then
+      echo "WARNING: conda environment '$_env' was NOT activated (python is $(command -v python), CONDA_PREFIX='${CONDA_PREFIX:-}')." >&2
+      [ -d "$_env" ] || echo "         ...and that directory does not exist.  Check: conda env list   (set BRHO_CONDA_ENV=/path/to/env)" >&2
+      export BRHO_CONDA_FAILED=1
+    fi
+  fi
 fi
 set -u
 # record which Python the job got (should be inside the conda env):
