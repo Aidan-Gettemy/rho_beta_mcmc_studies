@@ -45,7 +45,7 @@ export EXT_WHITENING=$EXT_MATRICES/whitening_operator_SP1.npz
 export EXT_DATA_CONC=external/data/Syn_2mm_TC.dat
 export EXT_REF_PDROP=external/data/Syn_2mm_pDrop.dat
 export EXT_REF_FIELD=external/data/Kref.dat                       # reference permeability K [m^2]
-export GLAM_FITS=runs/juno_external_2026-10/tables/e3_external/fits.json
+export GLAM_FITS=runs/juno_external_2026-10/tables/e3_external/fits.json   # only used by the reference-rho line of check_glam_forward; the run's own path is in its manifest
 export EXT_PETSC_OPTIONS="-pc_type jacobi -ksp_max_it 100000"
 
 # ------------------------------------------------------------------ flags of every step

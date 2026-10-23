@@ -167,7 +167,7 @@ echo "python: $(which python)   CONDA_PREFIX=${CONDA_PREFIX:-none}"
 [ -z "${BRHO_CONDA_FAILED:-}" ] || { echo "ERROR: the conda environment $BRHO_CONDA_ENV did not activate (see the WARNING above); job stopped."; exit 1; }
 python -c "import mpi4py; print('mpi4py', mpi4py.__version__)" || { echo "ERROR: mpi4py not importable in $(which python)"; exit 1; }
 [ "${PHI_MODE:-gpu}" != gpu ] || python -c "import cupy; print('cupy', cupy.__version__)" || { echo "ERROR: cupy not importable in $(which python) (needed for --phi-mode gpu and the tracer)"; exit 1; }
-[ -f "$GLAM_FITS" ] || { echo "GLAM_FITS=$GLAM_FITS not found: point it at the E3 curve study's fits.json, e.g. GLAM_FITS=../brho_runs/tables/e3_external/fits.json sbatch ..."; exit 1; }
+[ -f "$GLAM_FITS" ] || { echo "ERROR: GLAM_FITS=$GLAM_FITS not found. Fix: git sparse-checkout add runs/juno_external_2026-10/tables/e3_external   (this clone is probably sparse), or edit the GLAM_FITS line at the top of this script to the fits.json of the offline curve study (the manifest of an earlier run lists the path it used: grep fits_json results/e6_glam_<tag>/manifest.json)"; exit 1; }
 echo "PETSC_OPTIONS=$PETSC_OPTIONS  ranks=$SLURM_NTASKS"
 
 PHI_NPY="$EXT_MATRICES/phi_full_f32.npy"
