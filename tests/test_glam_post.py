@@ -244,3 +244,18 @@ def test_post_template_flags_exist_in_the_scripts_and_dims_specs_are_valid():
     for spec in array("MPSRF_DIMS"):
         label, idx = G.select_dims(spec, [500] * 12)
         assert len(idx) >= 1, spec
+
+
+def test_reference_rho_recovers_the_sd_of_a_lognormal_field():
+    import reference_rho as R
+    rng = np.random.default_rng(3)
+    grid = (20, 20, 12)
+    logk = np.log(2.0) + 0.9 * rng.standard_normal(20 * 20 * 12)           # white field: sd 0.9 in every cell
+    r = R.reference_rho(logk, grid)
+    assert abs(r["plug"]["rho_eff"] - 0.9) < 0.03 and abs(r["all"]["rho_eff"] - 0.9) < 0.03
+    assert abs(np.log(r["plug"]["beta_eff"]) - np.log(2.0)) < 0.03
+    m = post.plug_mask(*grid)
+    assert r["plug"]["n"] == int(m.sum()) and r["all"]["n"] == logk.size and len(r["plug"]["layer_sd"]) == 12
+    # the plug is the only region that sets rho_eff: contaminate the outside and it must not change
+    logk2 = logk.copy(); logk2[~m] = 5.0 + 3.0 * rng.standard_normal(int((~m).sum()))
+    assert abs(R.reference_rho(logk2, grid)["plug"]["rho_eff"] - r["plug"]["rho_eff"]) < 1e-12
