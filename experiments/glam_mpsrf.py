@@ -24,7 +24,10 @@ stops.  A spec whose estimate exceeds --max-minutes is skipped unless --force.
 Cheap diagnostics, always computed from the diagonal only (no matrix):
   psrf_dims.png   PSRF of every coordinate at the end (colour = block), with the 1.1 / 1.2 lines
   psrf_max.png    max / 99% / median PSRF over all coordinates versus iteration
-Output: figures/<study>/mpsrf/, results/<study>/post/mpsrf.npz, tables/<study>/mpsrf.json.
+Output: figures/<study>/mpsrf/, results/<study>/post/mpsrf.npz, tables/<study>/mpsrf.json and the plain tables
+  tables/<study>/mpsrf_curves.csv   iteration, one MPSRF column per --dims spec (the raw curves)
+  tables/<study>/psrf_max.csv       iteration, max / 99% / median PSRF over all coordinates
+which can be copied to the repo or a laptop and replotted with experiments/replot_glam_mpsrf.py (numpy + matplotlib only).
 
 The chains are not independent (exchanges and restarts couple them through the anchors), so the statistic is a
 mixing diagnostic, not a formal convergence proof.
@@ -42,6 +45,18 @@ from brho.glam import post
 from brho.mpsrf import convergence_iteration, mpsrf_curve
 
 FLOPS_PER_SECOND = 3e10        # sustained Cholesky / BLAS-3 rate assumed for the estimate (one core, conservative)
+
+
+def write_table(path, meta, names, columns):
+    """Plain CSV that can be moved to the repo or a laptop and replotted (experiments/replot_glam_mpsrf.py): '#' comment
+    lines with the settings, one header row, one row per curve point; NaN where the statistic is undefined."""
+    cols = [np.asarray(c, float) for c in columns]
+    with open(path, "w") as f:
+        for k, v in meta.items():
+            f.write(f"# {k}: {v}\n")
+        f.write(",".join(names) + "\n")
+        for i in range(len(cols[0])):
+            f.write(",".join(("nan" if not np.isfinite(c[i]) else repr(float(c[i]))) for c in cols) + "\n")
 
 
 def thinned_states(res, chains, stride, start, n_iter, dtype=np.float32):
@@ -218,6 +233,12 @@ def main():
     ax.set_xlabel("iteration"); ax.set_ylabel("PSRF"); ax.set_yscale("log"); ax.grid(alpha=0.3, which="both")
     ax.legend(frameon=False); ax.set_title("PSRF over all coordinates versus iteration", fontsize=10.5)
     fig.tight_layout(); fig.savefig(os.path.join(odir, "psrf_max.png"), dpi=150); plt.close(fig)
+    tdir = io.tables_dir(exp)
+    os.makedirs(tdir, exist_ok=True)
+    meta = dict(study=exp, chains=" ".join(map(str, chains)), stride=args.stride, start_iteration=args.start_iteration,
+                skip=args.skip, step=args.step, burn_samples=args.burn_samples, level=args.level)
+    write_table(os.path.join(tdir, "psrf_max.csv"), meta, ["iteration", "max", "p99", "median"],
+                [its, np.nanmax(P, 1), np.nanpercentile(P, 99, axis=1), np.nanmedian(P, axis=1)])
     summary["psrf_final"] = dict(max=float(np.nanmax(P[-1])), p99=float(np.nanpercentile(P[-1], 99)),
                                  median=float(np.nanmedian(P[-1])), frac_below_1p1=float(np.mean(P[-1] < 1.1)),
                                  frac_below_level=float(np.mean(P[-1] < args.level)))
@@ -226,6 +247,7 @@ def main():
 
     # ---- expensive: the multivariate curves
     fig, ax = plt.subplots(figsize=(9, 5.5))
+    curve_names, curve_cols, curve_its = [], [], None
     for j, (label, idx, sec) in enumerate(plan):
         if sec / 60 > args.max_minutes and not args.force:
             print(f"[mpsrf] skip '{label}': estimated {sec / 60:.0f} min > --max-minutes {args.max_minutes:g} (use --force)")
@@ -237,6 +259,8 @@ def main():
         it_k = r["k"] * args.stride + args.start_iteration
         conv = converged_at(it_k, r["mpsrf"], args.level, ignore_first=min(args.ignore_first, max(len(it_k) - 1, 0)))
         key = f"mpsrf_{j}"
+        curve_names.append(f"{label}"); curve_cols.append(r["mpsrf"]); curve_its = it_k
+        meta[f"dim[{label}]"] = len(idx)
         out.update({key: r["mpsrf"], f"{key}_iterations": it_k, f"{key}_psrf": r["psrf"], f"{key}_dims": idx})
         summary["curves"][label] = dict(dim=int(len(idx)), final_mpsrf=float(r["mpsrf"][-1]),
                                         convergence_iteration=conv, level=args.level, seconds=time.time() - t0)
@@ -256,11 +280,12 @@ def main():
     pdir = os.path.join(res, "post")
     os.makedirs(pdir, exist_ok=True)
     np.savez_compressed(os.path.join(pdir, "mpsrf.npz"), **out)
-    tdir = io.tables_dir(exp)
-    os.makedirs(tdir, exist_ok=True)
+    if curve_names:
+        write_table(os.path.join(tdir, "mpsrf_curves.csv"), meta, ["iteration"] + curve_names, [curve_its] + curve_cols)
     with open(os.path.join(tdir, "mpsrf.json"), "w") as f:
         json.dump(summary, f, indent=1)
-    print(f"[mpsrf] wrote {odir}, {pdir}/mpsrf.npz, {tdir}/mpsrf.json")
+    print(f"[mpsrf] wrote {odir}, {pdir}/mpsrf.npz, {tdir}/mpsrf.json, {tdir}/psrf_max.csv"
+          + (f", {tdir}/mpsrf_curves.csv" if curve_names else ""))
 
 
 if __name__ == "__main__":

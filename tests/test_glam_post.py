@@ -6,7 +6,8 @@ import tempfile
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE); sys.path.insert(0, os.path.dirname(HERE))
+REPO = os.path.dirname(HERE)
+sys.path.insert(0, HERE); sys.path.insert(0, REPO); sys.path.insert(0, os.path.join(REPO, "experiments"))
 
 from brho.glam import post  # noqa: E402
 from brho.glam.comm import ThreadWorld  # noqa: E402
@@ -191,3 +192,55 @@ def test_windowed_acceptance():
     c, r = D.windowed_acceptance(acc, kind, 1, 10, min_moves=5)
     assert np.allclose(r, 1 / 5)
     assert np.all(np.isnan(D.windowed_acceptance(acc, kind, 1, 10, min_moves=6)[1]))
+
+
+def test_mpsrf_csv_roundtrip_and_standalone_replot():
+    """The raw iteration-vs-MPSRF table is plain CSV (NaN kept) and experiments/replot_glam_mpsrf.py reads it back."""
+    import importlib, subprocess, sys, tempfile
+    d = tempfile.mkdtemp()
+    G = importlib.import_module("glam_mpsrf")
+    R = importlib.import_module("replot_glam_mpsrf")
+    its = np.array([100., 200., 300., 400.])
+    a = np.array([np.nan, 2.5, 1.3, 1.1]); b = np.array([np.nan, np.nan, 4.0, 1.25])
+    path = os.path.join(d, "mpsrf_curves.csv")
+    G.write_table(path, dict(study="e6_glam_x", stride=10, level=1.2, **{"dim[first:100]": 100}),
+                  ["iteration", "first:100", "rho"], [its, a, b])
+    meta, names, cols = R.read_table(path)
+    assert names == ["iteration", "first:100", "rho"] and meta["stride"] == "10" and meta["dim[first:100]"] == "100"
+    assert np.array_equal(cols["iteration"], its)
+    assert np.array_equal(np.isnan(cols["first:100"]), np.isnan(a)) and np.allclose(cols["rho"][2:], b[2:])
+    out = subprocess.run([sys.executable, "-I", os.path.join(REPO, "experiments", "replot_glam_mpsrf.py"), "--curves", path,
+                          "--out-dir", d], capture_output=True, text=True, cwd=d)
+    assert out.returncode == 0, out.stderr
+    assert os.path.getsize(os.path.join(d, "mpsrf_curves.png")) > 1000
+    assert "import brho" not in open(os.path.join(REPO, "experiments", "replot_glam_mpsrf.py")).read()   # standalone
+
+
+def test_post_template_flags_exist_in_the_scripts_and_dims_specs_are_valid():
+    """cluster/slurm/glam_post_template.sbatch: every flag of every step must be a real flag of its script, the
+    conda environment is pinned, and the MPSRF --dims specs parse."""
+    import re, subprocess
+    path = os.path.join(REPO, "cluster", "slurm", "glam_post_template.sbatch")
+    text = open(path).read()
+    assert "export BRHO_CONDA_ENV=/home/arg210006/.conda/envs/darcyMCMC" in text
+    assert '[ "${CONDA_PREFIX:-}" = "$BRHO_CONDA_ENV" ]' in text
+
+    def array(name):
+        out = subprocess.run(["bash", "-c", f'EXT_CFG=a EXT_REF_FIELD=b EXT_DATA_CONC=c; source <(sed -n "/^{name}=(/,/^)/p" {path}); '
+                              f'printf "%s\\n" "${{{name}[@]}}"'], capture_output=True, text=True, check=True).stdout
+        return out.split("\n")[:-1]
+
+    scripts = dict(DIAG_FLAGS="plot_glam_diagnostics.py", TRACE_FLAGS="plot_glam_traces.py", POST_FLAGS="glam_postprocess.py",
+                   FIELD_FLAGS="plot_glam_fields.py", MPSRF_FLAGS="glam_mpsrf.py")
+    for arr, script in scripts.items():
+        flags = [a for a in array(arr) if a.startswith("--")]
+        assert flags, arr
+        helptext = subprocess.run([sys.executable, os.path.join(REPO, "experiments", script), "--help"],
+                                  capture_output=True, text=True).stdout
+        for fl in flags:
+            assert re.search(re.escape(fl) + r"(\s|,|\])", helptext), (script, fl)
+    import glam_mpsrf as G
+    dims = [6] * 12 + [0]
+    for spec in array("MPSRF_DIMS"):
+        label, idx = G.select_dims(spec, [500] * 12)
+        assert len(idx) >= 1, spec
