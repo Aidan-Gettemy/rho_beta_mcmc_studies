@@ -51,6 +51,11 @@ def main():
     man = io.load_json(os.path.join(out, "manifest.json"))
     cfgd = man["configs"]["GlamConfig"]
     margs = man["args"]
+    if os.environ.get("GLAM_WORK"):                     # the manifest holds the run job's node-local scratch; use this job's
+        margs["work"] = os.environ["GLAM_WORK"]
+    import faulthandler, time
+    faulthandler.dump_traceback_later(int(os.environ.get("POST_STALL_SECS", "900")), repeat=True)   # where is it stuck?
+    t0 = time.time()
     tail = cfgd["window1"] if args.tail_start is None else args.tail_start
     comm = world()
     rank, P = comm.Get_rank(), comm.Get_size()
@@ -86,7 +91,12 @@ def main():
         from brho import config as C
         cfg = C.GlamConfig(**cfgd)
         cfg_ns.forward = args.forward
+        if rank == 0:
+            print(f"[glam-post] building the forward model (work dir {margs['work']}) ...", flush=True)
         model = run_glam.build_model(cfg_ns, cfg, rank)
+        comm.Barrier()
+        if rank == 0:
+            print(f"[glam-post] forward model built on {P} ranks in {time.time() - t0:.0f} s", flush=True)
         plug = grid = None
         if args.forward == "external":
             from brho.darcy_external import physics_from_cfg
@@ -95,10 +105,11 @@ def main():
             plug = post.plug_mask(*grid)
         if rank == 0:                                   # the best state first (one forward solve on rank 0)
             bz = np.load(os.path.join(pdir, "best_state.npz"))
+            t1 = time.time()
             bf = post.best_fields(model, dict(theta=bz["theta"], w=float(bz["w"]), phi=float(bz["phi"]),
                                               rank=int(bz["rank"]), iteration=int(bz["iteration"])), rank)
             np.savez_compressed(os.path.join(pdir, "best_fields.npz"), **bf)
-            print(f"[glam-post] best fields: Phi recomputed {bf['phi']:.4g} (chain value {bf['phi_chain']:.4g})", flush=True)
+            print(f"[glam-post] best fields: Phi recomputed {bf['phi']:.4g} (chain value {bf['phi_chain']:.4g}); one forward solve took {time.time() - t1:.1f} s", flush=True)
         comm.Barrier()
         res = post.field_statistics(model, s, comm, log=print, plug=plug, grid=grid)
         if rank == 0:
