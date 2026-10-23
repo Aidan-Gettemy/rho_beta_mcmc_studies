@@ -359,6 +359,7 @@ class GlamConfig:
     random_reach_attempts: int = 10
     random_reach_initial_scale: float = -1.0       # None
     random_reach_decay: float = 0.95
+    local_block_schedule: str = "fixed"           # fixed: chain r always moves block r % 12 in local stages | round_robin: block (r + k) % 12 in the k-th local stage
     duplicate_tolerance: float = 1.0e-12
 
 
