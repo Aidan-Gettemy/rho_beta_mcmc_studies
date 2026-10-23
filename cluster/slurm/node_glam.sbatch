@@ -37,9 +37,11 @@ export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader
 export UCX_TLS="${UCX_TLS:-self,sm}"      # MPICH/UCX on one node: shared memory only (also silences "cuDeviceGetCount failed" on CPU nodes)
 export PETSC_OPTIONS="$EXT_PETSC_OPTIONS ${PETSC_OPTIONS:-}"
 mkdir -p logs "$GLAM_WORK"
-echo "python: $(which python)"; python -c "import numpy, scipy; print('numpy', numpy.__version__)"
-python -c "import mpi4py; print('mpi4py', mpi4py.__version__)" || echo "WARNING: mpi4py not importable"
-[ "${PHI_MODE:-gpu}" = gpu ] && { python -c "import cupy; print('cupy', cupy.__version__)" || echo "WARNING: cupy not importable (needed for --phi-mode gpu and the tracer)"; }
+echo "python: $(which python)   CONDA_PREFIX=${CONDA_PREFIX:-none}"; python -c "import numpy, scipy; print('numpy', numpy.__version__)"
+# stop at once (instead of running 8-64 broken processes) when the environment is wrong
+[ -z "${BRHO_CONDA_FAILED:-}" ] || { echo "ERROR: the conda environment $BRHO_CONDA_ENV did not activate (see the WARNING above); job stopped."; exit 1; }
+python -c "import mpi4py; print('mpi4py', mpi4py.__version__)" || { echo "ERROR: mpi4py not importable in $(which python)"; exit 1; }
+[ "${PHI_MODE:-gpu}" != gpu ] || python -c "import cupy; print('cupy', cupy.__version__)" || { echo "ERROR: cupy not importable in $(which python) (needed for --phi-mode gpu and the tracer)"; exit 1; }
 [ -f "$GLAM_FITS" ] || { echo "GLAM_FITS=$GLAM_FITS not found: point it at the E3 curve study's fits.json, e.g. GLAM_FITS=../brho_runs/tables/e3_external/fits.json sbatch ..."; exit 1; }
 echo "PETSC_OPTIONS=$PETSC_OPTIONS  ranks=$SLURM_NTASKS"
 
