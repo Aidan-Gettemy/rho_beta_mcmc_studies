@@ -135,3 +135,59 @@ def test_field_figures_are_written():
              fp.plot_conc_z_vs_time(np.arange(nt), np.arange(nz) + .5, rng.random((nz, nt)), 0.05 * np.ones((nz, nt)),
                                     [1, 3, 6], os.path.join(d, "e.png"), rng.random((nz, nt)), rng.random((nz, nt)))]
     assert all(os.path.getsize(p) > 5000 for p in paths)
+
+
+def test_re_trace_reproduces_phi_at_every_iteration():
+    # Phi = RE_conc^2 / (2 s^2) + RE_dp^2 / (2 s^2) for the toy (s = 0.05): holds through acceptances, rejections and restarts
+    out = tempfile.mkdtemp()
+    _, cfg, _ = _toy_run(240, out)
+    for r in range(4):
+        ch = post.load_chain(out, r)
+        assert ch["re_conc"] is not None and len(ch["re_conc"]) == cfg.n_iter
+        s2 = 2 * 0.05 ** 2
+        phi = ch["re_conc"].astype(float) ** 2 / s2 + ch["re_dp"].astype(float) ** 2 / s2
+        assert np.allclose(phi, ch["phi_trace"], rtol=2e-4), np.max(np.abs(phi / ch["phi_trace"] - 1))
+
+
+def test_field_statistics_returns_per_sample_re():
+    out = tempfile.mkdtemp()
+    model, cfg, _ = _toy_run(200, out)
+    s = post.strided_samples(out, 4, cfg.window1, 20, cfg.n_iter)
+    res = ThreadWorld(3).run(lambda comm: post.field_statistics(model, s, comm))[0]
+    assert np.array_equal(res["sample_index"], np.arange(len(s["w"])))
+    for i in (0, 5, len(s["w"]) - 1):
+        st = post.split_state(model, s["theta"][i], s["w"][i])
+        phi, rc, rd = model.eval_state(st)
+        assert np.isclose(res["sample_phi"][i], phi) and np.isclose(res["sample_re_conc"][i], rc)
+        assert np.isclose(res["sample_re_dp"][i], rd)
+
+
+def test_mpsrf_cholesky_matches_dense_and_diagonal_psrf():
+    import run_glam  # noqa: F401  (experiments/ on the path for the next import)
+    import glam_mpsrf as G
+    from brho import mpsrf
+    rng = np.random.default_rng(3)
+    x = rng.standard_normal((5, 300, 30)) @ rng.standard_normal((30, 30)) + 0.4 * rng.standard_normal((5, 1, 30))
+    a = mpsrf.mpsrf_curve(x, skip=2, step=15, iter_burn=10)
+    b = mpsrf.mpsrf_curve_direct(x, skip=2, step=15, iter_burn=10)
+    assert np.nanmax(np.abs(a["mpsrf"] - b["mpsrf"])) < 1e-8
+    ks, P = G.psrf_diag_curve(x, 2, 15, 10)
+    assert np.array_equal(ks, a["k"]) and np.allclose(P[3:], a["psrf_i"][3:], rtol=1e-9)
+    # dims specs and the read-out
+    assert list(G.select_dims("first:3", [4, 4])[1]) == [0, 1, 2]
+    assert list(G.select_dims("blocks:2", [4, 4])[1]) == [0, 1, 4, 5] and list(G.select_dims("rho", [4, 4])[1]) == [8]
+    assert list(G.select_dims("block:1:2", [4, 4])[1]) == [4, 5] and len(G.select_dims("all", [4, 4])[1]) == 9
+    its = np.arange(1, 21) * 10.0
+    assert G.converged_at(its, np.r_[np.full(10, 1.0), np.full(10, 1.0)], 1.2, 10) == its[10]     # starts below: first eligible point
+    assert G.converged_at(its, np.r_[np.full(12, 3.0), np.full(8, 1.0)], 1.2, 10) < its[12]       # interpolated crossing
+    assert G.converged_at(its, np.full(20, 3.0), 1.2, 10) is None
+
+
+def test_windowed_acceptance():
+    import plot_glam_diagnostics as D
+    acc = np.array([1, 0, 1, 1, 0, 0, 0, 0, 1, 0] * 4, float); kind = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1] * 4)
+    c, r = D.windowed_acceptance(acc, kind, 0, 10, min_moves=5)
+    assert np.allclose(r, 3 / 5) and np.allclose(c, [5, 15, 25, 35])
+    c, r = D.windowed_acceptance(acc, kind, 1, 10, min_moves=5)
+    assert np.allclose(r, 1 / 5)
+    assert np.all(np.isnan(D.windowed_acceptance(acc, kind, 1, 10, min_moves=6)[1]))

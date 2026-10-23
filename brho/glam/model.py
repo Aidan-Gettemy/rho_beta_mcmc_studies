@@ -85,6 +85,11 @@ class GlamModel:
     def phi(self, state, field, sim):             # pragma: no cover - abstract
         raise NotImplementedError
 
+    def phi_parts(self, state, field, sim):
+        """(Phi, RE_conc, RE_dp): Phi and the relative L2 errors of the concentration and of the pressure drop (NaN
+        when the backend has no such data)."""
+        return self.phi(state, field, sim), np.nan, np.nan
+
     def phi_of_state(self, state, rank=0):
         """Convenience: full evaluation of one state (skips the solver when rho is out of range)."""
         if not self.rho_ok(state):
@@ -92,6 +97,13 @@ class GlamModel:
         field = self.build(state)
         sim = self.simulate(field, rank)
         return self.phi(state, field, sim), field, sim
+
+    def eval_state(self, state, rank=0):
+        """Full evaluation of one state: (Phi, RE_conc, RE_dp)."""
+        if not self.rho_ok(state):
+            return np.inf, np.nan, np.nan
+        field = self.build(state)
+        return self.phi_parts(state, field, self.simulate(field, rank))
 
 
 def read_petsc_vec(path, n=None):
@@ -178,8 +190,14 @@ class ExternalModel(GlamModel):
             self.runner.cleanup(res)
 
     def phi(self, state, field, sim):
-        if not self.rho_ok(state):
-            return np.inf
-        if sim is None or sim.conc is None:
+        if not self.rho_ok(state) or sim is None or sim.conc is None:
             return np.inf
         return phi_like(self.data, sim.conc, sim.dp_pa, self.sigma_conc, self.sigma_dp)[0]
+
+    def phi_parts(self, state, field, sim):
+        """(Phi, RE_conc, RE_dp). Phi always comes from self.phi, so subclasses overriding phi stay consistent."""
+        phi = self.phi(state, field, sim)
+        if not np.isfinite(phi) or sim is None or sim.conc is None:
+            return phi, np.nan, np.nan
+        _, (pc, pd) = phi_like(self.data, sim.conc, sim.dp_pa, self.sigma_conc, self.sigma_dp)
+        return phi, float(np.sqrt(2.0 * self.sigma_conc ** 2 * pc)), float(np.sqrt(2.0 * self.sigma_dp ** 2 * pd))

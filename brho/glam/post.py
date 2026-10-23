@@ -27,9 +27,11 @@ def load_chain(out, rank):
         raise FileNotFoundError(f"no chain parts for rank {rank} in {out}/chains")
     z = [np.load(p) for p in parts]
     cat = lambda k: np.concatenate([a[k] for a in z])  # noqa: E731
+    has_re = all("trace_re_conc" in a.files for a in z)       # runs before the RE trace was added lack it
     return dict(start=cat("start"), count=cat("count"), theta=np.concatenate([a["theta"] for a in z]),
                 w=cat("w"), phi=cat("phi"), kind=cat("trace_kind"), acc=cat("trace_acc"),
-                beta_g=cat("trace_beta_g"), beta_l=cat("trace_beta_l"), phi_trace=cat("trace_phi"))
+                beta_g=cat("trace_beta_g"), beta_l=cat("trace_beta_l"), phi_trace=cat("trace_phi"),
+                re_conc=cat("trace_re_conc") if has_re else None, re_dp=cat("trace_re_dp") if has_re else None)
 
 
 def n_iterations(ch):
@@ -149,6 +151,7 @@ def field_statistics(model, samples, comm, log=None, every=50, plug=None, grid=N
         nx, ny, nz = grid
         disc = np.asarray(plug).reshape((nx, ny, nz), order="F")[:, :, 0]
     failed = 0
+    per = []                                                  # (sample index, Phi, RE_conc, RE_dp, dp) per sample
     for i in range(rank, len(samples["w"]), P):
         st = split_state(model, samples["theta"][i], samples["w"][i])
         if not model.rho_ok(st):
@@ -159,6 +162,7 @@ def field_statistics(model, samples, comm, log=None, every=50, plug=None, grid=N
         if sim is None or sim.conc is None or not np.isfinite(sim.dp_pa) or sim.pressure is None:
             failed += 1
             continue
+        per.append((i,) + tuple(model.phi_parts(st, field, sim)) + (float(sim.dp_pa),))
         acc["pressure"].add(sim.pressure); acc["conc"].add(sim.conc)
         acc["logperm"].add(field.prior_field["logK"]); acc["dp"].add(sim.dp_pa)
         if plug is not None:
@@ -167,16 +171,22 @@ def field_statistics(model, samples, comm, log=None, every=50, plug=None, grid=N
             acc["conc_plug"].add(c4[disc].mean(axis=(0, 1)))      # (times,)
         if log and rank == 0 and acc["dp"].n % every == 0:
             log(f"[glam-post] rank 0 processed {acc['dp'].n} samples")
-    gathered = comm.gather((acc, failed), root=0)
+    gathered = comm.gather((acc, failed, per), root=0)
     if rank != 0:
         return None
     tot = {k: Welford() for k in acc}
     nfail = 0
-    for a, f in gathered:
+    rows = []
+    for a, f, pr in gathered:
+        rows += pr
         nfail += f
         for k in tot:
             tot[k].merge(a[k])
     res = {f"{k}_mean": v.mean for k, v in tot.items()}
     res.update({f"{k}_std": v.std() for k, v in tot.items()})
+    rows.sort()
+    cols = np.asarray(rows, float).reshape(-1, 5)
+    res.update(sample_index=cols[:, 0].astype(int), sample_phi=cols[:, 1], sample_re_conc=cols[:, 2],
+               sample_re_dp=cols[:, 3], sample_dp_pa=cols[:, 4])    # per strided sample (index into samples.npz)
     res["n_used"], res["n_failed"] = tot["dp"].n, nfail
     return res

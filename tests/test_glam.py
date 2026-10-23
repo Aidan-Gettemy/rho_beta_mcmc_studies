@@ -195,6 +195,9 @@ def test_resume_is_exact():
     for r in range(4):
         ca, cb = load_chain(full, r), load_chain(part, r)
         assert np.array_equal(ca["start"], cb["start"]) and np.array_equal(ca["theta"], cb["theta"])
+        from brho.glam import post
+        pa, pb = post.load_chain(full, r), post.load_chain(part, r)
+        assert np.array_equal(pa["re_conc"], pb["re_conc"]) and np.array_equal(pa["re_dp"], pb["re_dp"])   # RE trace resumes exactly
 
 
 # ------------------------------------------------------------------------------------------- V0: external model plumbing

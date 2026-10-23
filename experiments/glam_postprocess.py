@@ -15,7 +15,12 @@ adaptation ends; rejected moves count with their repetitions).  Written to resul
                         (= log beta(rho) + rho Y_P), plus the pressure drop; for the external forward model also
                         conc_z (per-sample concentration averaged over the plug disc of every z-layer, layers x times)
                         and conc_plug (whole plug, times), each with mean and std over the samples; obtained by re-running the forward model on
-                        every strided sample, the samples being shared among the MPI ranks.
+                        every strided sample, the samples being shared among the MPI ranks.  Also per-sample arrays
+                        sample_index, phi, re_conc, re_dp, dp_pa (used by plot_glam_diagnostics.py when a chain has no
+                        per-iteration RE trace, i.e. runs made before the trace existed).
+
+Companions: plot_glam_diagnostics.py (RE traces, acceptance-rate histograms), glam_mpsrf.py (MPSRF from the saved
+samples; expensive, run --estimate first), plot_glam_fields.py (slices, tracer maps, concentration curves).
 """
 import _common  # noqa: F401
 import json
