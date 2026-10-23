@@ -259,3 +259,107 @@ def test_reference_rho_recovers_the_sd_of_a_lognormal_field():
     # the plug is the only region that sets rho_eff: contaminate the outside and it must not change
     logk2 = logk.copy(); logk2[~m] = 5.0 + 3.0 * rng.standard_normal(int((~m).sum()))
     assert abs(R.reference_rho(logk2, grid)["plug"]["rho_eff"] - r["plug"]["rho_eff"]) < 1e-12
+
+
+def test_projection_onto_the_model_space_matches_dense_least_squares():
+    """fit_theta (LSQR through the field's own operators) reproduces numpy's dense least squares of P A theta = g."""
+    from brho.glam import projection as PJ
+    from brho.multiscale_mat import MultiscaleField
+    rng = np.random.default_rng(5)
+    N, M, sizes, m = 60, 25, [20, 20, 20], 8
+    elem = [np.arange(i * 20, (i + 1) * 20) for i in range(3)]
+    T = [rng.standard_normal((20, m)) for _ in range(3)]
+    PHI = np.linalg.qr(rng.standard_normal((N, M)))[0]
+    U = np.linalg.qr(rng.standard_normal((M, M)))[0]
+    f = MultiscaleField(T, elem, PHI, U, rng.uniform(0.5, 2.0, M), dtype=np.float64)
+    # dense matrix of P A
+    cols = []
+    for k in range(3 * m):
+        th = np.zeros(3 * m); th[k] = 1.0
+        cols.append(f.field([th[i * m:(i + 1) * m] for i in range(3)]))
+    D = np.stack(cols, axis=1)
+    op, dims = PJ.field_operator(f)
+    x = rng.standard_normal(3 * m); y = rng.standard_normal(N)
+    assert np.allclose(op.matvec(x), D @ x) and np.allclose(op.rmatvec(y), D.T @ y)       # operator and adjoint
+    g_in = D @ rng.standard_normal(3 * m)                                                  # inside the model space
+    r = PJ.fit_theta(f, g_in, iter_lim=500, atol=1e-12, btol=1e-12)
+    assert r["residual"] < 1e-8
+    g = rng.standard_normal(N)                                                             # generic target: residual > 0
+    r = PJ.fit_theta(f, g, iter_lim=500, atol=1e-12, btol=1e-12)
+    th_ls = np.linalg.lstsq(D, g, rcond=None)[0]
+    assert abs(r["residual"] - np.linalg.norm(g - D @ th_ls) / np.linalg.norm(g)) < 1e-8
+    assert np.allclose(r["yp"], D @ th_ls, atol=1e-7)
+
+
+def test_check_reference_projection_script_end_to_end_with_a_stub_model():
+    """Runs experiments/check_reference_projection.py main() with a small synthetic field and a fake solver: a reference
+    field that lies inside the model space is recovered (resid ~ 0), the rows and files are written."""
+    import json, types
+    import run_glam, check_reference_projection as CR
+    import brho.darcy_external as DE
+    from brho import io
+    from brho.glam.model import BetaPchip, SimData
+    from brho.glam_likelihood import GlamData
+    from brho.multiscale_mat import MultiscaleField
+    rng = np.random.default_rng(11)
+    grid = (6, 6, 4); N = 144; m = 10
+    elem = [np.arange(i * 36, (i + 1) * 36) for i in range(4)]
+    T = [rng.standard_normal((36, m)) for _ in range(4)]
+    PHI = np.linalg.qr(rng.standard_normal((N, 60)))[0]
+    U = np.linalg.qr(rng.standard_normal((60, 60)))[0]
+    field = MultiscaleField(T, elem, PHI, U, rng.uniform(0.5, 2.0, 60), dtype=np.float64)
+    beta = BetaPchip.from_fits_json(os.path.join(REPO, "runs", "juno_external_2026-10", "tables", "e3_external", "fits.json"))
+    ref_beta, ref_rho = 9.869232667160132e-14, 1.0
+    theta0 = [rng.standard_normal(m) for _ in range(4)]
+    logk_ref = np.log(ref_beta) + ref_rho * field.field(theta0)                       # inside the model space
+    tmp = tempfile.mkdtemp()
+    kref = os.path.join(tmp, "Kref.dat"); np.savetxt(kref, np.exp(logk_ref))
+    gfile = os.path.join(tmp, "G.dat"); np.savetxt(gfile, field.field(theta0))
+    data = GlamData(rng.uniform(0, 1, (N, 3)), 3314.7)
+
+    class Stub:
+        pass
+    stub = Stub(); stub.field, stub.beta, stub.data = field, beta, data
+    stub.simulate = lambda K, rank=0, want_pressure=False: SimData(float(3314.7 * beta.Kexp / np.exp(np.mean(np.log(K)))),
+                                                                 np.tile(np.clip(np.log(K)[:, None] * 0.0 + 0.5, 0, 1), (1, 3)))
+    orig_build, orig_phys = run_glam.build_model, DE.physics_from_cfg
+    run_glam.build_model = lambda a, c, r: stub
+    DE.physics_from_cfg = lambda path: dict(nx=6, ny=6, nz=4, Lx=1, Ly=1, Lz=1, v=1, mu=1)
+    old_argv, old_root = sys.argv, os.environ.get("BRHO_ROOT")
+    os.environ["BRHO_ROOT"] = tmp
+    sys.argv = ["x", "--exp-tag", "stub", "--ref-field", kref, "--gauss-field", gfile, "--rhos", "1.0", "--lsqr-iter", "400",
+                "--cfg", "unused"]
+    try:
+        import importlib; importlib.reload(io)
+        CR.main()
+        exp = io.EXP_GLAM + "_stub"
+        res = json.load(open(os.path.join(io.tables_dir(exp), "reference_projection.json")))
+        rows = [r for r in res["rows"] if r["rho"] is not None]
+        true_row = [r for r in rows if r["level"] == "true"][0]
+        assert true_row["resid"] < 1e-5 and true_row["dlogk_rms_all"] < 1e-5, true_row          # reference is in the model space
+        assert 0.1 < true_row["theta_msq"] < 10 and "phi" in true_row                            # |theta|^2 and the forward part ran
+        curve_row = [r for r in rows if r["level"] == "curve"][0]
+        assert curve_row["dlogk_rms_all"] > 1e-4          # the curve level differs from the true beta: the fit cannot be exact
+        z = np.load(os.path.join(io.results_dir(exp), "reference_projection.npz"))
+        assert "theta_rho1_true" in z.files and z["theta_rho1_true"].size == 4 * m
+    finally:
+        run_glam.build_model, DE.physics_from_cfg = orig_build, orig_phys
+        sys.argv = old_argv
+        if old_root is None: os.environ.pop("BRHO_ROOT", None)
+        else: os.environ["BRHO_ROOT"] = old_root
+        importlib.reload(io)
+
+
+def test_reference_projection_job_flags_exist_and_conda_is_pinned():
+    import re, subprocess
+    path = os.path.join(REPO, "cluster", "slurm", "glam_reference_projection.sbatch")
+    text = open(path).read()
+    assert "export BRHO_CONDA_ENV=/home/arg210006/.conda/envs/darcyMCMC" in text
+    assert '[ "${CONDA_PREFIX:-}" = "$BRHO_CONDA_ENV" ]' in text
+    out = subprocess.run(["bash", "-c", f'source <(sed -n "/^CHECK_FLAGS=(/,/^)/p" {path}); printf "%s\\n" "${{CHECK_FLAGS[@]}}"'],
+                         capture_output=True, text=True, check=True).stdout.split("\n")[:-1]
+    helptext = subprocess.run([sys.executable, os.path.join(REPO, "experiments", "check_reference_projection.py"), "--help"],
+                              capture_output=True, text=True).stdout
+    flags = [a for a in out if a.startswith("--")]
+    assert flags and all(re.search(re.escape(f) + r"(\s|,|\])", helptext) for f in flags), flags
+    assert out[out.index("--ref-beta") + 1] == "9.869232667160132e-14" and out[out.index("--ref-rho") + 1] == "1.0"
