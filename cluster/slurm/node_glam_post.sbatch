@@ -35,7 +35,7 @@ export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
 export OMPI_MCA_pml=ob1 OMPI_MCA_btl=self,vader
 export UCX_TLS="${UCX_TLS:-self,sm}"
 export PETSC_OPTIONS="$EXT_PETSC_OPTIONS ${PETSC_OPTIONS:-}"
-export MPLBACKEND=Agg
+export MPLBACKEND=Agg PYTHONFAULTHANDLER=1
 mkdir -p logs "$GLAM_WORK"
 
 echo "python: $(which python)   CONDA_PREFIX=${CONDA_PREFIX:-none}"
