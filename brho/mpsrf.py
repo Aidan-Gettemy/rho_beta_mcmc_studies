@@ -52,12 +52,25 @@ def _from_sums(S, Q, n, m, dim, shift):
     mu = mu_s + shift
     D = mu - mu.mean(0)
     Bn = (D.T @ D) / (m - 1)
-    lam = np.linalg.eigvals(np.linalg.solve(W, Bn))
-    lam1 = float(np.abs(lam[np.argmax(lam.real)]))
+    lam1 = _lambda_max(W, D, m)
     mpsrf = np.sqrt((n - 1) / n + (m + 1) / m * lam1)
     V = (n - 1) / n * W + (m + 1) / m * Bn
     psrf_i = np.sqrt(np.diag(V) / np.diag(W))
     return float(mpsrf), float(psrf_i.max()), psrf_i
+
+
+def _lambda_max(W, D, m):
+    """Largest eigenvalue of W^{-1} B/n with B/n = D^T D / (m-1), D (m, dim) the centred chain means.  B/n has rank
+    <= m-1, so with W = L L^T the nonzero eigenvalues are those of the small symmetric matrix Z^T Z / (m-1),
+    Z = L^{-1} D^T: one Cholesky (dim^3/3) instead of a dense nonsymmetric eigenproblem (~25 dim^3).  Falls back to the
+    dense computation when W is not numerically positive definite."""
+    try:
+        L = np.linalg.cholesky(W)
+        Z = np.linalg.solve(L, D.T)                                # (dim, m), triangular system
+        return float(np.linalg.eigvalsh(Z.T @ Z / (m - 1))[-1])
+    except np.linalg.LinAlgError:
+        lam = np.linalg.eigvals(np.linalg.solve(W, (D.T @ D) / (m - 1)))
+        return float(np.abs(lam[np.argmax(lam.real)]))
 
 
 def mpsrf_curve(samples, skip=2, step=15, iter_burn=10, chains=None,

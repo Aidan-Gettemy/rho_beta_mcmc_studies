@@ -80,3 +80,11 @@ class ToyModel(GlamModel):
         if not self.rho_ok(state) or sim is None or sim.conc is None:
             return np.inf
         return phi_like(self.data, sim.conc, sim.dp_pa, self.sigma_conc, self.sigma_dp)[0]
+
+    def phi_parts(self, state, field, sim):
+        """(Phi, RE_conc, RE_dp). Phi always comes from self.phi, so subclasses overriding phi stay consistent."""
+        phi = self.phi(state, field, sim)
+        if not np.isfinite(phi) or sim is None or sim.conc is None:
+            return phi, np.nan, np.nan
+        _, (pc, pd) = phi_like(self.data, sim.conc, sim.dp_pa, self.sigma_conc, self.sigma_dp)
+        return phi, float(np.sqrt(2.0 * self.sigma_conc ** 2 * pc)), float(np.sqrt(2.0 * self.sigma_dp ** 2 * pd))

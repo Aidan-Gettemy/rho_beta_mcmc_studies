@@ -39,13 +39,13 @@ class ChainWriter:
         os.makedirs(self.dir, exist_ok=True)
         self.rank, self.n_sub, self.save_every, self.part = rank, n_sub, save_every, part
         self.rec = dict(start=[], count=[], theta=[], w=[], phi=[])
-        self.tr = dict(phi=[], acc=[], kind=[], bg=[], bl=[])
+        self.tr = dict(phi=[], acc=[], kind=[], bg=[], bl=[], rc=[], rd=[])
         self.tr_first = None
 
-    def trace(self, it, phi, acc, kind, bg, bl):
+    def trace(self, it, phi, acc, kind, bg, bl, rc=np.nan, rd=np.nan):
         if self.tr_first is None:
             self.tr_first = it
-        for k, v in zip(("phi", "acc", "kind", "bg", "bl"), (phi, acc, kind, bg, bl)):
+        for k, v in zip(("phi", "acc", "kind", "bg", "bl", "rc", "rd"), (phi, acc, kind, bg, bl, rc, rd)):
             self.tr[k].append(v)
 
     def emit(self, start, count, state, phi):
@@ -68,10 +68,11 @@ class ChainWriter:
                  trace_it0=-1 if self.tr_first is None else self.tr_first,
                  trace_phi=np.asarray(self.tr["phi"], float), trace_acc=np.asarray(self.tr["acc"], np.int8),
                  trace_kind=np.asarray(self.tr["kind"], np.int8), trace_beta_g=np.asarray(self.tr["bg"], float),
-                 trace_beta_l=np.asarray(self.tr["bl"], float))
+                 trace_beta_l=np.asarray(self.tr["bl"], float),
+                 trace_re_conc=np.asarray(self.tr["rc"], np.float32), trace_re_dp=np.asarray(self.tr["rd"], np.float32))
         self.part += 1
         self.rec = dict(start=[], count=[], theta=[], w=[], phi=[])
-        self.tr = dict(phi=[], acc=[], kind=[], bg=[], bl=[])
+        self.tr = dict(phi=[], acc=[], kind=[], bg=[], bl=[], rc=[], rd=[])
         self.tr_first = None
 
 
@@ -141,9 +142,9 @@ def make_manager(cfg, n_sub, rank, start_iteration=0, n_chains=1):
 def _init_state(model, rng, rank, tries=200):
     for _ in range(tries):
         st = model.sample_state(rng, model.block_dims)
-        phi, field, sim = model.phi_of_state(st, rank)
+        phi, rc, rd = model.eval_state(st, rank)
         if np.isfinite(phi):
-            return st, phi, field, sim
+            return st, phi, (rc, rd)
     raise RuntimeError("no finite-potential initial state found")
 
 
@@ -184,13 +185,17 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print):
         with open(os.path.join(snap_dir, f"chain_r{rank:03d}_ite{it_s}.pkl"), "rb") as f:
             cs = pickle.load(f)
         theta, phi_cur = cs["theta"], cs["phi"]
+        re_cur = cs.get("re")
+        if re_cur is None:                                   # snapshot of an older run: one extra solve
+            _, rc, rd = model.eval_state(theta, rank)
+            re_cur = (rc, rd)
         rng.bit_generator.state = cs["rng"]
         adapter.set_state(cs["adapter"])
         it0, writer_part, cur_start = cs["next_it"], cs["part"], cs["cur_start"]
         if rank == 0:
             log(f"[glam] resumed at iteration {it0} from snapshot {it_s}")
     else:
-        theta, phi_cur, _, _ = _init_state(model, rng, rank)
+        theta, phi_cur, re_cur = _init_state(model, rng, rank)
         cur_start = 0
     writer = ChainWriter(out_dir, rank, n_sub, cfg.save_every, part=writer_part)
     if resume:                                 # drop parts written after the snapshot (they will be rewritten);
@@ -216,12 +221,14 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print):
             cur_start = it
             if res is not None:
                 theta, phi_cur = copy_theta(res.theta), float(res.phi)
+                _, rc, rd = model.eval_state(theta, rank)      # relative errors of the restart state (one solve)
+                re_cur = (rc, rd)
             exchanges.append(dict(iteration=it, phase=mgr.phase.name, cycle=mgr.cycle,
                                   archive=dict(mgr.last_archive_diagnostics),
                                   restart=dict(mgr.last_restart_diagnostics)))
             writer.flush()
             with open(os.path.join(snap_dir, f"chain_r{rank:03d}_ite{it}.pkl"), "wb") as f:
-                pickle.dump(dict(theta=theta, phi=phi_cur, rng=rng.bit_generator.state, adapter=adapter.state(),
+                pickle.dump(dict(theta=theta, phi=phi_cur, re=re_cur, rng=rng.bit_generator.state, adapter=adapter.state(),
                                  next_it=it, part=writer.part, cur_start=cur_start), f)
             comm.Barrier()
         # ---------------------------------------------------------------- 2. one pCN move
@@ -234,13 +241,14 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print):
         if model.rho_ok(prop):
             fld = model.build(prop)
             sim = model.simulate(fld, rank)
-            phi_p = model.phi(prop, fld, sim)
+            phi_p, rc_p, rd_p = model.phi_parts(prop, fld, sim)
         else:
-            phi_p = np.inf
+            phi_p, rc_p, rd_p = np.inf, np.nan, np.nan
         accepted = bool(np.isfinite(phi_p) and np.log(rng.random()) < phi_cur - phi_p)
         if accepted:
             writer.emit(cur_start, it - cur_start, theta, phi_cur)
             theta, phi_cur, cur_start = prop, float(phi_p), it
+            re_cur = (rc_p, rd_p)
         # ---------------------------------------------------------------- 3. adaptation (window 1)
         adapter.record(kind, accepted)
         n_att_win[kind] += 1; n_acc_win[kind] += accepted
@@ -249,7 +257,7 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print):
             adapter.freeze()
         # ---------------------------------------------------------------- 4. bookkeeping
         mgr.record_phase_best(copy_theta(theta), phi_cur)
-        writer.trace(it, phi_cur, int(accepted), kind, adapter.beta[0], adapter.beta[1])
+        writer.trace(it, phi_cur, int(accepted), kind, adapter.beta[0], adapter.beta[1], re_cur[0], re_cur[1])
         if rank == 0 and cfg.log_every and (it + 1) % cfg.log_every == 0:
             acc = n_acc_win / np.maximum(n_att_win, 1)
             log(f"[glam] it {it + 1}/{cfg.n_iter} phase {phase.name} cycle {mgr.cycle} Phi {phi_cur:.3f} "
