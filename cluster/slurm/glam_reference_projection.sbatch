@@ -71,7 +71,7 @@ python -c "import numpy, scipy, cupy; print('numpy', numpy.__version__, 'scipy',
   || { echo "ERROR: numpy/scipy/cupy not importable in $(which python)"; exit 1; }
 python -c "import petsc4py; print('petsc4py', petsc4py.__version__)" || echo "WARNING: petsc4py not importable"
 nvidia-smi --query-gpu=name,memory.total --format=csv
-[ -f "$GLAM_FITS" ] || { echo "ERROR: GLAM_FITS=$GLAM_FITS not found"; exit 1; }
+[ -f "$GLAM_FITS" ] || { echo "ERROR: GLAM_FITS=$GLAM_FITS not found. Fix: git sparse-checkout add runs/juno_external_2026-10/tables/e3_external   (this clone is probably sparse), or edit the GLAM_FITS line at the top of this script to the fits.json of the offline curve study (the manifest of an earlier run lists the path it used: grep fits_json results/e6_glam_<tag>/manifest.json)"; exit 1; }
 [ -f "$EXT_REF_FIELD" ] || { echo "ERROR: reference field $EXT_REF_FIELD not found"; exit 1; }
 
 PHI_NPY="$EXT_MATRICES/phi_full_f32.npy"
