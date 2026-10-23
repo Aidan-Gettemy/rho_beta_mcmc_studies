@@ -54,6 +54,29 @@ def test_pcn_propose_blocks_and_prior_invariance():
     assert abs(y.mean()) < 0.01 and abs(y.var() - 1) < 0.02
 
 
+def test_adapter_gain_hold_and_constant_gain():
+    """gain_n = gain / max(1, n - hold)**exponent: with hold H the first H+1 updates all use the full gain."""
+    def run(**kw):
+        def work(comm):
+            ad = TwoStepAdapter(comm, 0.05, 0.05, target=0.25, adapt_stop=10 ** 6, adapt_interval=1, **kw)
+            logits = []
+            for it in range(12):
+                for _ in range(10):
+                    ad.record(GLOBAL, False)                 # acceptance 0 -> logit change = -gain_n * 0.25
+                ad.adapt(it)
+                logits.append(ad.logit[GLOBAL])
+            return np.diff(np.r_[np.log(0.05) - np.log1p(-0.05), logits])
+        return ThreadWorld(1).run(work)[0]
+    d0 = run(initial_gain=0.5, gain_exponent=0.6, gain_hold=0)
+    d5 = run(initial_gain=0.5, gain_exponent=0.6, gain_hold=5)
+    dc = run(initial_gain=0.5, gain_exponent=0.0, gain_hold=0)
+    n = np.arange(1, 13)
+    assert np.allclose(d0, -0.5 * 0.25 / n ** 0.6, rtol=1e-6)
+    assert np.allclose(d5, -0.5 * 0.25 / np.maximum(1, n - 5) ** 0.6, rtol=1e-6)
+    assert np.allclose(d5[:6], -0.125)                          # still at the full gain through update 6
+    assert np.allclose(dc, -0.125)                              # constant gain
+
+
 def test_two_step_adapter_reaches_target_and_freezes():
     def work(comm):
         rng = np.random.default_rng(comm.Get_rank())

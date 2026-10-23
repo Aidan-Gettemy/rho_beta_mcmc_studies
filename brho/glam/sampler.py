@@ -155,7 +155,8 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print):
     rng = np.random.default_rng([cfg.seed0, rank])
     mgr = make_manager(cfg, n_sub, rank, n_chains=P)
     adapter = TwoStepAdapter(comm, cfg.beta_g0, cfg.beta_l0, cfg.target, adapt_start=0, adapt_stop=cfg.window1,
-                             adapt_interval=cfg.adapt_interval)
+                             adapt_interval=cfg.adapt_interval, initial_gain=cfg.adapt_gain,
+                             gain_exponent=cfg.adapt_gain_exponent, gain_hold=cfg.adapt_gain_hold)
     snap_dir = os.path.join(out_dir, "anchor_state")
 
     # --- manager callbacks (no forward solve for a rho outside the PCHIP range)
@@ -254,6 +255,14 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print):
         n_att_win[kind] += 1; n_acc_win[kind] += accepted
         adapter.adapt(it)                                 # collective; no-op outside window 1
         if it + 1 >= cfg.window1:
+            if not adapter.frozen and rank == 0:
+                g, l = adapter.last
+                bad = [f"{n} acc {a:.2f}" for n, a in (("global", g), ("local", l))
+                       if np.isfinite(a) and not 0.5 * cfg.target <= a <= 1.5 * cfg.target]
+                log(f"[glam] step sizes frozen at it {it + 1}: beta_G {adapter.beta[0]:.4f} beta_L {adapter.beta[1]:.4f}, "
+                    f"last window acceptance G {g:.2f} L {l:.2f} (target {cfg.target})"
+                    + (f"  WARNING: far from target ({', '.join(bad)}); adaptation was too short or too slow "
+                       f"(raise window1 / adapt_gain / adapt_gain_hold, lower beta_g0)" if bad else ""))
             adapter.freeze()
         # ---------------------------------------------------------------- 4. bookkeeping
         mgr.record_phase_best(copy_theta(theta), phi_cur)
