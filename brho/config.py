@@ -288,6 +288,9 @@ class GlamConfig:
     beta_l0: float = 0.10
     target: float = 0.25
     adapt_interval: int = 100
+    adapt_gain: float = 0.5            # Robbins-Monro gain on the logit scale; raise it (and the hold) when the posterior tightens a lot
+    adapt_gain_exponent: float = 0.6   # gain_n = adapt_gain / max(1, n - adapt_gain_hold)**exponent; 0 = constant gain
+    adapt_gain_hold: int = 0           # updates at the full gain before the decay starts
     mu_logrho: float = 0.0
     s_logrho: float = 0.75
     rho_min: float = 0.05
