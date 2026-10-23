@@ -3,7 +3,7 @@
 #SBATCH --ntasks=2                    # 2 ranks: also tests the solver launched from inside MPI ranks
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=64G
-#SBATCH --partition=h200
+#SBATCH --partition=dev-a30           # shared A30: starts quickly; 2 ranks need about 3 GiB of GPU memory
 #SBATCH --gres=gpu:1
 #SBATCH --time=00:30:00
 #SBATCH -J brho-glamcheck
@@ -12,10 +12,11 @@
 # First real-world check of the GLAM forward model (solver + GPU tracer + likelihood), 2 ranks, 1 GPU:
 #   sbatch cluster/slurm/check_glam_forward.sbatch
 # Expect: the reference field reproduces the data (Phi near 0), prior draws have large Phi, no solver failures.
+# Also prints the reference field's effective rho (experiments/reference_rho.py).
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
-# the GPU tracer and CuPy live in the darcyMCMC environment (cupy 13.4.1, petsc4py 3.21.4); override with BRHO_CONDA_ENV=...
-export BRHO_CONDA_ENV="${BRHO_CONDA_ENV-/home/arg210006/.conda/envs/darcyMCMC}"
+# the GPU tracer and CuPy live in the darcyMCMC environment (cupy 13.4.1, petsc4py 3.21.4, MPICH-built mpi4py)
+export BRHO_CONDA_ENV=/home/arg210006/.conda/envs/darcyMCMC     # pinned: an exported BRHO_CONDA_ENV in the submitting shell is ignored
 source cluster/env.sh
 set -a; source external/solver.local; set +a
 export TRACER_DIR="${TRACER_DIR:-$SOLVER_DIR/transport}"      # transpTracer.py + rwPETSc.py live in the solver repository
@@ -29,7 +30,9 @@ export PETSC_OPTIONS="$EXT_PETSC_OPTIONS ${PETSC_OPTIONS:-}"
 mkdir -p logs "$GLAM_WORK"
 [ -f "$GLAM_FITS" ] || { echo "GLAM_FITS=$GLAM_FITS not found: GLAM_FITS=../brho_runs/tables/e3_external/fits.json sbatch ..."; exit 1; }
 echo "curve: $GLAM_FITS"
-echo "python: $(which python)"
+echo "python: $(which python)   CONDA_PREFIX=${CONDA_PREFIX:-none}"
+[ "${CONDA_PREFIX:-}" = "$BRHO_CONDA_ENV" ] || { echo "ERROR: active environment is '${CONDA_PREFIX:-none}', expected $BRHO_CONDA_ENV; job stopped."; exit 1; }
+[ -z "${BRHO_CONDA_FAILED:-}" ] || { echo "ERROR: the conda environment $BRHO_CONDA_ENV did not activate; job stopped."; exit 1; }
 python -c "import mpi4py; print('mpi4py', mpi4py.__version__)"
 python -c "import cupy; print('cupy', cupy.__version__)"
 python -c "import petsc4py; print('petsc4py', petsc4py.__version__)" || echo "WARNING: petsc4py not importable"
@@ -46,3 +49,7 @@ $LAUNCH -n "$SLURM_NTASKS" python experiments/check_glam_forward.py --cfg "$EXT_
     --tag "$EXT_TAG" --whitening "$EXT_WHITENING" --phi-npy "$PHI_NPY" --fits-json "$GLAM_FITS" \
     --conc "$EXT_DATA_CONC" --pdrop "$EXT_REF_PDROP" --work "$GLAM_WORK" --phi-mode "${PHI_MODE:-gpu}" \
     --ref-field "$EXT_REF_FIELD" ${TRACER_DIR:+--tracer-dir "$TRACER_DIR"}
+
+# the reference field's effective rho and beta (sd and mean of log Kref over the plug cells), for comparison with the sampler's rho
+echo; echo "=== reference field: effective rho ==="
+python experiments/reference_rho.py --cfg "$EXT_CFG" --ref-field "$EXT_REF_FIELD" --fits-json "$GLAM_FITS"
