@@ -107,7 +107,9 @@ def main():
             grid = (ph["nx"], ph["ny"], ph["nz"])
             plug = post.plug_mask(*grid)
         # the best state first.  Every rank solves it (the same state, in lockstep, exactly as the sampler runs its chains)
-        # and only rank 0 keeps the result: a lone solve on rank 0 while the others wait in a barrier hung on Juno.
+        # and only rank 0 keeps the result.  Reason: the tracer imports petsc4py lazily at its first call, and PETSc's
+        # initialisation is collective over MPI_COMM_WORLD, so a first call on rank 0 alone deadlocks (seen on Juno:
+        # rank 0 stuck in rwPETSc.py's import while ranks 1-11 waited in the barrier).
         bz = np.load(os.path.join(pdir, "best_state.npz"))
         if rank == 0:
             print(f"[glam-post] best state: forward solve on all {P} ranks (pressure output {'on' if args.pressure else 'off'}) ...", flush=True)
