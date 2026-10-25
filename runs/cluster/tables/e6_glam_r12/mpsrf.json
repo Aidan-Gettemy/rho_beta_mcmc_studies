@@ -1,0 +1,49 @@
+{
+ "chains": [
+  0,
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11
+ ],
+ "stride": 10,
+ "start_iteration": 8000,
+ "n_samples": 1200,
+ "curves": {
+  "rho (w)": {
+   "dim": 1,
+   "final_mpsrf": 0.9996415678843816,
+   "convergence_iteration": 9200.0,
+   "level": 1.2,
+   "seconds": 0.15741825103759766
+  },
+  "first 100": {
+   "dim": 100,
+   "final_mpsrf": 1.06732717868854,
+   "convergence_iteration": 12041.0,
+   "level": 1.2,
+   "seconds": 0.0639491081237793
+  },
+  "block 0": {
+   "dim": 500,
+   "final_mpsrf": 1.3601119198409422,
+   "convergence_iteration": null,
+   "level": 1.2,
+   "seconds": 1.1078460216522217
+  }
+ },
+ "psrf_final": {
+  "max": 1.0035451177852384,
+  "p99": 1.0019429092581482,
+  "median": 0.999950514459173,
+  "frac_below_1p1": 1.0,
+  "frac_below_level": 1.0
+ }
+}
