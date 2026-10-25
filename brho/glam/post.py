@@ -74,17 +74,17 @@ def best_record(out, nranks, tail_start=0):
     return best
 
 
-def best_fields(model, best, rank=0):
+def best_fields(model, best, rank=0, want_pressure=True):
     """Forward model on the best state: log K (cells), concentration (cells x times), pressure, pressure drop, Phi."""
     st = split_state(model, best["theta"], best["w"])
     if not model.rho_ok(st):
         raise ValueError("best state has rho outside the allowed range")
     field = model.build(st)
-    sim = model.simulate(field, rank, want_pressure=True)
+    sim = model.simulate(field, rank, want_pressure=want_pressure)
     if sim is None or sim.conc is None or not np.isfinite(sim.dp_pa):
         raise RuntimeError("forward model failed on the best state")
     return dict(logperm=np.asarray(field.prior_field["logK"]), conc=np.asarray(sim.conc),
-                pressure=np.asarray(sim.pressure), dp_pa=float(sim.dp_pa),
+                pressure=np.asarray(sim.pressure if sim.pressure is not None else np.zeros(0)), dp_pa=float(sim.dp_pa),
                 phi=float(model.phi(st, field, sim)), rho=float(field.prior_field["rho"]),
                 beta=float(model.beta.beta(field.prior_field["rho"])), w=float(best["w"]),
                 phi_chain=float(best["phi"]), rank=int(best["rank"]), iteration=int(best["iteration"]))
@@ -140,12 +140,14 @@ def split_state(model, theta_flat, w):
     return out + [np.array([float(w)])]
 
 
-def field_statistics(model, samples, comm, log=None, every=50, plug=None, grid=None):
+def field_statistics(model, samples, comm, log=None, every=50, plug=None, grid=None, want_pressure=True):
     """Collective.  Samples are dealt round-robin to the ranks; every rank accumulates Welford statistics of
     pressure, concentration, log-permeability, and the pressure drop, and rank 0 merges them.  Returns a dict on
     rank 0 and None elsewhere."""
     rank, P = comm.Get_rank(), comm.Get_size()
     acc = dict(pressure=Welford(), conc=Welford(), logperm=Welford(), dp=Welford())
+    if not want_pressure:
+        acc.pop("pressure")                                   # no pressure file is requested from the solver
     if plug is not None:
         acc["conc_plug"], acc["conc_z"] = Welford(), Welford()
         nx, ny, nz = grid
@@ -158,12 +160,14 @@ def field_statistics(model, samples, comm, log=None, every=50, plug=None, grid=N
             failed += 1
             continue
         field = model.build(st)
-        sim = model.simulate(field, rank, want_pressure=True)
-        if sim is None or sim.conc is None or not np.isfinite(sim.dp_pa) or sim.pressure is None:
+        sim = model.simulate(field, rank, want_pressure=want_pressure)
+        if sim is None or sim.conc is None or not np.isfinite(sim.dp_pa) or (want_pressure and sim.pressure is None):
             failed += 1
             continue
         per.append((i,) + tuple(model.phi_parts(st, field, sim)) + (float(sim.dp_pa),))
-        acc["pressure"].add(sim.pressure); acc["conc"].add(sim.conc)
+        if want_pressure:
+            acc["pressure"].add(sim.pressure)
+        acc["conc"].add(sim.conc)
         acc["logperm"].add(field.prior_field["logK"]); acc["dp"].add(sim.dp_pa)
         if plug is not None:
             c4 = np.asarray(sim.conc, float).reshape((nx, ny, nz, -1), order="F")

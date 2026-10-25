@@ -44,6 +44,9 @@ def main():
     ap.add_argument("--float64", action="store_true")
     ap.add_argument("--best-scope", choices=["all", "tail"], default="all", help="best state over the whole run or the tail")
     ap.add_argument("--fields", action="store_true", help="re-run the forward model on the samples (MPI)")
+    ap.add_argument("--pressure", action="store_true",
+                    help="also request the pressure field (PETSc binary file) from the solver; off by default: the figures do not "
+                         "use it and that output path has not been exercised in the runs")
     ap.add_argument("--forward", choices=["external", "toy"], default="external")
     args, rest = ap.parse_known_args()
     exp = io.EXP_GLAM + (f"_{args.exp_tag}" if args.exp_tag else "")
@@ -105,13 +108,15 @@ def main():
             plug = post.plug_mask(*grid)
         if rank == 0:                                   # the best state first (one forward solve on rank 0)
             bz = np.load(os.path.join(pdir, "best_state.npz"))
+            print(f"[glam-post] best state: one forward solve on rank 0 (pressure output {'on' if args.pressure else 'off'}) ...", flush=True)
             t1 = time.time()
             bf = post.best_fields(model, dict(theta=bz["theta"], w=float(bz["w"]), phi=float(bz["phi"]),
-                                              rank=int(bz["rank"]), iteration=int(bz["iteration"])), rank)
+                                              rank=int(bz["rank"]), iteration=int(bz["iteration"])), rank,
+                                want_pressure=args.pressure)
             np.savez_compressed(os.path.join(pdir, "best_fields.npz"), **bf)
             print(f"[glam-post] best fields: Phi recomputed {bf['phi']:.4g} (chain value {bf['phi_chain']:.4g}); one forward solve took {time.time() - t1:.1f} s", flush=True)
         comm.Barrier()
-        res = post.field_statistics(model, s, comm, log=print, plug=plug, grid=grid)
+        res = post.field_statistics(model, s, comm, log=print, plug=plug, grid=grid, want_pressure=args.pressure)
         if rank == 0:
             np.savez_compressed(os.path.join(pdir, "field_stats.npz"), **res)
             print(f"[glam-post] field statistics from {res['n_used']} samples ({res['n_failed']} failed)", flush=True)

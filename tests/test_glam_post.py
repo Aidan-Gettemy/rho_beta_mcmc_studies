@@ -408,3 +408,25 @@ def test_compare_fields_and_export_with_synthetic_files(tmp_path, monkeypatch):
     js = io.load_json(os.path.join(io.tables_dir(exp), "field_comparison.json"))
     assert abs(js["best"]["rmse"] - 0.05) < 1e-12 and js["posterior"]["coverage_2sd"] > 0.9
     assert all(os.path.getsize(p) > 0 for p in made)
+
+
+def test_field_statistics_without_pressure_never_requests_it():
+    calls = []
+
+    class M:
+        def rho_ok(self, st): return True
+        def build(self, st):
+            import types
+            return types.SimpleNamespace(prior_field=dict(logK=np.ones(4)))
+        def simulate(self, field, rank=0, want_pressure=False):
+            import types
+            calls.append(want_pressure)
+            return types.SimpleNamespace(conc=np.ones((4, 2)), dp_pa=1.0, pressure=np.ones(4) if want_pressure else None)
+        def phi_parts(self, st, field, sim): return (1.0, 0.1, 0.1)
+    orig = post.split_state
+    post.split_state = lambda model, th, w: None
+    try:
+        res = post.field_statistics(M(), dict(theta=np.zeros((3, 2)), w=np.zeros(3)), ThreadWorld(1).comm(0), want_pressure=False)
+    finally:
+        post.split_state = orig
+    assert calls == [False] * 3 and res["n_used"] == 3 and "pressure_mean" not in res
