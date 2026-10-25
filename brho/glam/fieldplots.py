@@ -95,13 +95,16 @@ def plot_logperm_slice_stat(ref, best, mean, std, grid, k, path, dom=None, label
     return _save(fig, path)
 
 
-def plot_slices(vec, grid, z_levels, path, dom=None, cmap="jet", label="log K", title=""):
-    """One field at several z-layers (1-based `z_levels`), shared colour scale, 5 columns."""
+def plot_slices(vec, grid, z_levels, path, dom=None, cmap="jet", label="log K", title="", clim=None):
+    """One field at several z-layers (1-based `z_levels`), shared colour scale, 5 columns.  `clim` = (lo, hi) fixes the
+    scale, so that several figures (reference, best, mean) can be compared by eye."""
     nx, ny, nz = grid
     Lx, Ly = dom or (nx, ny)
     V = to_grid(vec, nx, ny, nz)
     imgs = [disc_slice(V[:, :, k - 1], Lx, Ly) for k in z_levels]
     lo = min(np.nanmin(i) for i in imgs); hi = max(np.nanmax(i) for i in imgs)
+    if clim is not None:
+        lo, hi = clim
     ncol = min(5, len(z_levels)); nrow = int(np.ceil(len(z_levels) / ncol))
     fig, axs = plt.subplots(nrow, ncol, figsize=(3.2 * ncol + 1, 3.3 * nrow), facecolor="w", squeeze=False)
     for s, (k, img) in enumerate(zip(z_levels, imgs)):

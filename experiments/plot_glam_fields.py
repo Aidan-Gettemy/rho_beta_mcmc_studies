@@ -11,6 +11,9 @@ All log-permeability figures show ln K [m^2] (= log beta(rho) + rho Y_P of the p
 Figures (figures/<study>/fields/):
   logperm_slice_z<layer>.png      reference | best | posterior mean | posterior std, one z-layer (5 depths)
   logperm_layers_{ref,best,mean,std}.png   one field over many z-layers
+  logperm_layers_{best_minus_ref,mean_minus_ref,zscore}.png   best - reference, posterior mean - reference, and
+                                  (reference - mean) / std; the first two share one symmetric scale
+  tables/<study>/field_comparison.json   RMSE, correlation, level and +-2 sd coverage of the reference over the plug
   tracer_{ref,best,mean,std}.png  concentration at the --tracer-layer, one panel per output time
   conc_vs_time.png                plug-averaged concentration: reference, best, posterior mean +- 2 sd
   conc_z_vs_time.png              disc-averaged concentration of selected z-layers: posterior mean +- 2 sd (band over the
@@ -26,6 +29,39 @@ from brho import io
 from brho.darcy_external import parse_cfg, physics_from_cfg
 from brho.glam import fieldplots as fp
 from brho.glam import post
+
+
+def compare_fields(ref, best, mean, std, mask, grid, layers, odir, dom, exp):
+    """Difference and z-score figures plus field_comparison.json (statistics over the plug cells)."""
+    made, out = [], {}
+    r = np.asarray(ref, float)
+    diffs = [(n, np.asarray(v, float) - r) for n, v in (("best_minus_ref", best), ("mean_minus_ref", mean)) if v is not None]
+    if diffs:
+        a = max(float(np.abs(d[mask]).max()) for _, d in diffs)
+        for n, d in diffs:
+            made.append(fp.plot_slices(d, grid, layers, os.path.join(odir, f"logperm_layers_{n}.png"), dom, cmap="redblue",
+                                       label="difference in ln K", clim=(-a, a),
+                                       title=("Best state" if n.startswith("best") else "Posterior mean") + " minus reference, ln K"))
+            out[n.replace("_minus_ref", "")] = dict(rmse=float(np.sqrt(np.mean(d[mask] ** 2))), mean_diff=float(d[mask].mean()),
+                                                   corr=float(np.corrcoef((r + d)[mask], r[mask])[0, 1]))
+    if mean is not None and std is not None:
+        sd = np.asarray(std, float)
+        z = np.where(sd > 0, (r - np.asarray(mean, float)) / np.where(sd > 0, sd, 1.0), 0.0)
+        made.append(fp.plot_slices(z, grid, layers, os.path.join(odir, "logperm_layers_zscore.png"), dom, cmap="redblue",
+                                   label="(reference - mean) / std", clim=(-4, 4),
+                                   title="Reference relative to the posterior, z-score of ln K"))
+        out["posterior"] = dict(coverage_1sd=float(np.mean(np.abs(z[mask]) <= 1)), coverage_2sd=float(np.mean(np.abs(z[mask]) <= 2)),
+                                mean_z=float(z[mask].mean()), rms_z=float(np.sqrt(np.mean(z[mask] ** 2))),
+                                mean_std=float(sd[mask].mean()))
+    out["reference"] = dict(level_mean_lnK=float(r[mask].mean()), sd_lnK=float(r[mask].std()))
+    for n, v in (("best", best), ("mean", mean)):
+        if v is not None:
+            out["reference"][f"level_{n}"] = float(np.asarray(v, float)[mask].mean())
+    path = os.path.join(io.tables_dir(exp), "field_comparison.json")
+    io.save_json(path, out)
+    made.append(path)
+    print("[fields] reference vs posterior over the plug:", out)
+    return made
 
 
 def main():
@@ -87,13 +123,18 @@ def main():
         k = min(nz, max(1, int(round(frac * nz))))
         made.append(fp.plot_logperm_slice_stat(ref_logk, b_logk, m_logk, s_logk, grid, k - 1,
                                                os.path.join(odir, f"logperm_slice_z{k:02d}.png"), dom))
+    shown = [np.asarray(x)[mask] for x in (ref_logk, b_logk, m_logk) if x is not None]
+    lk_clim = (min(float(x.min()) for x in shown), max(float(x.max()) for x in shown)) if shown else None   # one scale for ref, best, mean
     for name, v in (("ref", ref_logk), ("best", b_logk), ("mean", m_logk), ("std", s_logk)):
         if v is not None:
             made.append(fp.plot_slices(v, grid, layers, os.path.join(odir, f"logperm_layers_{name}.png"), dom,
                                        cmap="plasma" if name == "std" else "jet",
+                                       clim=None if name == "std" else lk_clim,
                                        label="std of ln K" if name == "std" else "ln K [m$^2$]",
                                        title={"ref": "Reference", "best": "Best state", "mean": "Posterior mean",
                                               "std": "Posterior standard deviation"}[name] + " log permeability"))
+    if ref_logk is not None and (b_logk is not None or m_logk is not None):
+        made += compare_fields(ref_logk, b_logk, m_logk, s_logk, mask, grid, layers, odir, dom, exp)
     shared = [x for x in (ref_tc, b_conc, m_conc) if x is not None]
     clim = (min(float(x.min()) for x in shared), max(float(x.max()) for x in shared)) if shared else None
     for name, S in (("ref", ref_tc), ("best", b_conc), ("mean", m_conc), ("std", s_conc)):

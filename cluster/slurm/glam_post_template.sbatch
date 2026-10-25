@@ -21,6 +21,8 @@
 #                   and on every strided sample: best fields, pointwise posterior mean/sd of pressure, concentration, log K,
 #                   per-z-disc concentration, per-sample RE.  The only step that calls the solver and the tracer (MPI, GPU).
 #   4 FIELD_FIGURES plot_glam_fields.py       log K slices, tracer maps, concentration versus time (needs step 3 with --fields)
+#   4b EXPORT       export_glam_fields.py     best sample, reference and posterior mean/sd/z-score as .npy (nx,ny,nz) and one VTK file
+#                   for ParaView: results/e6_glam_<tag>/post/export/ (needs step 3 with --fields)
 #   5 MPSRF         glam_mpsrf.py             PSRF of every coordinate (cheap) and MPSRF curves of the --dims you choose
 #                   (expensive: the cost estimate is printed first; a spec above --max-minutes is skipped).  Saves the raw
 #                   iteration-vs-MPSRF table tables/e6_glam_<tag>/mpsrf_curves.csv (+ psrf_max.csv) that can be copied anywhere and
@@ -34,6 +36,7 @@ RUN_DIAGNOSTICS=1                     # 1 = run the step, 0 = skip it
 RUN_TRACES=1
 RUN_SAMPLES=1
 RUN_FIELD_FIGURES=1
+RUN_EXPORT=1
 RUN_MPSRF=1
 MPSRF_MODE=run                        # run = estimate, then compute | estimate = cost estimate only | psrf-only = cheap per-coordinate PSRF only
 
@@ -78,6 +81,13 @@ FIELD_FLAGS=(
   --tracer-layer 23                             # z-layer of the tracer maps
   --conc-layers 1 11 23 34 45                   # z-layers of the concentration-versus-time figure
   --nsd 2.0                                     # band = mean +- nsd standard deviations
+)
+# 4b export_glam_fields.py
+EXPORT_FLAGS=(
+  --cfg "$EXT_CFG"
+  --ref-field "$EXT_REF_FIELD"
+  --ref-conc "$EXT_DATA_CONC"
+  --units mm                                    # length unit of the VTK spacing (mm | m)
 )
 # 5 glam_mpsrf.py
 #   --dims (several allowed, one MPSRF curve each; this is where you choose the number of dimensions):
@@ -147,6 +157,10 @@ fi
 if [ "$RUN_FIELD_FIGURES" = 1 ]; then
   step "4 field figures"
   run_step field_figures python experiments/plot_glam_fields.py --exp-tag "$GLAM_TAG" "${FIELD_FLAGS[@]}"
+fi
+if [ "$RUN_EXPORT" = 1 ]; then
+  step "4b export for ParaView"
+  run_step export python experiments/export_glam_fields.py --exp-tag "$GLAM_TAG" "${EXPORT_FLAGS[@]}"
 fi
 if [ "$RUN_MPSRF" = 1 ]; then
   step "5 MPSRF (mode: $MPSRF_MODE)"

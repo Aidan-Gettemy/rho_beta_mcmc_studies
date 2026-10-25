@@ -231,7 +231,7 @@ def test_post_template_flags_exist_in_the_scripts_and_dims_specs_are_valid():
         return out.split("\n")[:-1]
 
     scripts = dict(DIAG_FLAGS="plot_glam_diagnostics.py", TRACE_FLAGS="plot_glam_traces.py", POST_FLAGS="glam_postprocess.py",
-                   FIELD_FLAGS="plot_glam_fields.py", MPSRF_FLAGS="glam_mpsrf.py")
+                   FIELD_FLAGS="plot_glam_fields.py", EXPORT_FLAGS="export_glam_fields.py", MPSRF_FLAGS="glam_mpsrf.py")
     for arr, script in scripts.items():
         flags = [a for a in array(arr) if a.startswith("--")]
         assert flags, arr
@@ -363,3 +363,48 @@ def test_reference_projection_job_flags_exist_and_conda_is_pinned():
     flags = [a for a in out if a.startswith("--")]
     assert flags and all(re.search(re.escape(f) + r"(\s|,|\])", helptext) for f in flags), flags
     assert out[out.index("--ref-beta") + 1] == "9.869232667160132e-14" and out[out.index("--ref-rho") + 1] == "1.0"
+
+
+def test_compare_fields_and_export_with_synthetic_files(tmp_path, monkeypatch):
+    """plot_glam_fields.compare_fields statistics and export_glam_fields (.npy, VTK) on a small synthetic run."""
+    import subprocess
+    nx, ny, nz, nt = 8, 8, 5, 3
+    n = nx * ny * nz
+    rng = np.random.default_rng(3)
+    ref = rng.standard_normal(n)
+    mean, std = ref + 0.1 * rng.standard_normal(n), 0.2 * np.ones(n)
+    root = tmp_path / "root"
+    monkeypatch.setenv("BRHO_ROOT", str(root))
+    from brho import io
+    exp = io.EXP_GLAM + "_t"
+    pdir = os.path.join(io.results_dir(exp), "post"); os.makedirs(pdir)
+    np.savez(os.path.join(pdir, "best_fields.npz"), logperm=ref + 0.05, conc=rng.random((n, nt)), pressure=rng.random(n),
+             dp_pa=3300.0, phi=9.0, rho=0.97, beta=9.5e-14, rank=2, iteration=123)
+    np.savez(os.path.join(pdir, "field_stats.npz"), logperm_mean=mean, logperm_std=std, conc_mean=rng.random((n, nt)))
+    np.savetxt(tmp_path / "Kref.dat", np.exp(ref))
+    np.savetxt(tmp_path / "tc.dat", rng.random((n, nt)))
+    cfg = tmp_path / "DATA.cfg"
+    cfg.write_text("")
+    import export_glam_fields as X
+    monkeypatch.setattr(X, "physics_from_cfg", lambda c: dict(nx=nx, ny=ny, nz=nz, Lx=0.008, Ly=0.008, Lz=0.005))
+    monkeypatch.setattr(sys, "argv", ["x", "--exp-tag", "t", "--cfg", str(cfg), "--ref-field", str(tmp_path / "Kref.dat"),
+                                      "--ref-conc", str(tmp_path / "tc.dat")])
+    X.main()
+    ed = os.path.join(pdir, "export")
+    best = np.load(os.path.join(ed, "best_lnK.npy"))
+    assert best.shape == (nx, ny, nz) and np.allclose(best.ravel(order="F"), ref + 0.05)
+    assert np.allclose(np.load(os.path.join(ed, "best_minus_ref.npy")), 0.05)
+    assert os.path.exists(os.path.join(ed, "ref_conc_t3.npy")) and os.path.exists(os.path.join(ed, "best_state.json"))
+    vtk = open(os.path.join(ed, "glam_fields.vtk")).read().splitlines()
+    assert vtk[3] == "DATASET STRUCTURED_POINTS" and vtk[4] == f"DIMENSIONS {nx + 1} {ny + 1} {nz + 1}"
+    assert f"CELL_DATA {n}" in vtk and "SCALARS zscore double 1" in vtk
+    i0 = vtk.index("SCALARS best_lnK double 1") + 2
+    assert np.allclose([float(x) for x in vtk[i0:i0 + n]], ref + 0.05, atol=1e-6)      # x fastest, as in the solver
+    import plot_glam_fields as F
+    from brho.glam import post
+    mask = post.plug_mask(nx, ny, nz)
+    odir = tmp_path / "figs"; odir.mkdir()
+    made = F.compare_fields(ref, ref + 0.05, mean, std, mask, (nx, ny, nz), [1, 3, 5], str(odir), (8.0, 8.0), exp)
+    js = io.load_json(os.path.join(io.tables_dir(exp), "field_comparison.json"))
+    assert abs(js["best"]["rmse"] - 0.05) < 1e-12 and js["posterior"]["coverage_2sd"] > 0.9
+    assert all(os.path.getsize(p) > 0 for p in made)
