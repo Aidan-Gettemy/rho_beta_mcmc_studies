@@ -106,13 +106,16 @@ def main():
             ph = physics_from_cfg(margs["cfg"])
             grid = (ph["nx"], ph["ny"], ph["nz"])
             plug = post.plug_mask(*grid)
-        if rank == 0:                                   # the best state first (one forward solve on rank 0)
-            bz = np.load(os.path.join(pdir, "best_state.npz"))
-            print(f"[glam-post] best state: one forward solve on rank 0 (pressure output {'on' if args.pressure else 'off'}) ...", flush=True)
-            t1 = time.time()
-            bf = post.best_fields(model, dict(theta=bz["theta"], w=float(bz["w"]), phi=float(bz["phi"]),
-                                              rank=int(bz["rank"]), iteration=int(bz["iteration"])), rank,
-                                want_pressure=args.pressure)
+        # the best state first.  Every rank solves it (the same state, in lockstep, exactly as the sampler runs its chains)
+        # and only rank 0 keeps the result: a lone solve on rank 0 while the others wait in a barrier hung on Juno.
+        bz = np.load(os.path.join(pdir, "best_state.npz"))
+        if rank == 0:
+            print(f"[glam-post] best state: forward solve on all {P} ranks (pressure output {'on' if args.pressure else 'off'}) ...", flush=True)
+        t1 = time.time()
+        bf = post.best_fields(model, dict(theta=bz["theta"], w=float(bz["w"]), phi=float(bz["phi"]),
+                                          rank=int(bz["rank"]), iteration=int(bz["iteration"])), rank,
+                              want_pressure=args.pressure)
+        if rank == 0:
             np.savez_compressed(os.path.join(pdir, "best_fields.npz"), **bf)
             print(f"[glam-post] best fields: Phi recomputed {bf['phi']:.4g} (chain value {bf['phi_chain']:.4g}); one forward solve took {time.time() - t1:.1f} s", flush=True)
         comm.Barrier()
