@@ -106,13 +106,18 @@ def main():
             ph = physics_from_cfg(margs["cfg"])
             grid = (ph["nx"], ph["ny"], ph["nz"])
             plug = post.plug_mask(*grid)
-        if rank == 0:                                   # the best state first (one forward solve on rank 0)
-            bz = np.load(os.path.join(pdir, "best_state.npz"))
-            print(f"[glam-post] best state: one forward solve on rank 0 (pressure output {'on' if args.pressure else 'off'}) ...", flush=True)
-            t1 = time.time()
-            bf = post.best_fields(model, dict(theta=bz["theta"], w=float(bz["w"]), phi=float(bz["phi"]),
-                                              rank=int(bz["rank"]), iteration=int(bz["iteration"])), rank,
-                                want_pressure=args.pressure)
+        # the best state first.  Every rank solves it (the same state, in lockstep, exactly as the sampler runs its chains)
+        # and only rank 0 keeps the result.  Reason: the tracer imports petsc4py lazily at its first call, and PETSc's
+        # initialisation is collective over MPI_COMM_WORLD, so a first call on rank 0 alone deadlocks (seen on Juno:
+        # rank 0 stuck in rwPETSc.py's import while ranks 1-11 waited in the barrier).
+        bz = np.load(os.path.join(pdir, "best_state.npz"))
+        if rank == 0:
+            print(f"[glam-post] best state: forward solve on all {P} ranks (pressure output {'on' if args.pressure else 'off'}) ...", flush=True)
+        t1 = time.time()
+        bf = post.best_fields(model, dict(theta=bz["theta"], w=float(bz["w"]), phi=float(bz["phi"]),
+                                          rank=int(bz["rank"]), iteration=int(bz["iteration"])), rank,
+                              want_pressure=args.pressure)
+        if rank == 0:
             np.savez_compressed(os.path.join(pdir, "best_fields.npz"), **bf)
             print(f"[glam-post] best fields: Phi recomputed {bf['phi']:.4g} (chain value {bf['phi_chain']:.4g}); one forward solve took {time.time() - t1:.1f} s", flush=True)
         comm.Barrier()
