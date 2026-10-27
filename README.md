@@ -111,7 +111,7 @@ brho/                     library (no experiment logic)
   samplers.py             pcn_fixed_pair (E2); ThreeStepSampler (E4); SoftCurveSampler (E5/E7/E8);
                           run_chunk/load_chains (checkpointed, exact resume and extension)
   multiscale.py           local-KLE assemble-and-project innovation, Sigma_ms = B B^T, whitening
-                          (Pereira, "Variance control in distribution")
+                          ("Variance control in distribution")
   blockpcn.py             E8: local theta subspaces per subdomain (primal + dual), coarse
                           complement, block pCN moves, reach maps
   mpsrf.py                MPSRF / PSRF curves, port of the group's MATLAB getMSPRF / computeMPSRFcurve
