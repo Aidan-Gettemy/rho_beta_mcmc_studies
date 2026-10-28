@@ -27,34 +27,34 @@
  ],
  "stride": 10,
  "start_iteration": 14000,
- "n_samples": 600,
+ "n_samples": 2600,
  "curves": {
   "rho (w)": {
    "dim": 1,
-   "final_mpsrf": 1.0004584275059762,
+   "final_mpsrf": 0.9998701695153199,
    "convergence_iteration": 15200.0,
    "level": 1.2,
-   "seconds": 0.04273653030395508
+   "seconds": 0.07839155197143555
   },
   "first 100": {
    "dim": 100,
-   "final_mpsrf": 1.0826302239463765,
+   "final_mpsrf": 1.0146097384752022,
    "convergence_iteration": 16392.0,
    "level": 1.2,
-   "seconds": 0.03210186958312988
+   "seconds": 0.14762544631958008
   },
   "block 0": {
    "dim": 500,
-   "final_mpsrf": 1.3413461847300658,
-   "convergence_iteration": null,
+   "final_mpsrf": 1.068682921990088,
+   "convergence_iteration": 24163.0,
    "level": 1.2,
-   "seconds": 0.646115779876709
+   "seconds": 2.4793074131011963
   }
  },
  "psrf_final": {
-  "max": 1.013611412367623,
-  "p99": 1.0071776105642776,
-  "median": 1.0010218739586896,
+  "max": 1.0010979382104725,
+  "p99": 1.0005175467233192,
+  "median": 0.9999171735006994,
   "frac_below_1p1": 1.0,
   "frac_below_level": 1.0
  }
