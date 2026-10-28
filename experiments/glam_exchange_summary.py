@@ -50,11 +50,17 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--exp-tag", default="")
     ap.add_argument("--every", type=int, default=1, help="print every k-th exchange")
+    ap.add_argument("--root", default=None, help="BRHO_ROOT: the folder holding results/ figures/ tables/ (default: $BRHO_ROOT, "
+                                                 "else runs/cluster if it exists, else the repo)")
     args = ap.parse_args()
+    if args.root:
+        os.environ["BRHO_ROOT"] = args.root
+    elif "BRHO_ROOT" not in os.environ and os.path.isdir(os.path.join(io.REPO, "runs", "cluster", "results")):
+        os.environ["BRHO_ROOT"] = os.path.join(io.REPO, "runs", "cluster")      # where the cluster jobs write (cluster/env.sh)
     exp = io.EXP_GLAM + (f"_{args.exp_tag}" if args.exp_tag else "")
     path = os.path.join(io.results_dir(exp), "exchanges.pkl")
     if not os.path.exists(path):
-        raise SystemExit(f"{path} not found (written when the run finishes)")
+        raise SystemExit(f"{path} not found (written when the run finishes; wrong folder? pass --root <folder with results/>)")
     with open(path, "rb") as f:
         R = rows(pickle.load(f))
     names = [c[0] for c in COLUMNS] + [c[0] for c in RESTART] + ["best_role"]
