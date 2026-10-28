@@ -458,3 +458,38 @@ def test_r24_script_parses_to_the_intended_config():
     assert "#SBATCH --ntasks=24" in script and "#SBATCH --partition=h200" in script and "GLAM_TAG=r24" in script
     assert "export BRHO_CONDA_ENV=/home/arg210006/.conda/envs/darcyMCMC" in script
     assert "N_SUB=12" in script
+
+
+def test_r24m_scripts_and_exchange_summary(tmp_path, monkeypatch):
+    """glam_r24m(.pilot).sbatch: open archive, role split 25/25/50, no minimum distance; the exchange summary reads a toy run."""
+    import dataclasses, pickle, subprocess, sys
+    sys.path.insert(0, os.path.join(REPO, "experiments"))
+    import run_glam
+    for name, n_iter, tag in (("glam_r24m.sbatch", 40000, "r24m"), ("glam_r24m_pilot.sbatch", 3000, "r24m-pilot")):
+        path = os.path.join(REPO, "cluster", "slurm", name)
+        script = open(path).read()
+        out = subprocess.run(["bash", "-c", f'source <(sed -n "/^GLAM_FLAGS=(/,/^)/p" {path}); printf "%s\\n" "${{GLAM_FLAGS[@]}}"'],
+                             capture_output=True, text=True, check=True).stdout.split("\n")[:-1]
+        cfg = C.from_cli(run_glam.build_parser().parse_args(out), C.GlamConfig)
+        flags = {a[2:].replace("-", "_") for a in out if a.startswith("--")}
+        assert {f.name for f in dataclasses.fields(C.GlamConfig)} <= flags
+        assert cfg.n_iter == n_iter and cfg.max_anchors < 0 and cfg.minimum_anchor_distance == 0.0
+        assert cfg.anchor_include_previous and cfg.anchor_use_best_state
+        assert abs(cfg.exploit_fraction + cfg.frontier_fraction + cfg.explore_fraction - 1.0) < 1e-12
+        assert (cfg.exploit_fraction, cfg.frontier_fraction, cfg.explore_fraction) == (0.25, 0.25, 0.5)
+        assert cfg.exploit_restart_scale < cfg.frontier_restart_scale < cfg.exploration_restart_scale
+        assert (cfg.sigma_conc, cfg.sigma_dp, cfg.target) == (0.002, 0.004, 0.25)
+        assert f"\nGLAM_TAG={tag} " in script and "#SBATCH --ntasks=24" in script and "#SBATCH --partition=h200" in script
+        assert "export BRHO_CONDA_ENV=/home/arg210006/.conda/envs/darcyMCMC" in script
+    monkeypatch.setenv("BRHO_ROOT", str(tmp_path))
+    from brho import io
+    exp = io.EXP_GLAM + "_t"
+    model, cfg, res = _toy_run(200, tempfile.mkdtemp(), P=4, max_anchors=-1, minimum_anchor_distance=0.0)
+    rdir = io.results_dir(exp); os.makedirs(rdir, exist_ok=True)
+    with open(os.path.join(rdir, "exchanges.pkl"), "wb") as f:
+        pickle.dump(res[0]["exchanges"], f)
+    import glam_exchange_summary as G
+    monkeypatch.setattr(sys, "argv", ["x", "--exp-tag", "t"])
+    G.main()
+    csv = open(os.path.join(io.tables_dir(exp), "exchanges.csv")).read().splitlines()
+    assert csv[0].startswith("iteration,phase,cycle,anchors") and len(csv) == 1 + len(res[0]["exchanges"])
