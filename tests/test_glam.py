@@ -493,3 +493,24 @@ def test_r24m_scripts_and_exchange_summary(tmp_path, monkeypatch):
     G.main()
     csv = open(os.path.join(io.tables_dir(exp), "exchanges.csv")).read().splitlines()
     assert csv[0].startswith("iteration,phase,cycle,anchors") and len(csv) == 1 + len(res[0]["exchanges"])
+
+
+def test_r24m2_scripts_selective_archive():
+    """glam_r24m2(.pilot).sbatch = r24m + minimum distance 3, score cut-off 0.5, quality tolerance 100, restart radii doubled."""
+    import dataclasses, subprocess, sys
+    sys.path.insert(0, os.path.join(REPO, "experiments"))
+    import run_glam
+    for name, n_iter, tag in (("glam_r24m2.sbatch", 40000, "r24m2"), ("glam_r24m2_pilot.sbatch", 3000, "r24m2-pilot")):
+        path = os.path.join(REPO, "cluster", "slurm", name)
+        script = open(path).read()
+        out = subprocess.run(["bash", "-c", f'source <(sed -n "/^GLAM_FLAGS=(/,/^)/p" {path}); printf "%s\\n" "${{GLAM_FLAGS[@]}}"'],
+                             capture_output=True, text=True, check=True).stdout.split("\n")[:-1]
+        cfg = C.from_cli(run_glam.build_parser().parse_args(out), C.GlamConfig)
+        flags = {a[2:].replace("-", "_") for a in out if a.startswith("--")}
+        assert {f.name for f in dataclasses.fields(C.GlamConfig)} <= flags
+        assert cfg.n_iter == n_iter and cfg.max_anchors < 0
+        assert (cfg.minimum_anchor_distance, cfg.minimum_diversity_score, cfg.quality_tolerance) == (3.0, 0.5, 100.0)
+        assert (cfg.exploit_restart_scale, cfg.frontier_restart_scale, cfg.exploration_restart_scale, cfg.restart_scale) == (0.02, 0.06, 0.16, 0.06)
+        assert cfg.restart_phi_tolerance == 30.0 and cfg.logdet_gain_scale == 10.0
+        assert (cfg.exploit_fraction, cfg.frontier_fraction, cfg.explore_fraction) == (0.25, 0.25, 0.5)
+        assert f"\nGLAM_TAG={tag} " in script and f"#SBATCH -J glam-{tag}\n" in script
