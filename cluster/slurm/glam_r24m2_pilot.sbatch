@@ -126,7 +126,7 @@ GLAM_FLAGS=(
   --quality-score-weight 0.5
   --minimum-logdet-gain -1.0
   --diversity-alpha 0.85              # r24: 0.7
-  --logdet-gain-scale 1.0
+  --logdet-gain-scale 10.0        # r24m: 1.0.  Gain (nats) at which the log-det novelty reaches 0.63; with 1.0 it saturated at 1 for every candidate (regularization 1e-6), so the 0.5 cut-off never bound
   --minimum-diversity-score 0.5        # r24m: 0.0.  Cut-off on the archive score (0.85 log-det novelty + 0.15 distance novelty): the archive stops growing when no candidate reaches it
   --archive-selection-temperature 0.3 # r24: 0.1.  More stochastic selection
   --exploit-fraction 0.25             # share of chains optimising near the best anchor

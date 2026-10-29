@@ -511,6 +511,6 @@ def test_r24m2_scripts_selective_archive():
         assert cfg.n_iter == n_iter and cfg.max_anchors < 0
         assert (cfg.minimum_anchor_distance, cfg.minimum_diversity_score, cfg.quality_tolerance) == (3.0, 0.5, 100.0)
         assert (cfg.exploit_restart_scale, cfg.frontier_restart_scale, cfg.exploration_restart_scale, cfg.restart_scale) == (0.02, 0.06, 0.16, 0.06)
-        assert cfg.restart_phi_tolerance == 30.0
+        assert cfg.restart_phi_tolerance == 30.0 and cfg.logdet_gain_scale == 10.0
         assert (cfg.exploit_fraction, cfg.frontier_fraction, cfg.explore_fraction) == (0.25, 0.25, 0.5)
         assert f"\nGLAM_TAG={tag} " in script and f"#SBATCH -J glam-{tag}\n" in script
