@@ -58,7 +58,7 @@ $$\Phi(\kappa) = \frac{\lVert d - O\,p(\kappa)\rVert^2}{2\,\sigma_{\text{rel}}^2
 with O the observation operator and σ_rel the noise level. It is dimensionless and does not change with
 mesh refinement. The posterior is π(θ, ρ, β | d) ∝ exp(−Φ) · π₀(θ) π₀(ρ) π₀(β).
 
-## The challenge: two directions the data cannot see
+## The challenge: lack of identifiability
 
 With an inflow flux and a fixed outlet pressure, scaling the permeability by b scales the pressure by 1/b.
 From this flux-scaling lemma follow two exact invariances (paper, Lemmas 1–2):
