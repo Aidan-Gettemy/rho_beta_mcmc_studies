@@ -1,6 +1,6 @@
 # Bayesian Inversion of a Hierarchical Log-Permeability Model
 
-This repository solves a **Bayesian inverse problem for rock permeability** using measurements resulting from a
+This repository solves a **Bayesian inverse problem for (synthetic) rock permeability** distributions using measurements resulting from a
 flow experiment (pressures, or tracer concentrations over time). We recover a probability distribution
 over permeability fields. The code builds the model, runs the Markov chain
 Monte Carlo (MCMC) samplers, and produces every figure and table of the accompanying study.
