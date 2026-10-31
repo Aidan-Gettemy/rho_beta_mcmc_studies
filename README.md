@@ -5,8 +5,8 @@ flow experiment (pressures, or tracer concentrations over time). The code builds
 Monte Carlo (MCMC) samplers, and produces every figure and table of the accompanying study.
 
 The main contribution is a way to make **hierarchical** permeability models usable. These are models where
-the overall permeability level and the strength of its heterogeneity are unknowns too. Such models are
-physically natural but, as we show, partly unidentifiable from pressure data, which stalls standard
+the overall permeability level and the strength of its heterogeneity are unknown. Such models are
+physically natural but partly unidentifiable from pressure data, which stalls standard
 samplers. One extra measurement, the sample's **effective permeability**, removes the problem.
 
 This is working research code.
@@ -17,8 +17,8 @@ Marcio Borges (Laboratório Nacional de Computação
 Científica, LNCC) and Rafael Guiraldello (Piri Technologies).
 
 **Acknowledgements.**
-- The 2D/3D forward solver (`brho/fv.py`) follows Marcio Borges' finite-volume slab solver (`simulators_tools.py`).
-- The convergence diagnostics port the Felipe Pereira's MATLAB MPSRF routines.
+- The 2D/3D forward solver (`brho/fv.py`) follows Marcio Borges' finite-volume slab solver.
+- The convergence diagnostics port Felipe Pereira's MATLAB MPSRF routines.
 - Claude Code (Anthropic) was used to synthesize the existing KLE codes, forward solver, MCMC samplers and
   auxiliary files into this package, and to keep the repository organized.
 
@@ -26,7 +26,7 @@ Científica, LNCC) and Rafael Guiraldello (Piri Technologies).
 
 ## The model
 
-**Forward problem.** Single-phase Darcy flow through a sample occupying the unit square or cube. The
+**Forward problem.** Simple case is single-phase Darcy flow through a sample occupying the unit square or cube. The
 pressure p solves
 
 $$-\nabla\cdot(\kappa\nabla p) = 0, \qquad -\kappa\nabla p\cdot n = q_{\text{in}} \text{ on the inflow face}, \qquad p = 0 \text{ on the outflow face},$$
@@ -93,10 +93,10 @@ Each costs one forward solve, is gradient-free, and has a likelihood-only accept
 ridge needs no special move: the prior on θ, whose norm concentrates near √r, is informative enough to
 settle it.
 
-**β for free.** On the curve, β is only a function of ρ, so its interval is too narrow. A post-processing
+**β for free.** On the curve, β is only a function of ρ, so its interval may be too narrow. A post-processing
 step, the **level split**, restores the honest uncertainty in β. It uses the curve's scatter
 s(ρ) as the prior log β | ρ ~ N(log β̄(ρ), s(ρ)²). The conditional posterior of log β given each kept
-sample is then Gaussian in closed form (paper, Corollary 1). Each sample is moved along the level-swap
+sample is then Gaussian in closed form. Each sample is moved along the level-swap
 direction, so log κ, ρ and every field summary are unchanged, and **no forward solves** are needed.
 
 ## Results (2D Poisson problem)
@@ -115,8 +115,7 @@ Each sampler ran 64 chains at **2.0 million forward solves per chain**, with the
 Medians with 90% intervals. The two samplers recover **the same permeability field**, as they must, since
 the data pin log κ. They differ in two ways:
 - **Speed:** the curve sampler converges, and the naive one does not within the same budget.
-- **The meaning of β:** the curve sampler's β comes from a physical measurement. The naive sampler's β comes
-  from an arbitrary prior, which pulls it low and widens it (sd of log β 0.34 against 0.25).
+- **β:** the curve sampler's β comes from the relationship with effective permeability. The naive sampler's β is only determined by the prior.
 
 | | |
 |---|---|
@@ -209,5 +208,5 @@ LOG.md         dated log of every run: settings, headline numbers, decisions
 
 - **[docs/technical_guide.md](docs/technical_guide.md):** every experiment, figure, modelling switch and
   run folder in detail.
-- **`LOG.md`:** the history of the study, including the dead ends.
+- **`LOG.md`:** repository activity.
 - **Background on the hierarchical model and the non-uniqueness:** project reports.
