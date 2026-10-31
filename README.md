@@ -1,8 +1,8 @@
 # Bayesian Inversion of a Hierarchical Log-Permeability Model
 
-This repository solves a **Bayesian inverse problem for rock permeability**: given measurements from a
-flow experiment (pressures, or tracer concentrations over time), it recovers a probability distribution
-over permeability fields, not just a single best fit. The code builds the model, runs the Markov chain
+This repository solves a **Bayesian inverse problem for rock permeability** using measurements resulting from a
+flow experiment (pressures, or tracer concentrations over time). We recover a probability distribution
+over permeability fields. The code builds the model, runs the Markov chain
 Monte Carlo (MCMC) samplers, and produces every figure and table of the accompanying study.
 
 The main contribution is a way to make **hierarchical** permeability models usable. These are models where
@@ -13,14 +13,13 @@ samplers. One extra measurement, the sample's **effective permeability**, remove
 This is working research code.
 
 **Authors.** Aidan Gettemy, with
-[Felipe Pereira](https://profiles.utdallas.edu/luisfelipe.pereira) (University of Texas at Dallas),
-[Marcio Borges](https://www.researchgate.net/profile/Marcio-Borges-4) (Laboratório Nacional de Computação
+Felipe Pereira (University of Texas at Dallas),
+Marcio Borges (Laboratório Nacional de Computação
 Científica, LNCC) and Rafael Guiraldello (Piri Technologies).
 
 **Acknowledgements.**
 - The 2D/3D forward solver (`brho/fv.py`) follows Marcio Borges' finite-volume slab solver (`simulators_tools.py`).
-- The Karhunen–Loève construction ports the group's `KLE_matlab` code.
-- The convergence diagnostics port the group's MATLAB MPSRF routines.
+- The convergence diagnostics port the Felipe Pereira's MATLAB MPSRF routines.
 - Claude Code (Anthropic) was used to synthesize the existing KLE codes, forward solver, MCMC samplers and
   auxiliary files into this package, and to keep the repository organized.
 
@@ -154,9 +153,9 @@ reads results and writes figures and tables. Committed results live under `runs/
 
 ### The 3D core-plug problem (tracer data)
 
-- **3D offline curve:** the β̄(ρ) curve for a 38 × 38 × 45 cylindrical core plug, computed with the group's
+- **3D offline curve:** the β̄(ρ) curve for a 38 × 38 × 45 cylindrical core plug, computed with the an
   external Darcy solver (not part of this repository) and multiscale whitened fields. It is fitted with
-  even polynomials and a monotone PCHIP interpolant.
+  even polynomials and a monotone spline interpolant.
   - Code: `experiments/run_external_curve.py`.
   - Setup: `external/README.md`.
 - **GLAM sampler** (global-local anchored multistage sampling): the multiscale sampler on the PCHIP curve,
@@ -212,4 +211,4 @@ LOG.md         dated log of every run: settings, headline numbers, decisions
 - **[docs/technical_guide.md](docs/technical_guide.md):** every experiment, figure, modelling switch and
   run folder in detail.
 - **`LOG.md`:** the history of the study, including the dead ends.
-- **Background on the hierarchical model and the non-uniqueness:** the group's project reports.
+- **Background on the hierarchical model and the non-uniqueness:** project reports.
