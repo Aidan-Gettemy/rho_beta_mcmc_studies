@@ -167,8 +167,9 @@ reads results and writes figures and tables. Committed results live under `runs/
 ### Additional capabilities
 
 - **Multiscale sampling:** local-KLE subdomain proposals and their whitening, following
-  Ali, Al-Mamun, Pereira & Rahunanthan, "Multiscale sampling for the inverse modeling of partial differential
-  equations", *J. Comput. Phys.* 497 (2024) 112609.
+  Ali, Al-Mamun, Pereira & Rahunanthan,
+  ["Multiscale sampling for the inverse modeling of partial differential equations"](https://www.sciencedirect.com/science/article/abs/pii/S0021999123007040),
+  *J. Comput. Phys.* 497 (2024) 112609.
   - Code: `brho/multiscale.py`, `brho/blockpcn.py`.
 - **External solver port:** a solver contract any Darcy code can satisfy (`brho/darcy_external.py`).
 - **Sampler variants:**
