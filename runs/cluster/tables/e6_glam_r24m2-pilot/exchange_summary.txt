@@ -1,0 +1,10 @@
+ iteration      phase      cycle    anchors   eligible   phi_best    phi_med    phi_max   dist_med   eff_rank     arch_s ok_exploit ok_frontier ok_explore sc_exploit sc_frontier sc_explore  best_role
+       500      LOCAL          0          1          1       6830       6830       6830          0          0     0.0239          1        nan        nan    0.01917        nan        nan    initial
+       902      LOCAL          1          9          9       5495       5553       5594      55.29      7.947     0.1048          1          1          1    0.01667       0.05     0.1547    explore
+      1304      LOCAL          2         11         11       4628       4680       4721      47.39      4.628     0.2852          1          1          1    0.01667       0.05       0.16    explore
+      1706      LOCAL          3         14         15       4090       4161       4186      73.67      5.181     0.5195          1          1          1    0.01667       0.05     0.1573    explore
+      2108      LOCAL          4         21         26       3701       3764       3798       60.8      5.703      1.035          1          1          1    0.01667       0.05     0.1573    exploit
+      2510      LOCAL          5         22         23       3385       3448       3484      67.31      4.239     0.9625          1          1          1    0.01667       0.05     0.1573    exploit
+      2912      LOCAL          6         21         22       3127       3176       3214      36.49      5.954      1.951          1          1          1    0.01667       0.05     0.1525    exploit
+
+13 exchanges; anchors max 24; archive rebuild: mean 0.81 s, max 2.17 s, total 0.2 min (per rank)
