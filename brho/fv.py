@@ -14,6 +14,21 @@ Discretization (identical to physics2d.Darcy2D in 2D):
 where `area` is the face area normal to the axis (h_y in 2D, h_y h_z in 3D).
 The system is symmetric positive definite.
 
+Dirichlet-Dirichlet option (`bc="dirichlet"`, opt-in; the default `bc="influx"`
+is the path above, unchanged):
+
+    p = p_left (default 1) on x = 0,  p = p_right (default 0) on x = 1,
+    no flow on all lateral faces.
+
+Each boundary cell gets the same half-cell face transmissibility to its
+Dirichlet face, T = (area / h_x) * 2 K_cell, added to the diagonal, with
+T * p_face on the right-hand side (so the right-hand side now depends on K).
+The matrix stays symmetric positive definite.  The flux through the left face
+is Q = sum_left T (p_left - p_cell) and the effective permeability is
+Keff = Q L / (A dp) = Q / (p_left - p_right) (L = A = 1).  Because the matrix
+is the influx matrix plus the left-face diagonal terms, the compiled fill
+kernel is not touched: the extra diagonal entries are added after the fill.
+
 Cells are ordered C-style on an (nx, ny[, nz]) array: m = (ix*ny + iy)*nz + iz
 (nz = 1 in 2D), so reshape(shape) gives an [ix, iy(, iz)] array.
 
@@ -155,10 +170,22 @@ class Permeameter:
     """Structured-grid permeameter; shape = (nx, ny) or (nx, ny, nz)."""
 
     def __init__(self, shape, q_in=1.0, solver="auto", backend="auto",
-                 cg_rtol=1e-10, cg_maxiter=20000):
+                 cg_rtol=1e-10, cg_maxiter=20000,
+                 bc="influx", p_left=None, p_right=None):
         shape = tuple(int(s) for s in shape)
         if len(shape) not in (2, 3):
             raise ValueError(shape)
+        if bc not in ("influx", "dirichlet"):
+            raise ValueError(f"bc must be 'influx' or 'dirichlet', got {bc!r}")
+        if bc == "influx":
+            if p_left is not None or p_right is not None:
+                raise ValueError("p_left / p_right apply only to bc='dirichlet'")
+        else:
+            p_left = 1.0 if p_left is None else float(p_left)
+            p_right = 0.0 if p_right is None else float(p_right)
+            if p_left == p_right:
+                raise ValueError("Dirichlet pressures p_left and p_right must differ")
+        self.bc, self.p_left, self.p_right = bc, p_left, p_right
         self.shape, self.dim = shape, len(shape)
         nx, ny = shape[:2]
         nz = shape[2] if self.dim == 3 else 1
@@ -188,7 +215,9 @@ class Permeameter:
         self.mL = np.flatnonzero(cells[:, 0] == 0)          # inflow cells
         self.mR = np.flatnonzero(cells[:, 0] == nx - 1)     # outflow cells
         self._b = np.zeros(self.N)
-        self._b[self.mL] = q_in * self._area_in
+        self._b[self.mL] = q_in * self._area_in       # influx right-hand side
+        # CSR positions of the left cells' diagonal entries (Dirichlet-left term)
+        self._dpos_L = self._np_fill.diag_pos[self.mL]
         self.axes = [(np.arange(s) + 0.5) / s for s in shape]
         self.xc = self.axes[0]
         self.points = np.stack(np.meshgrid(*self.axes, indexing="ij"), -1).reshape(-1, self.dim)
@@ -203,7 +232,22 @@ class Permeameter:
             _fill_csr_numba(k, *self._n3, *self._f, data)
         else:
             self._np_fill(k, data)
+        if self.bc == "dirichlet":
+            # half-cell link of the left cells to the p_left face (the right
+            # face's link is already in the fill)
+            data[self._dpos_L] += 2.0 * k[self.mL] * self._f[0]
         return data
+
+    def _rhs(self, K):
+        """Right-hand side.  Influx: constant.  Dirichlet: T_face * p_face on
+        the left and right boundary cells, so it depends on K."""
+        if self.bc == "influx":
+            return self._b
+        k = np.asarray(K, dtype=np.float64).ravel()
+        b = np.zeros(self.N)
+        b[self.mL] = 2.0 * k[self.mL] * self._f[0] * self.p_left
+        b[self.mR] += 2.0 * k[self.mR] * self._f[0] * self.p_right
+        return b
 
     def matrix(self, K):
         """SPD system matrix A (CSR) with A p = b."""
@@ -213,22 +257,23 @@ class Permeameter:
     def solve(self, K):
         """Cell pressures p (N,)."""
         A = self.matrix(K)
+        b = self._rhs(K)
         if self.solver == "splu":
-            return spla.splu(A.tocsc(), permc_spec="MMD_AT_PLUS_A").solve(self._b)
+            return spla.splu(A.tocsc(), permc_spec="MMD_AT_PLUS_A").solve(b)
         if self.solver == "spsolve":
-            return spla.spsolve(A.tocsc(), self._b)
+            return spla.spsolve(A.tocsc(), b)
         if self.solver == "cg":
-            return self._cg(A)
+            return self._cg(A, b)
         raise ValueError(self.solver)
 
-    def _cg(self, A):
+    def _cg(self, A, b=None):
         """Conjugate gradients on the symmetrically Jacobi-scaled system
         D A D y = D b, p = D y, D = diag(A)^(-1/2).  Relative residual
         tolerance `cg_rtol` (default 1e-10; pressure errors ~1e-11 relative,
         far below the data noise)."""
         d = 1.0 / np.sqrt(A.diagonal())
         As = A.multiply(d[:, None]).multiply(d[None, :]).tocsr()
-        bs = d * self._b
+        bs = d * (self._b if b is None else b)
         try:
             y, info = spla.cg(As, bs, rtol=self.cg_rtol, maxiter=self.cg_maxiter)
         except TypeError:                          # SciPy < 1.12
@@ -242,9 +287,27 @@ class Permeameter:
         writes its cache) in a single process before many ranks start."""
         self.solve(np.ones(self.N))
 
+    def boundary_flux(self, K, p):
+        """Dirichlet only: (Q_left, Q_right), the total flux entering through
+        the left face and leaving through the right face,
+            Q_left  = sum_left  T (p_left - p_cell),
+            Q_right = sum_right T (p_cell - p_right),  T = 2 K (area / h_x).
+        They are equal (to the linear-solver tolerance) by conservation."""
+        if self.bc != "dirichlet":
+            raise ValueError("boundary_flux is defined for bc='dirichlet'")
+        k = np.asarray(K, float).ravel()
+        fx = self._f[0]
+        ql = (2.0 * k[self.mL] * fx * (self.p_left - p[self.mL])).sum()
+        qr = (2.0 * k[self.mR] * fx * (p[self.mR] - self.p_right)).sum()
+        return float(ql), float(qr)
+
     def keff(self, K, p):
-        """Keff = Q L / (A dp); inflow-face pressure reconstructed from the
-        influx, p_face = p_cell + q (h_x/2) / K_cell; Q = q A, A = L = 1."""
+        """Keff = Q L / (A dp).
+        Influx: inflow-face pressure reconstructed from the influx,
+        p_face = p_cell + q (h_x/2) / K_cell; Q = q A, A = L = 1.
+        Dirichlet: Q = flux through the left face, dp = p_left - p_right."""
+        if self.bc == "dirichlet":
+            return self.boundary_flux(K, p)[0] / (self.p_left - self.p_right)
         k = np.asarray(K, float).ravel()
         p_face = p[self.mL] + self.q_in * (self.hs[0] / 2) / k[self.mL]
         return self.q_in / p_face.mean()
@@ -255,7 +318,9 @@ class Permeameter:
 
     def scaling_check(self, K, c=3.7):
         p1, p2 = self.solve(K), self.solve(c * np.asarray(K))
-        e_p = np.abs(p2 - p1 / c).max() / np.abs(p1 / c).max()
+        # influx: p(cK) = p(K)/c;  Dirichlet: p(cK) = p(K).  Keff(cK) = c Keff(K) in both.
+        p_exp = p1 if self.bc == "dirichlet" else p1 / c
+        e_p = np.abs(p2 - p_exp).max() / np.abs(p_exp).max()
         k1, k2 = self.keff(K, p1), self.keff(c * np.asarray(K), p2)
         return dict(p_rel_err=float(e_p), keff_rel_err=float(abs(k2 / (c * k1) - 1)))
 
