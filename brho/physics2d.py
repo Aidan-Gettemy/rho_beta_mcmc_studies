@@ -16,6 +16,10 @@ from .fv import Permeameter
 
 
 class Darcy2D(Permeameter):
-    def __init__(self, n=32, q_in=1.0, solver="auto", backend="auto"):
-        super().__init__((n, n), q_in=q_in, solver=solver, backend=backend)
+    def __init__(self, n=32, q_in=1.0, solver="auto", backend="auto",
+                 bc="influx", p_left=None, p_right=None):
+        # bc="dirichlet": p = p_left (1) on x = 0, p = p_right (0) on x = 1
+        # (see brho/fv.py); the default is the influx problem above.
+        super().__init__((n, n), q_in=q_in, solver=solver, backend=backend,
+                         bc=bc, p_left=p_left, p_right=p_right)
         self.n = n
