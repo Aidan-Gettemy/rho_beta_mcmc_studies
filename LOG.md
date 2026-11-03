@@ -1124,3 +1124,7 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 - Data: Dirichlet checkerboard (512 sensors), theta_true seed 2026, global relative noise 0.003; Phi at truth 0.57 (expected 0.5 for the global-norm likelihood).
 - Acceptance after adaptation 0.23-0.28 for all; median relative error plateau ~0.020 for 1, 2, 3a, 3b and both phases of 5; mixture (4) plateaus higher, 0.035. Phase switch in 5: Phi 21.6 -> 22.0, relerr 0.0197 -> 0.0199 (the lossy projection is harmless at the plateau).
 - Summaries in `runs/msm_local_kle_2026-11/pilot/<kind>/summary.json`.
+
+## 2026-11-02 - MSM experiment: post-processing and the six sbatch scripts
+- `experiments/run_msm_post.py`: AR histograms (500-it blocks after M; per grid for 4, per phase for 5), relative-error traces, MPSRF via `brho.mpsrf.mpsrf_curve` (MATLAB convention: skip 2, step 15, burn 10) on theta (range coordinates for the rank-58 runs), on local coefficients ((c, zeta) joint for 3b; both projections for 4; per phase for 5), pointwise mean/sd of log kappa and pressure from 5,000 post-M samples (2,500 per phase for 5). Tried on the pilots.
+- `cluster/slurm/msm_exp{1_global,2_primal_raw,3a_primal_pinv,3b_primal_aug,4_mixture,5_sequence}.sbatch`: self-contained, flags written in the script, conda env `gd24_numba` activated explicitly and checked, tests first, then chains, then post. Not yet submitted (no cluster access from here; numba path untested here).
