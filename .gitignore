@@ -24,3 +24,6 @@ external/solver/
 external/matrices/
 external/data/
 external/fields/
+# MSM local-KLE study: raw chains stay on the cluster (summary.json and post/ are committed)
+runs/msm_local_kle_*/**/chains.npz
+runs/msm_local_kle_*/**/post/fields.npz

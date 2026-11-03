@@ -1101,3 +1101,33 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 ## 2026-10-19 - Uncertainty figure for the external-solver curve (`runs/juno_external_2026-10/`)
 
 - `experiments/plot_external_uncertainty.py` (2000 bootstrap resamples over the 2048 realizations): `figures/e3_external/fit_uncertainty.png` and `tables/e3_external/fit_uncertainty.csv` (median and 90% interval of h and beta per model).
+
+## 2026-11-02 - MSM experiment: Sigma_ms rank test, primal grid FAILS at 4 local modes per block (`runs/msm_local_kle_2026-11/`)
+
+- Command: `BRHO_ROOT=runs/msm_local_kle_2026-11 python3 experiments/run_msm_rank_test.py` (no PDE solves, seconds). Spec: `docs/msm_local_kle_experiment.md`, Section 6.
+- Settings: 32 x 32, squared-exponential ell = 0.1, global KLE r = 64 (energy 0.966; lambda_63 = lambda_64 = 2.0077, lambda_65 = 1.5265, so no tie group is cut). Primal: 4 x 4 blocks of 8 x 8 cells, exactly 4 local modes per block (p = 64; the 4th and 5th local modes are not tied). Dual: 5 x 5 blocks, interfaces at (i + 1/2)/4, local dimension per block from the 95% local-energy rule (3,4,4,4,3 / 4,6,6,6,4 / 4,6,6,6,4 / 4,6,6,6,4 / 3,4,4,4,3; p = 114). tau = 1e-10.
+- Result, primal: r_+ = 58 of 64 (rank of B = 58). Six singular values of B are 7e-17 to 3e-14; the next one is 0.54 (cond(B) 2e16). FAIL.
+- Result, dual: r_+ = 64, singular values of B in [0.53, 1.74], cond(Sigma_ms) = 10.7. PASS.
+- Where the primal deficiency sits (6-dim null space of Sigma_ms, weight per global KLE mode): 4.75 of 6 in global modes 55-58, 63, 64; about 1.2 in modes 1, 2, 3, 5, 6.
+- Information only, not part of the agreed setup: with 5 local modes per block (cuts a tied pair in every block) r_+ = 63; with 6 per block (this is also what the 95% and the 90% local-energy rules give) r_+ = 64, d_min = 0.29, p = 96.
+- Decision: per the spec a failure stops the study before any sampling and nothing is changed silently. No chain was run. The whitened primal sampler (experiment 3) is not available at 4 modes per block (`theta_from_c(..., whiten=True)` refuses a rank-deficient Sigma_ms).
+- Code: `dual_block_index`, fixed `local_dim`, `local_field` / `local_coeffs` / `Pi` in `brho/multiscale.py` (default path bit-identical to before); `brho/msm_local.py`; `tests/test_msm_local.py`. Suite: 130 pass; the same 4 tests fail as on main before this change (2 need pytest fixtures, 2 are statistical sampler assertions).
+
+## 2026-11-02 - MSM experiment: 3a/3b split and prior test (likelihood off) of the six samplers
+- Decision (Aidan): keep 4 local modes/block; experiment 3 becomes 3a (pseudo-inverse whitening, null directions dropped) and 3b (whitening + null-space term V0 zeta, zeta in R^6 stepped with the same s). Spec updated; scripts guard primal r_+ == 58, dual r_+ == 64.
+- Code: `theta_from_c(..., pinv=, zeta=)`, `range_coords`, kinds `primal_pinv` / `primal_aug` in `brho/msm_local.py`; `Vp` in `MSInnovation`; `experiments/run_msm_prior_test.py`.
+- Run: 64 chains x 40,000 it., s = 0.5, burn 2,000, thin 20, `BRHO_ROOT=runs/msm_local_kle_2026-11`. Outputs in `figures|tables/msm_prior_test/`.
+- Result (cov err Frob/sqrt(r); pointwise var ratio mean, min-max): global 0.023, 1.000; 3b 0.023, 1.001 (pass, equals global); 3a 0.307, 0.925, 0.80-1.01 (matches the exact P_58 prediction); raw primal (2) 0.631, 0.783, 0.31-1.22; mixture (4) 0.422, 0.619, 0.51-0.97; sequence (5) phase 1 0.631 / phase 2 0.741, 0.783 / 0.752; phase-switch field change 8%.
+- Reading: alternating grids (4) does not remove the pointwise variance deficit, it deepens it (mean ratio 0.62 vs 0.78 for raw primal); it is not prior-preserving. MPSRF ~1.001 for all (range coordinates for 2, 3a, 5 phase 1).
+
+## 2026-11-02 - MSM experiment: pilots of the six samplers (16 chains, 10,000 it., 5,000 adaptation; sequence 5,000+5,000, 2,500 adaptation per phase)
+- Data: Dirichlet checkerboard (512 sensors), theta_true seed 2026, global relative noise 0.003; Phi at truth 0.57 (expected 0.5 for the global-norm likelihood).
+- Acceptance after adaptation 0.23-0.28 for all; median relative error plateau ~0.020 for 1, 2, 3a, 3b and both phases of 5; mixture (4) plateaus higher, 0.035. Phase switch in 5: Phi 21.6 -> 22.0, relerr 0.0197 -> 0.0199 (the lossy projection is harmless at the plateau).
+- Summaries in `runs/msm_local_kle_2026-11/pilot/<kind>/summary.json`.
+
+## 2026-11-02 - MSM experiment: post-processing and the six sbatch scripts
+- `experiments/run_msm_post.py`: AR histograms (500-it blocks after M; per grid for 4, per phase for 5), relative-error traces, MPSRF via `brho.mpsrf.mpsrf_curve` (MATLAB convention: skip 2, step 15, burn 10) on theta (range coordinates for the rank-58 runs), on local coefficients ((c, zeta) joint for 3b; both projections for 4; per phase for 5), pointwise mean/sd of log kappa and pressure from 5,000 post-M samples (2,500 per phase for 5). Tried on the pilots.
+- `cluster/slurm/msm_exp{1_global,2_primal_raw,3a_primal_pinv,3b_primal_aug,4_mixture,5_sequence}.sbatch`: self-contained, flags written in the script, conda env `gd24_numba` activated explicitly and checked, tests first, then chains, then post. Not yet submitted (no cluster access from here; numba path untested here).
+
+## 2026-11-02 - MSM experiment: selected field pairs
+- `run_msm_post.py` now also writes `post/field_pairs.png`: truth and the last saved state of four chains (experiment 5: two per phase), each as (log kappa, pressure, pressure minus truth pressure) with its relative error. Example from the 3b pilot in `runs/msm_local_kle_2026-11/pilot/primal_aug/post/`.

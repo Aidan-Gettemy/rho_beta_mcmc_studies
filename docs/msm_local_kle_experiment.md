@@ -1,8 +1,20 @@
 # Multiscale (local-KLE) pCN experiment: global pCN vs. primal, whitened and primal/dual MSM samplers
 
-Status: **specification, agreed with Aidan on 2026-11-02. No sampler code exists yet.**
-The Dirichlet-left solver option and its tests come first (Section 9); the samplers
-are written only after those pass and are reviewed.
+Status: **specification, agreed with Aidan on 2026-11-02; amended the same day (below).**
+The Dirichlet-left solver option and its tests (Section 9) are merged. The samplers'
+building blocks are in `brho/msm_local.py`; the production sampler is not written yet.
+
+**Sigma_ms rank test (Section 6, step 2), 2026-11-02: the primal grid FAILS** with 4 local
+modes per block (r_+ = 58 of 64, six exactly missing directions); the dual grid passes
+(r_+ = 64). Numbers: `LOG.md` (2026-11-02) and
+`runs/msm_local_kle_2026-11/tables/msm_rank_test/`.
+**Decision (Aidan, 2026-11-02):** keep 4 local modes per block and split experiment 3 into
+**3a** (whitened with the pseudo-inverse, null directions dropped) and **3b** (whitened with
+the report's null-space term). So there are six samplers: 1, 2, 3a, 3b, 4, 5. Experiments
+that need the primal grid run with the rank-deficient primal Sigma_ms (r_+ = 58) as
+documented in Sections 4-7. A guard in the prior-test and production scripts stops the study
+if the primal r_+ is anything but 58 or the dual r_+ anything but 64, since that would mean
+the setup changed and the decision must be revisited.
 
 ## 1. Question
 
@@ -10,9 +22,12 @@ How do the samplers that propose in *local* KLE coefficients (all subdomains at 
 then projected onto the global KLE) compare with plain global pCN, on a problem with
 no hierarchy (no beta, no rho)?
 
-- Experiment 3 (whitened) must reproduce experiment 1 (global pCN) within Monte Carlo
-  error, because the whitened innovation has exactly the global law
-  (`brho/multiscale.py`, Pereira's report). It is a correctness check, not a speed-up.
+- Experiment 3b (whitened, with the null-space term) must reproduce experiment 1 (global
+  pCN) within Monte Carlo error, because the whitened innovation then has exactly the
+  global law (`brho/multiscale.py`, Pereira's report). It is a correctness check, not a
+  speed-up. Experiment 3a drops the six null directions (the primal Sigma_ms has rank 58),
+  so its prior has zero variance along them; comparing 3a with 3b measures what those
+  six directions cost.
 - Experiment 2 (raw) is expected to show the variance deficit the report predicts.
 - Experiments 4 and 5 (raw primal + raw dual) test whether alternating between a
   primal and a dual decomposition removes the bias in the pointwise log-permeability
@@ -53,12 +68,15 @@ no hierarchy (no beta, no rho)?
 | pCN | s_new = sqrt(1 - s^2) x_old + s xi; acceptance min(1, exp(Phi - Phi')), likelihood only |
 | one forward solve per iteration | yes, in every experiment |
 
-## 4. The five samplers
+## 4. The six samplers (experiments 1, 2, 3a, 3b, 4, 5)
 
 Notation: B is the assemble-and-project matrix of `brho/multiscale.py` (column
 (k, j) = projection onto the global KLE of the local mode sqrt(mu_j^k) psi_j^k of block k,
 extended by zero), P is the L2 projection onto the global KLE, c are local KLE
-coefficients, p is the number of local coefficients.
+coefficients, p is the number of local coefficients. Sigma_ms = B B^T = V D V^T,
+V_+ the eigenvectors with d_i > tau d_1 (tau = 1e-10), V_0 the rest, and
+W_+ = V_+ diag(d_+^(-1/2)) V_+^T. For the primal grid with 4 modes per block
+r_+ = 58 and V_0 has 6 columns.
 
 1. **Global pCN (control).** State theta in R^64, innovation N(0, I_64), one step size.
 2. **Primal MSM, raw.** 4 x 4 blocks (16 subdomains), 4 local modes per block, so
@@ -71,13 +89,22 @@ coefficients, p is the number of local coefficients.
    forward solve, relative misfit, Phi. Acceptance uses the likelihood ratio only.
    The target in c is N(0, I_p) x likelihood, i.e. the implied prior on theta is
    N(0, B B^T), not N(0, I_r). This is "what the method is"; it is not corrected.
-3. **Primal MSM, whitened.** As experiment 2, with the whitening of Pereira's report
-   (`multiscale_variance_control.pdf`) placed in the forward map: theta = W B c, with
-   W = V_+ diag(d^-1/2) V_+^T from Sigma_ms = B B^T = V D V^T. Then theta has law
-   N(0, I_r) exactly and c is plain pCN. The theta-dynamics are those of the report's
-   whitened innovation. (If Sigma_ms were rank-deficient the report's null-space term
-   V_0 zeta would be added, with zeta as extra pCN state coordinates; Section 6 requires
-   that this not be needed.)
+3. **Primal MSM, whitened** (Pereira's report, `multiscale_variance_control.pdf`),
+   with the whitening placed in the forward map. Because the primal Sigma_ms is
+   rank-deficient (r_+ = 58), there are two variants, both with all blocks proposed
+   simultaneously and one step size:
+   - **3a, pseudo-inverse (null directions dropped).** State c in R^64,
+     theta = W_+ B c. The implied prior on theta is N(0, V_+ V_+^T): exactly whitened on
+     the 58 reachable directions, zero variance along the 6 null directions
+     (cov error sqrt(6/64) = 0.306; pointwise prior variance 0.80-1.00 of the target,
+     mean 0.93; computed exactly). The chain can never move theta along V_0.
+   - **3b, with the null-space term.** State (c, zeta), zeta in R^6, both stepped by pCN
+     with the same s: c' = sqrt(1 - s^2) c + s eta, zeta' = sqrt(1 - s^2) zeta + s nu,
+     theta = W_+ B c + V_0 zeta. This is the report's whitened innovation
+     xi = W B eta + V_0 zeta, so theta has law N(0, I_64) exactly (operator check
+     ~1e-15) and the theta-dynamics are those of global pCN.
+   In both, `theta_from_c(..., whiten=True)` (exact whitening) still refuses a
+   rank-deficient Sigma_ms; 3a and 3b are explicit modes ("pinv", "augmented").
 4. **Primal + dual mixture, raw.** The chain state is the global theta. Each iteration,
    with probability 0.5 use the primal grid and with probability 0.5 the dual grid.
    For the chosen grid g: project the current global field onto g's local KLE
@@ -110,7 +137,7 @@ coefficients, p is the number of local coefficients.
 |---|---|
 | relative error \|\|d - O p\|\| / \|\|d\|\| and Phi | every iteration |
 | global theta (for the MSM runs: the theta obtained by projecting the local field onto the global KLE; for experiment 1 the state) | every 100 iterations, from iteration 0 |
-| local coefficients c | every 100 iterations, from iteration 0. Experiments 2, 3: the state. Experiment 4: both Pi_primal theta and Pi_dual theta of the current state. Experiment 5: c_primal in phase 1, c_dual in phase 2 |
+| local coefficients c | every 100 iterations, from iteration 0. Experiments 2, 3a, 3b: the state c (3b also zeta, 6 numbers). Experiment 4: both Pi_primal theta and Pi_dual theta of the current state. Experiment 5: c_primal in phase 1, c_dual in phase 2 |
 | acceptance rate | one value per chain per block of 500 iterations after M (experiment 5: after M within each phase; experiment 4: per grid) |
 | step sizes | at the end of adaptation, plus the adaptation history |
 | Phi just before / after the phase switch | experiment 5 |
@@ -122,14 +149,19 @@ coefficients, p is the number of local coefficients.
 2. **MPSRF** (`brho/mpsrf.py`, Felipe's MATLAB convention), curve and final value, on
    the saved samples after M:
    - on the global theta (all experiments);
-   - on the local coefficients c (experiments 2, 3; experiment 4 on both projections;
+   - on the local coefficients c (experiments 2, 3a, 3b; 3b on the joint (c, zeta); experiment 4 on both projections;
      experiment 5 per phase, because the dimension differs between phases, and
      theta across the full run).
    With 1,000 saved samples per chain the sample count exceeds every dimension
    (64 for theta and for the primal c; p_dual to be reported).
-   MPSRF is invariant under invertible linear maps, so when B is square and
-   invertible (primal, p = r = 64) the MPSRF on c and on theta must agree to rounding
-   (experiments 2 and 3). That is a consistency check on the code.
+   The primal B is square (64 x 64) but has rank 58, so theta = B c (experiments 2, 3a,
+   and phase 1 of 5) lives in a 58-dimensional subspace and the within-chain covariance
+   of theta is singular. MPSRF on theta for those runs is therefore computed in range
+   coordinates V_+^T theta (58 numbers; V_+ from the Sigma_ms eigendecomposition), and
+   the full 64-dim theta MPSRF is not reported for them. For 3b and experiment 1 theta
+   is full rank and is used as is. The invariance of MPSRF under invertible linear
+   maps no longer gives a c-versus-theta consistency check for 2 and 3a (B is not
+   invertible), so none is claimed.
 3. **Posterior fields.** A random subset (about 5,000, same count for every experiment)
    of the saved post-M global thetas is turned into log kappa = T theta and solved forward
    for the pressure. From these: pointwise mean and pointwise standard deviation of
@@ -155,11 +187,14 @@ coefficients, p is the number of local coefficients.
       for either grid. A failure stops the study before any sampling and is reported
       with the numbers above; nothing is "fixed" silently (for example, by adding a
       coarse move or changing the local dimension).
+      **Outcome (2026-11-02):** primal FAILS (58), dual passes (64). By decision of Aidan
+      the study proceeds with 4 modes per block and the 3a/3b split; the production and
+      prior-test scripts guard that primal r_+ == 58 and dual r_+ == 64 exactly.
 3. **Prior tests** (Phi = 0, no solves), experiments 2-5, against direct sampling of
    theta ~ N(0, I_64), as in `experiments/run_ms_prior_test.py`:
    Frobenius error of cov(theta) - I, the law of the spatial mean of the field and the
-   law of its empirical variance. Expected: experiment 3 passes; experiments 2, 4, 5
-   show the raw variance deficit. All results are reported before the posterior runs.
+   law of its empirical variance. Experiments 1, 2, 3a, 3b, 4, 5. Expected: 1 and 3b pass; 3a shows
+   the six-direction deficit (cov error about 0.306); 2, 4, 5 show the raw variance deficit. All results are reported before the posterior runs.
 4. **Short pilot** of each experiment (small N) to check the pipeline and the Phi
    floor, before the production runs.
 
@@ -176,7 +211,7 @@ coefficients, p is the number of local coefficients.
 
 ## 8. Cluster plan
 
-One self-contained sbatch script per experiment in `cluster/slurm/` (all run flags
+Six self-contained sbatch scripts (experiments 1, 2, 3a, 3b, 4, 5), one per experiment, in `cluster/slurm/` (all run flags
 written in the script itself, so rereading it shows how the run was made; a copy per
 experiment), one chain per CPU (64 CPUs), each script activating the conda environment
 explicitly (on Juno: `module load miniconda/24.11.1`, then
