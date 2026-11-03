@@ -41,7 +41,7 @@ export PYTHONPATH=$PWD:${PYTHONPATH:-}
 OUT=$BRHO_ROOT/exp5_sequence
 
 # ---- tests that must pass before sampling (cheap, no PDE solves except the solver tests) -------
-python -m pytest -q tests/test_dirichlet.py tests/test_msm_local.py
+python tests/run_tests.py test_dirichlet test_msm_local
 
 # ---- chains --------------------------------------------------------------------------------------
 python experiments/run_msm_chains.py \
