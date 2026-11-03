@@ -148,6 +148,7 @@ class MSInnovation:
         self.d = d
         self.r_plus = int((d > tol * d[0]).sum())
         Vp, self.V0 = V[:, :self.r_plus], V[:, self.r_plus:]
+        self.Vp = Vp
         self.W = Vp @ np.diag(1.0 / np.sqrt(d[:self.r_plus])) @ Vp.T
         self.WB = self.W @ self.B
         cov_white = self.W @ self.Sigma @ self.W.T + self.V0 @ self.V0.T

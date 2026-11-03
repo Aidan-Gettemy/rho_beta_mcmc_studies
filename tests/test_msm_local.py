@@ -105,16 +105,35 @@ def test_full_rank_with_six_local_modes_and_whitening():
     assert np.abs(P.WB @ P.WB.T - np.eye(64)).max() < 1e-12      # theta = W B c has law N(0, I)
 
 
-def test_whitened_map_refuses_rank_deficient_sigma():
+def test_whitened_map_refuses_rank_deficient_sigma_and_3a_3b_laws():
     S = _setup()
-    c = np.zeros((2, S.primal.p))
+    P = S.primal
+    c = np.zeros((2, P.p))
     try:
-        ML.theta_from_c(S.primal, c, whiten=True)
+        ML.theta_from_c(P, c, whiten=True)
     except ValueError as e:
         assert "rank-deficient" in str(e)
     else:
-        raise AssertionError("whitened map must refuse a rank-deficient Sigma_ms")
-    assert ML.theta_from_c(S.primal, c).shape == (2, 64)          # raw map is fine
+        raise AssertionError("exact whitened map must refuse a rank-deficient Sigma_ms")
+    assert ML.theta_from_c(P, c).shape == (2, 64)                 # raw map is fine
+    # exact laws: 3a  cov = V+ V+^T  (identity on the range, zero on the null space);
+    #             3b  cov = I
+    Wb = P.WB
+    cov_a = Wb @ Wb.T
+    assert np.abs(cov_a - P.Vp @ P.Vp.T).max() < 1e-10
+    cov_b = cov_a + P.V0 @ P.V0.T
+    assert np.abs(cov_b - np.eye(64)).max() < 1e-10
+    assert P.r_plus == 58 and P.V0.shape[1] == 6
+
+
+def test_range_coords_shape_and_roundtrip():
+    S = _setup()
+    P = S.primal
+    rng = np.random.default_rng(44)
+    th = ML.theta_from_c(P, rng.standard_normal((5, P.p)))
+    z = ML.range_coords(P, th)
+    assert z.shape == (5, 58)
+    assert np.abs(z @ P.Vp.T - th).max() < 1e-10                  # theta lies in the range
 
 
 def test_moves_deterministic_limits():
@@ -147,4 +166,8 @@ def test_prior_chain_shapes_and_switch():
     except ValueError:
         pass
     else:
-        raise AssertionError("whitened primal chain must refuse the rank-deficient 4-mode grid")
+        raise AssertionError("exact whitened primal chain must refuse the rank-deficient 4-mode grid")
+    out = ML.prior_chain("primal_pinv", S, m, n, thin, burn, 0.5, rng)
+    assert out["theta"].shape == (m, 6, 64) and "zeta" not in out
+    out = ML.prior_chain("primal_aug", S, m, n, thin, burn, 0.5, rng)
+    assert out["theta"].shape == (m, 6, 64) and out["zeta"].shape == (m, 6, 6)

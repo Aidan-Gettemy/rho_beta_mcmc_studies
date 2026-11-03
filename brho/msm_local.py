@@ -84,14 +84,30 @@ def step_c(c, s, rng):
     return np.sqrt(1.0 - s * s) * c + s * rng.standard_normal(np.shape(c))
 
 
-def theta_from_c(ms, c, whiten=False):
-    """Global theta (..., r) from local coefficients c (..., p)."""
-    if whiten:
-        if ms.V0.shape[1]:
-            raise ValueError("Sigma_ms is rank-deficient: the whitened map needs the "
-                             "null-space term V0 zeta, which is not part of this experiment")
-        return np.asarray(c) @ ms.WB.T
-    return np.asarray(c) @ ms.B.T
+def theta_from_c(ms, c, whiten=False, zeta=None, pinv=False):
+    """Global theta (..., r) from local coefficients c (..., p).
+      whiten=False            theta = B c                       (raw; experiments 2, 4, 5)
+      whiten=True             theta = W B c, exact whitening; refuses a rank-deficient
+                              Sigma_ms (the null directions would be silently dropped)
+      whiten=True, pinv=True  theta = W_+ B c, pseudo-inverse, null directions dropped
+                              (experiment 3a; prior N(0, V_+ V_+^T))
+      whiten=True, zeta=...   theta = W_+ B c + V_0 zeta  (experiment 3b; prior N(0, I))"""
+    c = np.asarray(c)
+    if not whiten:
+        return c @ ms.B.T
+    if zeta is not None:
+        return c @ ms.WB.T + np.asarray(zeta) @ ms.V0.T
+    if ms.V0.shape[1] and not pinv:
+        raise ValueError("Sigma_ms is rank-deficient: the exact whitened map needs the "
+                         "null-space term V0 zeta (pass zeta=...) or pinv=True (null "
+                         "directions dropped)")
+    return c @ ms.WB.T
+
+
+def range_coords(ms, theta):
+    """Coordinates V_+^T theta (..., r_+) of theta in the range of Sigma_ms; MPSRF
+    for theta that lives in that subspace (experiments 2, 3a, phase 1 of 5)."""
+    return np.asarray(theta) @ ms.Vp
 
 
 def theta_move_via_grid(ms, theta, s, rng):
@@ -102,7 +118,7 @@ def theta_move_via_grid(ms, theta, s, rng):
 
 
 # ------------------------------------------------------------ prior chains (Phi = 0)
-KINDS = ("global", "primal_raw", "primal_white", "mixture", "sequence")
+KINDS = ("global", "primal_raw", "primal_white", "primal_pinv", "primal_aug", "mixture", "sequence")
 
 
 def prior_chain(kind, setup, m, n_iter, thin, burn, s, rng, p_primal=0.5):
@@ -134,15 +150,24 @@ def prior_chain(kind, setup, m, n_iter, thin, burn, s, rng, p_primal=0.5):
             th = step_c(th, s, rng)
             record(i, kt, [], th)
         out["theta"] = np.stack(kt, 1)
-    elif kind in ("primal_raw", "primal_white"):
-        white = kind == "primal_white"
+    elif kind in ("primal_raw", "primal_white", "primal_pinv", "primal_aug"):
+        white = kind != "primal_raw"
+        aug = kind == "primal_aug"
         c = rng.standard_normal((m, P.p))                     # exact stationary start of c
-        kt, kc = [], []
+        z = rng.standard_normal((m, P.V0.shape[1])) if aug else None
+        kt, kc, kz = [], [], []
         for i in range(n_iter):
             c = step_c(c, s, rng)
+            if aug:
+                z = step_c(z, s, rng)                         # same step size as c
             if i >= burn and (i - burn) % thin == 0:
-                kt.append(theta_from_c(P, c, white)); kc.append(c.copy())
+                kt.append(theta_from_c(P, c, white, zeta=z, pinv=(kind == "primal_pinv")))
+                kc.append(c.copy())
+                if aug:
+                    kz.append(z.copy())
         out["theta"], out["c"] = np.stack(kt, 1), np.stack(kc, 1)
+        if aug:
+            out["zeta"] = np.stack(kz, 1)
     elif kind == "mixture":
         th = rng.standard_normal((m, r))
         kt = []
