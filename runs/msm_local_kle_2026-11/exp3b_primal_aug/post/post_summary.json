@@ -1,0 +1,37 @@
+{
+ "kind": "primal_aug",
+ "chains": 64,
+ "acceptance": {
+  "run": {
+   "mean": 0.2624383680555556,
+   "sd": 0.04347674011089252,
+   "min": 0.108,
+   "max": 0.45
+  }
+ },
+ "relerr_post_M_median": 0.020518029108643532,
+ "mpsrf": {
+  "theta": {
+   "dim": 64,
+   "n_samples": 900,
+   "mpsrf_final": 1.1204334071122806,
+   "psrf_max_final": 1.0741475627460384,
+   "convergence_iteration": 68506.0
+  },
+  "c_zeta_joint": {
+   "dim": 70,
+   "n_samples": 900,
+   "mpsrf_final": 1.1384316011296236,
+   "psrf_max_final": 1.0577869663242012,
+   "convergence_iteration": 72675.0
+  }
+ },
+ "fields": {
+  "run": {
+   "n": 5000,
+   "logk_sd_mean": 0.574461174534064,
+   "p_sd_mean": 0.00934761197591435,
+   "logk_mean_error_rms": 0.4108865688589878
+  }
+ }
+}
