@@ -1134,3 +1134,7 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 
 ## 2026-11-02 - MSM sbatch: no pytest in gd24_numba
 - All six first jobs died at the test step (`No module named pytest` in the Juno env). The scripts now call `python tests/run_tests.py test_dirichlet test_msm_local` (the repo's pytest-free runner, which now accepts file names).
+
+## 2026-11-03 - MSM experiment: production results and report
+- Report: `runs/msm_local_kle_2026-11/report/msm_local_kle_report.{tex,pdf}` (7 pp.). Main results: 3b == global pCN (mean sd log k 0.575 vs 0.570); sd ratio to exp 1: 2 0.83, 3a 0.90, 5 0.86; relerr plateau 0.0204 for all healthy samplers; exp 5 switch Phi 23.6 -> 24.8; exp 4 fails (primal acceptance 0.16%, s at floor 1e-3, relerr 0.033, MPSRF 1.61, sd 0.22).
+- Plot style: `experiments/msm_fieldplots.py` (contourf, jet; separate CMAP_STD), `run_msm_post.py --replot-only`, `run_msm_compare.py`; `post/fields.npz` now tracked. Existing field PNGs in the run folders are the old imshow style until `run_msm_post.py` is rerun on the cluster.
