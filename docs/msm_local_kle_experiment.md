@@ -1,8 +1,13 @@
 # Multiscale (local-KLE) pCN experiment: global pCN vs. primal, whitened and primal/dual MSM samplers
 
 Status: **specification, agreed with Aidan on 2026-11-02. No sampler code exists yet.**
-The Dirichlet-left solver option and its tests come first (Section 9); the samplers
-are written only after those pass and are reviewed.
+The Dirichlet-left solver option and its tests (Section 9) are merged.
+
+**2026-11-02, Sigma_ms rank test (Section 6, step 2): the primal grid FAILS** with 4 local
+modes per block (r_+ = 58 of 64); the dual grid passes (r_+ = 64). Per Section 6 the study
+stopped before any sampling and nothing was changed. Numbers and the open decision are in
+`LOG.md` (2026-11-02) and `runs/msm_local_kle_2026-11/tables/msm_rank_test/`. Sections 2-5
+below describe the design as agreed and are not yet updated for the outcome.
 
 ## 1. Question
 

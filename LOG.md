@@ -1101,3 +1101,14 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 ## 2026-10-19 - Uncertainty figure for the external-solver curve (`runs/juno_external_2026-10/`)
 
 - `experiments/plot_external_uncertainty.py` (2000 bootstrap resamples over the 2048 realizations): `figures/e3_external/fit_uncertainty.png` and `tables/e3_external/fit_uncertainty.csv` (median and 90% interval of h and beta per model).
+
+## 2026-11-02 - MSM experiment: Sigma_ms rank test, primal grid FAILS at 4 local modes per block (`runs/msm_local_kle_2026-11/`)
+
+- Command: `BRHO_ROOT=runs/msm_local_kle_2026-11 python3 experiments/run_msm_rank_test.py` (no PDE solves, seconds). Spec: `docs/msm_local_kle_experiment.md`, Section 6.
+- Settings: 32 x 32, squared-exponential ell = 0.1, global KLE r = 64 (energy 0.966; lambda_63 = lambda_64 = 2.0077, lambda_65 = 1.5265, so no tie group is cut). Primal: 4 x 4 blocks of 8 x 8 cells, exactly 4 local modes per block (p = 64; the 4th and 5th local modes are not tied). Dual: 5 x 5 blocks, interfaces at (i + 1/2)/4, local dimension per block from the 95% local-energy rule (3,4,4,4,3 / 4,6,6,6,4 / 4,6,6,6,4 / 4,6,6,6,4 / 3,4,4,4,3; p = 114). tau = 1e-10.
+- Result, primal: r_+ = 58 of 64 (rank of B = 58). Six singular values of B are 7e-17 to 3e-14; the next one is 0.54 (cond(B) 2e16). FAIL.
+- Result, dual: r_+ = 64, singular values of B in [0.53, 1.74], cond(Sigma_ms) = 10.7. PASS.
+- Where the primal deficiency sits (6-dim null space of Sigma_ms, weight per global KLE mode): 4.75 of 6 in global modes 55-58, 63, 64; about 1.2 in modes 1, 2, 3, 5, 6.
+- Information only, not part of the agreed setup: with 5 local modes per block (cuts a tied pair in every block) r_+ = 63; with 6 per block (this is also what the 95% and the 90% local-energy rules give) r_+ = 64, d_min = 0.29, p = 96.
+- Decision: per the spec a failure stops the study before any sampling and nothing is changed silently. No chain was run. The whitened primal sampler (experiment 3) is not available at 4 modes per block (`theta_from_c(..., whiten=True)` refuses a rank-deficient Sigma_ms).
+- Code: `dual_block_index`, fixed `local_dim`, `local_field` / `local_coeffs` / `Pi` in `brho/multiscale.py` (default path bit-identical to before); `brho/msm_local.py`; `tests/test_msm_local.py`. Suite: 130 pass; the same 4 tests fail as on main before this change (2 need pytest fixtures, 2 are statistical sampler assertions).
