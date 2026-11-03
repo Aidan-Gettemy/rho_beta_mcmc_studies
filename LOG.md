@@ -1131,3 +1131,6 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 
 ## 2026-11-02 - MSM experiment: selected field pairs
 - `run_msm_post.py` now also writes `post/field_pairs.png`: truth and the last saved state of four chains (experiment 5: two per phase), each as (log kappa, pressure, pressure minus truth pressure) with its relative error. Example from the 3b pilot in `runs/msm_local_kle_2026-11/pilot/primal_aug/post/`.
+
+## 2026-11-02 - MSM sbatch: no pytest in gd24_numba
+- All six first jobs died at the test step (`No module named pytest` in the Juno env). The scripts now call `python tests/run_tests.py test_dirichlet test_msm_local` (the repo's pytest-free runner, which now accepts file names).
