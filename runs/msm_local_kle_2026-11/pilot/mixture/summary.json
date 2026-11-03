@@ -1,0 +1,50 @@
+{
+ "settings": {
+  "kind": "mixture",
+  "chains": 16,
+  "n_iter": 10000,
+  "adapt": 5000,
+  "phase_k": null,
+  "s0": 0.2,
+  "save_every": 100,
+  "sigma_rel": 0.003,
+  "data_relerr": null,
+  "data_seed": 2026,
+  "seed0": 7,
+  "workers": null,
+  "out": "/tmp/claude-0/-home-claude/061f51ee-6f2b-5a9a-b461-1553fc4261d8/scratchpad/pilot_mixture"
+ },
+ "data": {
+  "seed": 2026,
+  "sigma_rel": 0.003,
+  "data_relerr": 0.003,
+  "n_obs": 512,
+  "sigma_p": 0.0016005106938646145,
+  "data_norm": 12.072576271001221,
+  "relerr_at_truth": 0.003193496695548912,
+  "phi_at_truth": 0.566578952471212,
+  "phi_noise_floor_expected": 0.5
+ },
+ "wall_sec": 108.25734686851501,
+ "sec_per_chain": 13.474847510457039,
+ "post_acc_mean": 0.2624125,
+ "post_acc_chain_min": 0.177,
+ "post_acc_chain_max": 0.3152,
+ "post_relerr_median_of_chain_medians": 0.03482840955257416,
+ "post_relerr_chain_median_max": 0.03608749434351921,
+ "post_relerr_last": 0.034393541514873505,
+ "post_acc_grid0": 0.24791635474372412,
+ "post_acc_grid1": 0.27696238040374693,
+ "s_final_median": [
+  0.02931612730026245,
+  0.05133501812815666
+ ],
+ "s_final_min": [
+  0.02073335275053978,
+  0.03262433409690857
+ ],
+ "s_final_max": [
+  0.05133501812815666,
+  0.05133501812815666
+ ]
+}

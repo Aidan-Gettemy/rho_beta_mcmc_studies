@@ -1,0 +1,45 @@
+{
+ "settings": {
+  "kind": "primal_pinv",
+  "chains": 16,
+  "n_iter": 10000,
+  "adapt": 5000,
+  "phase_k": null,
+  "s0": 0.2,
+  "save_every": 100,
+  "sigma_rel": 0.003,
+  "data_relerr": null,
+  "data_seed": 2026,
+  "seed0": 7,
+  "workers": null,
+  "out": "/tmp/claude-0/-home-claude/061f51ee-6f2b-5a9a-b461-1553fc4261d8/scratchpad/pilot_primal_pinv"
+ },
+ "data": {
+  "seed": 2026,
+  "sigma_rel": 0.003,
+  "data_relerr": 0.003,
+  "n_obs": 512,
+  "sigma_p": 0.0016005106938646145,
+  "data_norm": 12.072576271001221,
+  "relerr_at_truth": 0.003193496695548912,
+  "phi_at_truth": 0.566578952471212,
+  "phi_noise_floor_expected": 0.5
+ },
+ "wall_sec": 108.71460485458374,
+ "sec_per_chain": 13.514796033501625,
+ "post_acc_mean": 0.2649625,
+ "post_acc_chain_min": 0.1846,
+ "post_acc_chain_max": 0.3702,
+ "post_relerr_median_of_chain_medians": 0.02049878053367138,
+ "post_relerr_chain_median_max": 0.021611284464597702,
+ "post_relerr_last": 0.021022148430347443,
+ "s_final_median": [
+  0.040923964232206345
+ ],
+ "s_final_min": [
+  0.03262433409690857
+ ],
+ "s_final_max": [
+  0.05133501812815666
+ ]
+}

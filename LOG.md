@@ -1119,3 +1119,8 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 - Run: 64 chains x 40,000 it., s = 0.5, burn 2,000, thin 20, `BRHO_ROOT=runs/msm_local_kle_2026-11`. Outputs in `figures|tables/msm_prior_test/`.
 - Result (cov err Frob/sqrt(r); pointwise var ratio mean, min-max): global 0.023, 1.000; 3b 0.023, 1.001 (pass, equals global); 3a 0.307, 0.925, 0.80-1.01 (matches the exact P_58 prediction); raw primal (2) 0.631, 0.783, 0.31-1.22; mixture (4) 0.422, 0.619, 0.51-0.97; sequence (5) phase 1 0.631 / phase 2 0.741, 0.783 / 0.752; phase-switch field change 8%.
 - Reading: alternating grids (4) does not remove the pointwise variance deficit, it deepens it (mean ratio 0.62 vs 0.78 for raw primal); it is not prior-preserving. MPSRF ~1.001 for all (range coordinates for 2, 3a, 5 phase 1).
+
+## 2026-11-02 - MSM experiment: pilots of the six samplers (16 chains, 10,000 it., 5,000 adaptation; sequence 5,000+5,000, 2,500 adaptation per phase)
+- Data: Dirichlet checkerboard (512 sensors), theta_true seed 2026, global relative noise 0.003; Phi at truth 0.57 (expected 0.5 for the global-norm likelihood).
+- Acceptance after adaptation 0.23-0.28 for all; median relative error plateau ~0.020 for 1, 2, 3a, 3b and both phases of 5; mixture (4) plateaus higher, 0.035. Phase switch in 5: Phi 21.6 -> 22.0, relerr 0.0197 -> 0.0199 (the lossy projection is harmless at the plateau).
+- Summaries in `runs/msm_local_kle_2026-11/pilot/<kind>/summary.json`.
