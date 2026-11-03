@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 from brho import msm_local as ML, msm_sampler as MS  # noqa: E402
 from brho.mpsrf import mpsrf_curve, convergence_iteration  # noqa: E402
+import msm_fieldplots as FP  # noqa: E402
 
 RANGE_KINDS = ("primal_raw", "primal_pinv")
 
@@ -64,12 +65,30 @@ def mpsrf_of(x, x0_iter, save_every, name, fdir, res, level=1.2):
     ax.legend(); fig.tight_layout(); fig.savefig(os.path.join(fdir, f"mpsrf_{name}.png"), dpi=130); plt.close(fig)
 
 
+def replot(fdir, cmap=None, cmap_std=None, levels=None):
+    """Redraw the field figures from post/fields.npz (no chains needed)."""
+    F = dict(np.load(os.path.join(fdir, "fields.npz")))
+    FP.LEVELS = levels or FP.LEVELS
+    n_ = int(F["grid_n"])
+    for label in F["phases"]:
+        FP.plot_fields(F, str(label), n_, os.path.join(fdir, f"fields_{label}.png"), cmap, cmap_std)
+    FP.plot_pairs(F, n_, os.path.join(fdir, "field_pairs.png"), cmap)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dir", required=True)
     ap.add_argument("--n-fields", type=int, default=5000)
     ap.add_argument("--seed", type=int, default=11)
+    ap.add_argument("--cmap", default=None, help="colormap of the field plots (default jet)")
+    ap.add_argument("--cmap-std", default=None, help="colormap of the sd maps (default jet)")
+    ap.add_argument("--levels", type=int, default=None, help="contour levels (default 20)")
+    ap.add_argument("--replot-only", action="store_true",
+                    help="only redraw the field figures from <dir>/post/fields.npz (no chains needed)")
     a = ap.parse_args(argv)
+    if a.replot_only:
+        replot(os.path.join(a.dir, "post"), a.cmap, a.cmap_std, a.levels)
+        return 0
     summ = json.load(open(os.path.join(a.dir, "summary.json")))
     st = summ["settings"]
     kind, n, M, se, K = st["kind"], st["n_iter"], st["adapt"], st["save_every"], st.get("phase_k")
@@ -150,17 +169,7 @@ def main(argv=None):
             pr[j] = S.phys.solve(np.exp(lk[j]))
         out_f[label] = dict(logk_mean=lk.mean(0), logk_sd=lk.std(0), p_mean=pr.mean(0), p_sd=pr.std(0), n=len(th_s))
     lk_true = S.kle.field(data.theta_true); p_true = S.phys.solve(np.exp(lk_true))
-    np.savez_compressed(os.path.join(fdir, "fields.npz"), logk_true=lk_true, p_true=p_true,
-                        **{f"{l}_{q}": v for l, d in out_f.items() for q, v in d.items()})
     n_ = S.n
-    for label, d in out_f.items():
-        fig, ax = plt.subplots(1, 5, figsize=(19, 3.4))
-        panels = [("log k truth", lk_true), ("log k mean", d["logk_mean"]), ("log k sd", d["logk_sd"]),
-                  ("p mean", d["p_mean"]), ("p sd", d["p_sd"])]
-        for axx, (t, f) in zip(ax, panels):
-            im = axx.imshow(f.reshape(n_, n_).T, origin="lower", extent=(0, 1, 0, 1)); axx.set_title(f"{t} ({label})")
-            fig.colorbar(im, ax=axx, fraction=.046)
-        fig.tight_layout(); fig.savefig(os.path.join(fdir, f"fields_{label}.png"), dpi=120); plt.close(fig)
     # ---- 4b. selected (log kappa, pressure) pairs: truth and the last saved state of a few chains
     #          (experiment 5: two from each phase), each with its relative error
     n_show = 4
@@ -169,25 +178,14 @@ def main(argv=None):
     if len(ph) > 1:
         sel += [(f"{ph[1][0]} chain {c}", theta[c, ph[1][2] - 1]) for c in chain_ids[:2]]
     rows = [("truth", data.theta_true)] + sel
-    fig, ax = plt.subplots(len(rows), 3, figsize=(9.6, 2.7 * len(rows)), constrained_layout=True)
-    lk_all = [S.kle.field(t) for _, t in rows]
-    pr_all = [S.phys.solve(np.exp(l)) for l in lk_all]
-    lo, hi = min(l.min() for l in lk_all), max(l.max() for l in lk_all)
-    plo, phi_ = min(q.min() for q in pr_all), max(q.max() for q in pr_all)
-    dmax = max(np.abs(q - pr_all[0]).max() for q in pr_all[1:])
-    for i, ((lab, t), lk, pr) in enumerate(zip(rows, lk_all, pr_all)):
-        e = np.linalg.norm(data.d - pr[S.phys.obs_mask]) / data.dnorm
-        im0 = ax[i, 0].imshow(lk.reshape(n_, n_).T, origin="lower", extent=(0, 1, 0, 1), vmin=lo, vmax=hi)
-        im1 = ax[i, 1].imshow(pr.reshape(n_, n_).T, origin="lower", extent=(0, 1, 0, 1), vmin=plo, vmax=phi_)
-        dp = pr - pr_all[0]
-        im2 = ax[i, 2].imshow(dp.reshape(n_, n_).T, origin="lower", extent=(0, 1, 0, 1), vmin=-dmax, vmax=dmax, cmap="RdBu_r")
-        ax[i, 0].set_ylabel(lab)
-        ax[i, 0].set_title("log k" if i == 0 else "", fontsize=9)
-        ax[i, 1].set_title("pressure" if i == 0 else f"rel. err. {e:.4f}", fontsize=9)
-        ax[i, 2].set_title("pressure - truth" if i == 0 else "", fontsize=9)
-    fig.colorbar(im0, ax=ax[:, 0], fraction=.04); fig.colorbar(im1, ax=ax[:, 1], fraction=.04)
-    fig.colorbar(im2, ax=ax[:, 2], fraction=.04)
-    fig.savefig(os.path.join(fdir, "field_pairs.png"), dpi=120); plt.close(fig)
+    pair_lk = np.stack([S.kle.field(t) for _, t in rows])
+    pair_p = np.stack([S.phys.solve(np.exp(l)) for l in pair_lk])
+    pair_e = np.array([np.linalg.norm(data.d - q[S.phys.obs_mask]) / data.dnorm for q in pair_p])
+    np.savez_compressed(os.path.join(fdir, "fields.npz"), grid_n=n_, logk_true=lk_true, p_true=p_true,
+                        pair_labels=np.array([r[0] for r in rows]), pair_logk=pair_lk, pair_p=pair_p,
+                        pair_relerr=pair_e, phases=np.array(list(out_f)),
+                        **{f"{l}_{q}": v for l, d in out_f.items() for q, v in d.items()})
+    replot(fdir, a.cmap, a.cmap_std, a.levels)
     res["fields"] = {l: dict(n=d["n"], logk_sd_mean=float(d["logk_sd"].mean()), p_sd_mean=float(d["p_sd"].mean()),
                              logk_mean_error_rms=float(np.sqrt(np.mean((d["logk_mean"] - lk_true) ** 2))))
                      for l, d in out_f.items()}
