@@ -161,6 +161,33 @@ def main(argv=None):
             im = axx.imshow(f.reshape(n_, n_).T, origin="lower", extent=(0, 1, 0, 1)); axx.set_title(f"{t} ({label})")
             fig.colorbar(im, ax=axx, fraction=.046)
         fig.tight_layout(); fig.savefig(os.path.join(fdir, f"fields_{label}.png"), dpi=120); plt.close(fig)
+    # ---- 4b. selected (log kappa, pressure) pairs: truth and the last saved state of a few chains
+    #          (experiment 5: two from each phase), each with its relative error
+    n_show = 4
+    chain_ids = np.linspace(0, m - 1, n_show).astype(int)
+    sel = [(f"chain {c}" if len(ph) == 1 else f"{ph[0][0]} chain {c}", theta[c, ph[0][2] - 1]) for c in chain_ids[:n_show if len(ph) == 1 else 2]]
+    if len(ph) > 1:
+        sel += [(f"{ph[1][0]} chain {c}", theta[c, ph[1][2] - 1]) for c in chain_ids[:2]]
+    rows = [("truth", data.theta_true)] + sel
+    fig, ax = plt.subplots(len(rows), 3, figsize=(9.6, 2.7 * len(rows)), constrained_layout=True)
+    lk_all = [S.kle.field(t) for _, t in rows]
+    pr_all = [S.phys.solve(np.exp(l)) for l in lk_all]
+    lo, hi = min(l.min() for l in lk_all), max(l.max() for l in lk_all)
+    plo, phi_ = min(q.min() for q in pr_all), max(q.max() for q in pr_all)
+    dmax = max(np.abs(q - pr_all[0]).max() for q in pr_all[1:])
+    for i, ((lab, t), lk, pr) in enumerate(zip(rows, lk_all, pr_all)):
+        e = np.linalg.norm(data.d - pr[S.phys.obs_mask]) / data.dnorm
+        im0 = ax[i, 0].imshow(lk.reshape(n_, n_).T, origin="lower", extent=(0, 1, 0, 1), vmin=lo, vmax=hi)
+        im1 = ax[i, 1].imshow(pr.reshape(n_, n_).T, origin="lower", extent=(0, 1, 0, 1), vmin=plo, vmax=phi_)
+        dp = pr - pr_all[0]
+        im2 = ax[i, 2].imshow(dp.reshape(n_, n_).T, origin="lower", extent=(0, 1, 0, 1), vmin=-dmax, vmax=dmax, cmap="RdBu_r")
+        ax[i, 0].set_ylabel(lab)
+        ax[i, 0].set_title("log k" if i == 0 else "", fontsize=9)
+        ax[i, 1].set_title("pressure" if i == 0 else f"rel. err. {e:.4f}", fontsize=9)
+        ax[i, 2].set_title("pressure - truth" if i == 0 else "", fontsize=9)
+    fig.colorbar(im0, ax=ax[:, 0], fraction=.04); fig.colorbar(im1, ax=ax[:, 1], fraction=.04)
+    fig.colorbar(im2, ax=ax[:, 2], fraction=.04)
+    fig.savefig(os.path.join(fdir, "field_pairs.png"), dpi=120); plt.close(fig)
     res["fields"] = {l: dict(n=d["n"], logk_sd_mean=float(d["logk_sd"].mean()), p_sd_mean=float(d["p_sd"].mean()),
                              logk_mean_error_rms=float(np.sqrt(np.mean((d["logk_mean"] - lk_true) ** 2))))
                      for l, d in out_f.items()}

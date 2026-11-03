@@ -1128,3 +1128,6 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 ## 2026-11-02 - MSM experiment: post-processing and the six sbatch scripts
 - `experiments/run_msm_post.py`: AR histograms (500-it blocks after M; per grid for 4, per phase for 5), relative-error traces, MPSRF via `brho.mpsrf.mpsrf_curve` (MATLAB convention: skip 2, step 15, burn 10) on theta (range coordinates for the rank-58 runs), on local coefficients ((c, zeta) joint for 3b; both projections for 4; per phase for 5), pointwise mean/sd of log kappa and pressure from 5,000 post-M samples (2,500 per phase for 5). Tried on the pilots.
 - `cluster/slurm/msm_exp{1_global,2_primal_raw,3a_primal_pinv,3b_primal_aug,4_mixture,5_sequence}.sbatch`: self-contained, flags written in the script, conda env `gd24_numba` activated explicitly and checked, tests first, then chains, then post. Not yet submitted (no cluster access from here; numba path untested here).
+
+## 2026-11-02 - MSM experiment: selected field pairs
+- `run_msm_post.py` now also writes `post/field_pairs.png`: truth and the last saved state of four chains (experiment 5: two per phase), each as (log kappa, pressure, pressure minus truth pressure) with its relative error. Example from the 3b pilot in `runs/msm_local_kle_2026-11/pilot/primal_aug/post/`.
