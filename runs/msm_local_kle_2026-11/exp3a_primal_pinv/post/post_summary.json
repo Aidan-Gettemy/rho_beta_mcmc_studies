@@ -1,0 +1,37 @@
+{
+ "kind": "primal_pinv",
+ "chains": 64,
+ "acceptance": {
+  "run": {
+   "mean": 0.25348489583333333,
+   "sd": 0.04852483199842386,
+   "min": 0.108,
+   "max": 0.42
+  }
+ },
+ "relerr_post_M_median": 0.020443938672542572,
+ "mpsrf": {
+  "theta_range58": {
+   "dim": 58,
+   "n_samples": 900,
+   "mpsrf_final": 1.093594129667592,
+   "psrf_max_final": 1.047855992304747,
+   "convergence_iteration": 59144.0
+  },
+  "c": {
+   "dim": 64,
+   "n_samples": 900,
+   "mpsrf_final": 1.1094192928181663,
+   "psrf_max_final": 1.0510504236878453,
+   "convergence_iteration": 62356.0
+  }
+ },
+ "fields": {
+  "run": {
+   "n": 5000,
+   "logk_sd_mean": 0.5112195453014877,
+   "p_sd_mean": 0.009175397840389407,
+   "logk_mean_error_rms": 0.4555118536245318
+  }
+ }
+}

@@ -1,0 +1,76 @@
+{
+ "kind": "sequence",
+ "chains": 64,
+ "acceptance": {
+  "phase1": {
+   "mean": 0.253279296875,
+   "sd": 0.04519238520763885,
+   "min": 0.102,
+   "max": 0.404
+  },
+  "phase2": {
+   "mean": 0.26547109375,
+   "sd": 0.05283445498137282,
+   "min": 0.118,
+   "max": 0.436
+  }
+ },
+ "relerr_post_M_median": 0.020516792312264442,
+ "mpsrf": {
+  "theta_phase1_range58": {
+   "dim": 58,
+   "n_samples": 400,
+   "mpsrf_final": 1.1693118597436152,
+   "psrf_max_final": 1.094414985231223,
+   "convergence_iteration": 44473.0
+  },
+  "c_phase1": {
+   "dim": 64,
+   "n_samples": 400,
+   "mpsrf_final": 1.2049717595667884,
+   "psrf_max_final": 1.094818542916673,
+   "convergence_iteration": null
+  },
+  "theta_phase2": {
+   "dim": 64,
+   "n_samples": 400,
+   "mpsrf_final": 1.1646669073818146,
+   "psrf_max_final": 1.0818856027287116,
+   "convergence_iteration": 90958.0
+  },
+  "c_phase2": {
+   "dim": 114,
+   "n_samples": 400,
+   "mpsrf_final": 1.2970782210465746,
+   "psrf_max_final": 1.101574830152799,
+   "convergence_iteration": null
+  },
+  "theta_full_run": {
+   "dim": 64,
+   "n_samples": 900,
+   "mpsrf_final": 1.0749439271366452,
+   "psrf_max_final": 1.0345552760606787,
+   "convergence_iteration": 44432.0
+  }
+ },
+ "fields": {
+  "phase1": {
+   "n": 2500,
+   "logk_sd_mean": 0.46821264934000223,
+   "p_sd_mean": 0.009144986254845526,
+   "logk_mean_error_rms": 0.49470654421962185
+  },
+  "phase2": {
+   "n": 2500,
+   "logk_sd_mean": 0.4721040697318347,
+   "p_sd_mean": 0.009362970639557811,
+   "logk_mean_error_rms": 0.4370988947372327
+  },
+  "pooled": {
+   "n": 5000,
+   "logk_sd_mean": 0.49148533589875654,
+   "p_sd_mean": 0.009366885322909534,
+   "logk_mean_error_rms": 0.44509125653998904
+  }
+ }
+}

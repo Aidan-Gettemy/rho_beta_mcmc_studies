@@ -1,0 +1,50 @@
+{
+ "kind": "mixture",
+ "chains": 64,
+ "acceptance": {
+  "run primal": {
+   "mean": 0.0016171962173313539,
+   "sd": 0.00392033940986704,
+   "min": 0.0,
+   "max": 0.1
+  },
+  "run dual": {
+   "mean": 0.24921250238036008,
+   "sd": 0.04861689599447591,
+   "min": 0.10943396226415095,
+   "max": 0.4372623574144487
+  }
+ },
+ "relerr_post_M_median": 0.03323512524366379,
+ "mpsrf": {
+  "theta": {
+   "dim": 64,
+   "n_samples": 900,
+   "mpsrf_final": 1.6112597118886645,
+   "psrf_max_final": 1.0928832273097067,
+   "convergence_iteration": null
+  },
+  "c_primal_proj": {
+   "dim": 64,
+   "n_samples": 900,
+   "mpsrf_final": 1.5684123766300109,
+   "psrf_max_final": 1.0738145016444094,
+   "convergence_iteration": null
+  },
+  "c_dual_proj": {
+   "dim": 114,
+   "n_samples": 900,
+   "mpsrf_final": 1.8275175100173477,
+   "psrf_max_final": 1.1866686511238769,
+   "convergence_iteration": null
+  }
+ },
+ "fields": {
+  "run": {
+   "n": 5000,
+   "logk_sd_mean": 0.21681609116896083,
+   "p_sd_mean": 0.006325360935268816,
+   "logk_mean_error_rms": 0.5559402431535582
+  }
+ }
+}
