@@ -51,7 +51,7 @@ def main(argv=None):
     ap.add_argument("--adapt", type=int, default=10000)
     ap.add_argument("--phase-k", type=int, default=None)
     ap.add_argument("--s0", type=float, default=0.2)
-    ap.add_argument("--save-every", type=int, default=100)
+    ap.add_argument("--save-every", type=int, default=50)
     ap.add_argument("--sigma-rel", type=float, default=0.003)
     ap.add_argument("--data-relerr", type=float, default=None)
     ap.add_argument("--data-seed", type=int, default=2026)

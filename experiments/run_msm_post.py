@@ -7,7 +7,7 @@ Post-processing of one experiment of the local-KLE (MSM) study, from <dir>/chain
    per grid; experiment 5: per phase, after M within each phase).
 2. Relative-error traces (every iteration): median and 5-95% band over chains.
 3. MPSRF (brho/mpsrf.py, the group's MATLAB convention: skip 2, step 15, burn 10) on the saved
-   samples after M (every 100th iteration, from iteration 0 saved):
+   saved samples (every --save-every iterations, default 50, from iteration 0), window from --mpsrf-start:
      global theta; local coefficients c (3b: joint (c, zeta); 4: both projections; 5: per phase).
    theta that lives in the 58-dim range of the rank-deficient primal Sigma_ms (experiments 2, 3a,
    phase 1 of 5) is taken in range coordinates V_+^T theta (brho.msm_local.range_coords).
@@ -45,17 +45,37 @@ def ar_blocks(acc, move, lo, hi, g=None, block=500):
     return (a * sel).sum(2) / np.maximum(sel.sum(2), 1)
 
 
-def mpsrf_of(x, x0_iter, save_every, name, fdir, res, level=1.2):
-    """x (m, n, dim) saved samples; x0_iter iteration of its first sample."""
+MPSRF_SKIP, MPSRF_STEP, MPSRF_LEVEL = 2, 15, 1.2
+
+
+def mpsrf_method(start, save_every):
+    """The way MPSRF and PSRF are computed here (written into post_summary.json and printed)."""
+    return (f"MPSRF/PSRF follow the group's MATLAB convention (brho/mpsrf.py, getMSPRF / computeMPSRFcurve). "
+            f"Samples: the chain state saved every {save_every} iterations. The window STARTS at iteration {start} of the "
+            f"run (of the phase, for the second phase of experiment 5), i.e. the adaptation period is NOT discarded, and "
+            f"GROWS to the end of the run: at curve point u it holds the saved samples from the start iteration to the "
+            f"current iteration, every {MPSRF_SKIP}-th sample (skip {MPSRF_SKIP}), with a curve point every {MPSRF_STEP} "
+            f"saved samples ({MPSRF_STEP * save_every} iterations). For each window, with m chains and n samples per chain: "
+            f"W = mean over chains of the within-chain covariance (divisor n-1), B/n = covariance of the m chain means "
+            f"(divisor m-1), MPSRF = sqrt((n-1)/n + (m+1)/m * lambda_max(W^-1 B/n)); the per-component PSRF_i = "
+            f"sqrt(V_ii / W_ii) with V = (n-1)/n W + (m+1)/m B/n, and the reported PSRF is max_i PSRF_i. "
+            f"'convergence_iteration' = first curve point (ignoring the first 10 points) with MPSRF < {MPSRF_LEVEL}, linearly "
+            f"interpolated. The x axis is the iteration of the last sample in the window. Not split-chain, no extra burn-in. "
+            f"Dimension: theta (64), or the 58 range coordinates V_+^T theta for runs whose theta lives in the rank-58 range; "
+            f"local coefficients as stated per entry.")
+
+
+def mpsrf_of(x, x0_iter, save_every, name, fdir, res, level=MPSRF_LEVEL):
+    """x (m, n, dim) saved samples, the first one at iteration x0_iter (the window start)."""
     try:
-        cur = mpsrf_curve(x, skip=2, step=15, iter_burn=10)
+        cur = mpsrf_curve(x, skip=MPSRF_SKIP, step=MPSRF_STEP, iter_burn=1)
     except Exception as e:                       # pragma: no cover
         res[name] = dict(error=str(e)); return
     if len(cur["k"]) == 0 or np.all(np.isnan(cur["mpsrf"])):
         res[name] = dict(dim=int(x.shape[2]), n_samples=int(x.shape[1]), note="too few samples"); return
-    its = x0_iter + cur["k"] * save_every
+    its = x0_iter + (cur["k"] - 1) * save_every       # iteration of the last sample in the window
     conv = convergence_iteration(its.astype(float), cur["mpsrf"], level)
-    res[name] = dict(dim=int(x.shape[2]), n_samples=int(x.shape[1]),
+    res[name] = dict(dim=int(x.shape[2]), n_samples=int(x.shape[1]), window_start_iteration=int(x0_iter),
                      mpsrf_final=float(cur["mpsrf"][-1]), psrf_max_final=float(cur["psrf"][-1]),
                      convergence_iteration=conv)
     fig, ax = plt.subplots(figsize=(6, 3.6))
@@ -79,6 +99,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dir", required=True)
     ap.add_argument("--n-fields", type=int, default=5000)
+    ap.add_argument("--mpsrf-start", type=int, default=1000,
+                    help="MPSRF window starts this many iterations after the start of the run (of the phase for 5)")
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument("--cmap", default=None, help="colormap of the field plots (default jet)")
     ap.add_argument("--cmap-std", default=None, help="colormap of the sd maps (default jet)")
@@ -133,26 +155,31 @@ def main(argv=None):
     # ---- 3. MPSRF
     mp = {}
     for name, i0, i1, it0, _ in ph:
-        th = theta[:, i0:i1]
+        ps = K if name == "phase2" else 0                    # start of the run / phase
+        j0 = (ps + a.mpsrf_start) // se                      # first saved sample of the MPSRF window
+        itm = j0 * se
+        th = theta[:, j0:i1]
         tag = "" if kind != "sequence" else f"_{name}"
         use_range = kind in RANGE_KINDS or (kind == "sequence" and name == "phase1")
-        mpsrf_of(ML.range_coords(P, th) if use_range else th, it0, se, "theta" + tag + ("_range58" if use_range else ""), fdir, mp)
+        mpsrf_of(ML.range_coords(P, th) if use_range else th, itm, se, "theta" + tag + ("_range58" if use_range else ""), fdir, mp)
         if kind in ("primal_raw", "primal_pinv", "primal_aug"):
-            c = Z["c"][:, i0:i1].astype(float)
+            c = Z["c"][:, j0:i1].astype(float)
             if kind == "primal_aug":
-                mpsrf_of(np.concatenate([c, Z["zeta"][:, i0:i1].astype(float)], 2), it0, se, "c_zeta_joint", fdir, mp)
+                mpsrf_of(np.concatenate([c, Z["zeta"][:, j0:i1].astype(float)], 2), itm, se, "c_zeta_joint", fdir, mp)
             else:
-                mpsrf_of(c, it0, se, "c", fdir, mp)
+                mpsrf_of(c, itm, se, "c", fdir, mp)
         if kind == "mixture":
-            mpsrf_of(Z["c_primal"][:, i0:i1].astype(float), it0, se, "c_primal_proj", fdir, mp)
-            mpsrf_of(Z["c_dual"][:, i0:i1].astype(float), it0, se, "c_dual_proj", fdir, mp)
+            mpsrf_of(Z["c_primal"][:, j0:i1].astype(float), itm, se, "c_primal_proj", fdir, mp)
+            mpsrf_of(Z["c_dual"][:, j0:i1].astype(float), itm, se, "c_dual_proj", fdir, mp)
         if kind == "sequence":
             h = K // se
-            c = (Z["c1"][:, i0:i1] if name == "phase1" else Z["c2"][:, i0 - h:i1 - h]).astype(float)
-            mpsrf_of(c, it0, se, f"c_{name}", fdir, mp)
-    if kind == "sequence":                       # theta across the full run after M
-        mpsrf_of(theta[:, M // se:], M, se, "theta_full_run", fdir, mp)
+            c = (Z["c1"][:, j0:i1] if name == "phase1" else Z["c2"][:, j0 - h:i1 - h]).astype(float)
+            mpsrf_of(c, itm, se, f"c_{name}", fdir, mp)
+    if kind == "sequence":                       # theta across the full run
+        mpsrf_of(theta[:, a.mpsrf_start // se:], a.mpsrf_start, se, "theta_full_run", fdir, mp)
     res["mpsrf"] = mp
+    res["mpsrf_method"] = mpsrf_method(a.mpsrf_start, se)
+    print(res["mpsrf_method"])
     # ---- 4. posterior fields
     rng = np.random.default_rng(a.seed)
     groups = [(i0, i1) for _, i0, i1, _, _ in ph]

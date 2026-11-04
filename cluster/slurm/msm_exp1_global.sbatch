@@ -48,7 +48,7 @@ python experiments/run_msm_chains.py \
     --kind global \
     --chains 64 --workers 64 \
     --n-iter 100000 --adapt 10000 \
-    --s0 0.2 --save-every 100 \
+    --s0 0.2 --save-every 50 \
     --sigma-rel 0.003 --data-seed 2026 --seed0 7 \
     --out "$OUT"
 

@@ -136,8 +136,8 @@ r_+ = 58 and V_0 has 6 columns.
 | quantity | schedule |
 |---|---|
 | relative error \|\|d - O p\|\| / \|\|d\|\| and Phi | every iteration |
-| global theta (for the MSM runs: the theta obtained by projecting the local field onto the global KLE; for experiment 1 the state) | every 100 iterations, from iteration 0 |
-| local coefficients c | every 100 iterations, from iteration 0. Experiments 2, 3a, 3b: the state c (3b also zeta, 6 numbers). Experiment 4: both Pi_primal theta and Pi_dual theta of the current state. Experiment 5: c_primal in phase 1, c_dual in phase 2 |
+| global theta (for the MSM runs: the theta obtained by projecting the local field onto the global KLE; for experiment 1 the state) | every 50 iterations (from 2026-11-03; the first production runs saved every 100), from iteration 0 |
+| local coefficients c | every 50 iterations (from 2026-11-03; the first production runs saved every 100), from iteration 0. Experiments 2, 3a, 3b: the state c (3b also zeta, 6 numbers). Experiment 4: both Pi_primal theta and Pi_dual theta of the current state. Experiment 5: c_primal in phase 1, c_dual in phase 2 |
 | acceptance rate | one value per chain per block of 500 iterations after M (experiment 5: after M within each phase; experiment 4: per grid) |
 | step sizes | at the end of adaptation, plus the adaptation history |
 | Phi just before / after the phase switch | experiment 5 |
@@ -162,6 +162,16 @@ r_+ = 58 and V_0 has 6 columns.
    is full rank and is used as is. The invariance of MPSRF under invertible linear
    maps no longer gives a c-versus-theta consistency check for 2 and 3a (B is not
    invertible), so none is claimed.
+   **How MPSRF/PSRF are computed (group convention, from 2026-11-03; also written into every
+   `post_summary.json`).** `brho/mpsrf.py` (getMSPRF / computeMPSRFcurve). The window **starts at
+   iteration 1,000** of the run (of the phase for the second phase of experiment 5), so the adaptation
+   period is not discarded, and grows to the end of the run; every 2nd saved sample (skip 2), a curve
+   point every 15 saved samples. With m chains and n samples per chain: W = mean within-chain covariance
+   (divisor n-1), B/n = covariance of the chain means (divisor m-1), MPSRF = sqrt((n-1)/n + (m+1)/m
+   lambda_max(W^-1 B/n)); PSRF_i = sqrt(V_ii/W_ii), V = (n-1)/n W + (m+1)/m B/n, reported PSRF = max_i
+   PSRF_i. Convergence iteration = first point (after the first 10) below 1.2, interpolated. Not
+   split-chain. The first production runs (saved every 100 iterations) used a window starting after M
+   (10,900 effective) and are to be recomputed with this convention.
 3. **Posterior fields.** A random subset (about 5,000, same count for every experiment)
    of the saved post-M global thetas is turned into log kappa = T theta and solved forward
    for the pressure. From these: pointwise mean and pointwise standard deviation of
