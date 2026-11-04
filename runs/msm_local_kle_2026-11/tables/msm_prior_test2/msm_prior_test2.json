@@ -1,0 +1,56 @@
+{
+ "alt L=1 (offset)": {
+  "cov_err": 0.47081982256974875,
+  "var_ratio_mean": 0.7731307648608815,
+  "var_ratio_min": 0.6360318948509847,
+  "var_ratio_max": 1.2497991393121042
+ },
+ "alt L=10 (offset)": {
+  "cov_err": 0.44721504335784984,
+  "var_ratio_mean": 0.7772654368961079,
+  "var_ratio_min": 0.636365274819854,
+  "var_ratio_max": 1.1821804957589968
+ },
+ "alt L=100 (offset)": {
+  "cov_err": 0.4547535384164161,
+  "var_ratio_mean": 0.7775748949527203,
+  "var_ratio_min": 0.6413396224119754,
+  "var_ratio_max": 1.184819457240616
+ },
+ "alt L=1, no offset": {
+  "cov_err": 0.5055771146688596,
+  "var_ratio_mean": 0.7587593695993978,
+  "var_ratio_min": 0.6099604106980288,
+  "var_ratio_max": 1.2300959222125851
+ },
+ "mixture_inn (never project)": {
+  "cov_err": 0.4595174946085347,
+  "var_ratio_mean": 0.7693553238915993,
+  "var_ratio_min": 0.619450846513031,
+  "var_ratio_max": 1.1741582035842935
+ },
+ "mixture, Pi lift, 8 modes": {
+  "cov_err": 0.31831470681196455,
+  "var_ratio_mean": 0.7111867823112226,
+  "var_ratio_min": 0.5932115610734644,
+  "var_ratio_max": 1.07495015988709
+ },
+ "mixture, Pi lift, 4 modes (exp 4)": {
+  "cov_err": 0.42412134241190674,
+  "var_ratio_mean": 0.6197980331023104,
+  "var_ratio_min": 0.5074732394622681,
+  "var_ratio_max": 0.9693375649639021
+ },
+ "sequence_exact phase 1": {
+  "cov_err": 0.6440353728091711,
+  "var_ratio_mean": 0.7827758162619967,
+  "var_ratio_min": 0.3057682392462225,
+  "var_ratio_max": 1.2785675947296284
+ },
+ "sequence_exact phase 2": {
+  "cov_err": 0.7528965774706741,
+  "var_ratio_mean": 0.7489148670597099,
+  "var_ratio_min": 0.3392699713781687,
+  "var_ratio_max": 1.3497542122299198
+ }
+}

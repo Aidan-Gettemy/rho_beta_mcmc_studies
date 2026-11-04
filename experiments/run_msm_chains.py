@@ -25,9 +25,11 @@ _G = {}
 
 
 def _init(args):
-    S = ML.MSMSetup()
-    if S.primal.r_plus != 58 or S.dual.r_plus != 64:
-        raise SystemExit("GUARD: primal r_+ must be 58 and dual r_+ 64 (decision of 2026-11-02)")
+    S = ML.MSMSetup(primal_local_dim=args.primal_dim)
+    want_p = 58 if args.primal_dim == 4 else 64
+    if S.primal.r_plus != want_p or S.dual.r_plus != 64:
+        raise SystemExit(f"GUARD: primal r_+ must be {want_p} (primal_dim {args.primal_dim}) and dual r_+ 64 "
+                         f"(decision of 2026-11-02); got {S.primal.r_plus} / {S.dual.r_plus}")
     _G["S"] = S
     _G["data"] = MS.Data(S, args.sigma_rel, args.data_seed, data_relerr=args.data_relerr)
     _G["a"] = args
@@ -37,7 +39,7 @@ def _one(chain):
     a = _G["a"]
     t = time.time()
     o = MS.run_chain(a.kind, _G["S"], _G["data"], a.seed0, chain, a.n_iter, a.adapt,
-                     a.phase_k, a.s0, a.save_every)
+                     a.phase_k, a.s0, a.save_every, 0.25, a.alt_L, not a.alt_no_offset)
     o["_sec"] = time.time() - t
     return o
 
@@ -51,7 +53,10 @@ def main(argv=None):
     ap.add_argument("--adapt", type=int, default=10000)
     ap.add_argument("--phase-k", type=int, default=None)
     ap.add_argument("--s0", type=float, default=0.2)
-    ap.add_argument("--save-every", type=int, default=100)
+    ap.add_argument("--primal-dim", type=int, default=4, help="local modes per primal block (study: 4)")
+    ap.add_argument("--alt-L", type=int, default=1, help="kind alt: iterations per grid before switching")
+    ap.add_argument("--alt-no-offset", action="store_true", help="kind alt: primal move is lift only (no frozen offset)")
+    ap.add_argument("--save-every", type=int, default=50)
     ap.add_argument("--sigma-rel", type=float, default=0.003)
     ap.add_argument("--data-relerr", type=float, default=None)
     ap.add_argument("--data-seed", type=int, default=2026)
@@ -83,12 +88,12 @@ def main(argv=None):
               f"{tag}_relerr_median_of_chain_medians": float(np.median(np.median(rel, 1))),
               f"{tag}_relerr_chain_median_max": float(np.median(rel, 1).max()),
               f"{tag}_relerr_last": float(np.median(rel[:, -1]))}
-        if a.kind == "mixture":
+        if a.kind in MS.TWO_GRID:
             for g in (0, 1):
                 m = mv == g
                 st[f"{tag}_acc_grid{g}"] = float((acc * m).sum() / m.sum())
         return st
-    if a.kind == "sequence":
+    if a.kind in MS.SEQ:
         K = a.phase_k
         summ.update(phase_stats(M, K, "p1"), **phase_stats(K + M, n, "p2"))
         summ["s_final_phase1"] = sh[:, K // a.save_every - 1].ravel().tolist()
