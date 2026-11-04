@@ -167,16 +167,16 @@ def main(argv=None):
         if kind in ("primal_raw", "primal_pinv", "primal_aug"):
             c = Z["c"][:, j0:i1].astype(float)
             if kind == "primal_aug":
-                mpsrf_of(np.concatenate([c, Z["zeta"][:, j0:i1].astype(float)], 2), itm, se, "c_zeta_joint", fdir, mp)
+                mpsrf_of(np.concatenate([c, Z["zeta"][:, j0:i1].astype(float)], 2), itm, se, "c_local64_plus_zeta6_joint", fdir, mp)
             else:
-                mpsrf_of(c, itm, se, "c", fdir, mp)
+                mpsrf_of(c, itm, se, f"c_local{c.shape[2]}", fdir, mp)
         if kind == "mixture":
             mpsrf_of(Z["c_primal"][:, j0:i1].astype(float), itm, se, "c_primal_proj", fdir, mp)
             mpsrf_of(Z["c_dual"][:, j0:i1].astype(float), itm, se, "c_dual_proj", fdir, mp)
         if kind == "sequence":
             h = K // se
             c = (Z["c1"][:, j0:i1] if name == "phase1" else Z["c2"][:, j0 - h:i1 - h]).astype(float)
-            mpsrf_of(c, itm, se, f"c_{name}", fdir, mp)
+            mpsrf_of(c, itm, se, f"c_local{c.shape[2]}_{name}", fdir, mp)
     if kind == "sequence":                       # theta across the full run
         mpsrf_of(theta[:, a.mpsrf_start // se:], a.mpsrf_start, se, "theta_full_run", fdir, mp)
     res["mpsrf"] = mp
