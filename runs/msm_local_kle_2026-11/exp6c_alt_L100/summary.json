@@ -1,0 +1,53 @@
+{
+ "settings": {
+  "kind": "alt",
+  "chains": 64,
+  "n_iter": 100000,
+  "adapt": 10000,
+  "phase_k": null,
+  "s0": 0.2,
+  "primal_dim": 4,
+  "alt_L": 100,
+  "alt_no_offset": false,
+  "save_every": 50,
+  "sigma_rel": 0.003,
+  "data_relerr": null,
+  "data_seed": 2026,
+  "seed0": 7,
+  "workers": 64,
+  "out": "/scratch/ganymede2/arg210006/rho_beta_mcmc_studies/runs/msm_local_kle_2026-11/exp6c_alt_L100"
+ },
+ "data": {
+  "seed": 2026,
+  "sigma_rel": 0.003,
+  "data_relerr": 0.003,
+  "n_obs": 512,
+  "sigma_p": 0.0015598435620706884,
+  "data_norm": 11.765861993011809,
+  "relerr_at_truth": 0.0031934869328821354,
+  "phi_at_truth": 0.5665754883604969,
+  "phi_noise_floor_expected": 0.5
+ },
+ "wall_sec": 110.46926617622375,
+ "sec_per_chain": 102.36557924747467,
+ "post_acc_mean": 0.264078125,
+ "post_acc_chain_min": 0.21232222222222222,
+ "post_acc_chain_max": 0.3133111111111111,
+ "post_relerr_median_of_chain_medians": 0.02043084055185318,
+ "post_relerr_chain_median_max": 0.0207124762237072,
+ "post_relerr_last": 0.020474594086408615,
+ "post_acc_grid0": 0.2597993055555556,
+ "post_acc_grid1": 0.26835694444444447,
+ "s_final_median": [
+  0.05133501812815666,
+  0.05133501812815666
+ ],
+ "s_final_min": [
+  0.040923964232206345,
+  0.040923964232206345
+ ],
+ "s_final_max": [
+  0.05133501812815666,
+  0.06439464539289474
+ ]
+}
