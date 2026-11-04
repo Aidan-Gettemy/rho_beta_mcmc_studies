@@ -191,7 +191,7 @@ def main(argv=None):
     pools = []
     for (i0, i1) in groups:
         flat = theta[:, i0:i1].reshape(-1, S.r)
-        pools.append(flat[rng.choice(len(flat), per, replace=False)])
+        pools.append(flat[rng.choice(len(flat), min(per, len(flat)), replace=False)])
     out_f = {}
     for label, th_s in list(zip([p[0] for p in ph], pools)) + ([("pooled", np.concatenate(pools))] if len(pools) > 1 else []):
         lk = S.kle.field(th_s)                                  # (n, N)
