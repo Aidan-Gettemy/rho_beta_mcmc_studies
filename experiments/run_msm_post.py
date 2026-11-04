@@ -162,6 +162,8 @@ def main(argv=None):
         tag = "" if kind != "sequence" else f"_{name}"
         use_range = kind in RANGE_KINDS or (kind == "sequence" and name == "phase1")
         mpsrf_of(ML.range_coords(P, th) if use_range else th, itm, se, "theta" + tag + ("_range58" if use_range else ""), fdir, mp)
+        if not use_range:      # same 58 coordinates for every experiment, so MPSRF is comparable across all six
+            mpsrf_of(ML.range_coords(P, th), itm, se, "theta" + tag + "_range58_common", fdir, mp)
         if kind in ("primal_raw", "primal_pinv", "primal_aug"):
             c = Z["c"][:, j0:i1].astype(float)
             if kind == "primal_aug":
