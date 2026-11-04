@@ -13,6 +13,16 @@ Every proposal: pCN with ONE step size per grid, all blocks together; acceptance
 likelihood ratio only; one forward solve per iteration.  Step sizes adapt toward 25% for
 the first M iterations of each phase (fresh adapter at the phase switch), then freeze.
 
+New (2026-11-03, docs/msm_experiment_plan_2026-11-03.md); state = global theta, field-norm least-squares
+lifts Lp, Ld (brho.msm_local.field_lift; c = L theta):
+    alt            L iterations on the primal grid, L on the dual, alternating.  Move on grid g with
+                   c0 = L_g theta, c' = sqrt(1-s^2) c0 + s xi:  theta' = theta + B_g (c' - c0)  (the part of
+                   theta the grid cannot represent is an untouched offset: s = 0 gives theta' = theta
+                   exactly).  alt_offset=False (6d): primal theta' = B_p c' (lift only, lossy).
+    mixture_inn    random grid per iteration, theta' = sqrt(1-s^2) theta + s B_g xi (never projects the state)
+    sequence_exact as `sequence`, but the switch is the exact dual lift c = Ld theta (B_d c = theta)
+`mixture` keeps the original Pi lift (experiment 4, also with 8 modes per block).
+
 Data (`make_data`): theta_true ~ N(0, I_r) with a fixed seed, forward solve with the
 Dirichlet permeameter, observation on the checkerboard cells, additive Gaussian noise
 with sigma_p = data_relerr ||p_obs|| / sqrt(n_obs) (default data_relerr = sigma_rel), so that the
@@ -26,7 +36,10 @@ import numpy as np
 from .samplers import StepAdapter
 from . import msm_local as ML
 
-CHAIN_KINDS = ("global", "primal_raw", "primal_pinv", "primal_aug", "mixture", "sequence")
+CHAIN_KINDS = ("global", "primal_raw", "primal_pinv", "primal_aug", "mixture", "sequence",
+               "alt", "mixture_inn", "sequence_exact")
+TWO_GRID = ("mixture", "alt", "mixture_inn")      # kinds with one step size per grid
+SEQ = ("sequence", "sequence_exact")
 
 
 class Data:
@@ -66,7 +79,7 @@ def _pcn(x, s, rng):
 
 
 def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2,
-              save_every=100, target=0.25):
+              save_every=100, target=0.25, alt_L=1, alt_offset=True):
     """One chain.  Returns a dict of arrays (see docstring of the module for the state).
     relerr (n_iter,) state's relative error after every iteration; acc (n_iter,) accepted
     flags; move (n_iter,) grid used (0 primal, 1 dual; all 0 for the single-grid kinds);
@@ -77,16 +90,18 @@ def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2
         raise ValueError(kind)
     P, D, r = S.primal, S.dual, S.r
     rng = np.random.default_rng(np.random.SeedSequence([seed0, chain]))
-    K = k_phase if kind == "sequence" else None
-    if kind == "sequence" and (K is None or 2 * K != n_iter):
+    K = k_phase if kind in SEQ else None
+    if kind in SEQ and (K is None or 2 * K != n_iter):
         raise ValueError("sequence needs k_phase with n_iter == 2 * k_phase")
-    n_g = 2 if kind == "mixture" else 1
+    n_g = 2 if kind in TWO_GRID else 1
+    if kind in ("alt", "mixture_inn", "sequence_exact"):
+        Lp, Ld = ML.field_lift(P, S.kle.T), ML.field_lift(D, S.kle.T)
     ad = StepAdapter([s0] * n_g, targets=[target] * n_g, every=100)
     # state and the map state -> theta
     th0 = rng.standard_normal(r)                 # same first draw for every kind (paired seeds)
     c = z = None
     ms = P
-    if kind == "global" or kind == "mixture":
+    if kind == "global" or kind in TWO_GRID:
         theta = th0
     else:
         c = rng.standard_normal(P.p)
@@ -102,22 +117,26 @@ def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2
         out["c"] = np.empty((n_save, P.p), np.float32)
     if kind == "primal_aug":
         out["zeta"] = np.empty((n_save, z.size), np.float32)
-    if kind == "mixture":
+    if kind in TWO_GRID:
         out["c_primal"] = np.empty((n_save, P.p), np.float32)
         out["c_dual"] = np.empty((n_save, D.p), np.float32)
-    if kind == "sequence":
+    if kind in SEQ:
         out["c1"] = np.empty((n_save // 2, P.p), np.float32)
         out["c2"] = np.empty((n_save // 2, D.p), np.float32)
     for it in range(n_iter):
-        if kind == "sequence" and it == K:
+        if kind in SEQ and it == K:
             out["phi0"], out["rel0"] = phi, rel
             ms = D
-            c = D.Pi @ theta                       # project the final global field onto the dual basis
-            theta = D.B @ c
-            phi, rel = data.potential(theta)       # the lossy projection changes the field
+            if kind == "sequence_exact":
+                c = Ld @ theta                     # exact lift: B_d c = theta, the field is unchanged
+                theta = D.B @ c
+            else:
+                c = D.Pi @ theta                   # project the final global field onto the dual basis
+                theta = D.B @ c
+            phi, rel = data.potential(theta)       # (sequence) the lossy projection changes the field
             out["phi1"], out["rel1"] = phi, rel
             ad = StepAdapter([s0], targets=[target], every=100)
-        k_it = it - K if (kind == "sequence" and it >= K) else it
+        k_it = it - K if (kind in SEQ and it >= K) else it
         if it % save_every == 0:
             j = it // save_every
             out["theta"][j] = theta
@@ -126,9 +145,11 @@ def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2
                 out["c"][j] = c
             if kind == "primal_aug":
                 out["zeta"][j] = z
-            if kind == "mixture":
+            if kind in ("mixture",):
                 out["c_primal"][j], out["c_dual"][j] = P.Pi @ theta, D.Pi @ theta
-            if kind == "sequence":
+            if kind in ("alt", "mixture_inn"):
+                out["c_primal"][j], out["c_dual"][j] = Lp @ theta, Ld @ theta
+            if kind in SEQ:
                 (out["c1"] if it < K else out["c2"])[(j if it < K else j - K // save_every)] = c
         # --- proposal
         if kind == "global":
@@ -137,6 +158,17 @@ def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2
             g = 0 if rng.random() < 0.5 else 1
             m = P if g == 0 else D
             th_new = m.B @ _pcn(m.Pi @ theta, ad.s[g], rng)
+        elif kind == "mixture_inn":
+            g = 0 if rng.random() < 0.5 else 1
+            m = P if g == 0 else D
+            sg = ad.s[g]
+            th_new = np.sqrt(1.0 - sg * sg) * theta + sg * (m.B @ rng.standard_normal(m.p))
+        elif kind == "alt":
+            g = (it // alt_L) % 2
+            m, Lg = (P, Lp) if g == 0 else (D, Ld)
+            c0 = Lg @ theta
+            c_new = _pcn(c0, ad.s[g], rng)
+            th_new = (m.B @ c_new) if (g == 0 and not alt_offset) else theta + m.B @ (c_new - c0)
         else:
             g = 0
             c_new = _pcn(c, ad.s[0], rng)
@@ -146,7 +178,7 @@ def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2
         accepted = np.log(rng.random()) < phi - phi_new
         if accepted:
             theta, phi, rel = th_new, phi_new, rel_new
-            if kind not in ("global", "mixture"):
+            if kind not in ("global",) + TWO_GRID:
                 c, z = c_new, z_new
         ad.record(g, accepted)
         ad.tick(k_it, n_adapt)
@@ -155,7 +187,7 @@ def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2
 
 
 def _theta(kind, ms, c, z):
-    if kind in ("primal_raw", "sequence"):
+    if kind in ("primal_raw",) + SEQ:
         return ML.theta_from_c(ms, c)
     if kind == "primal_pinv":
         return ML.theta_from_c(ms, c, True, pinv=True)

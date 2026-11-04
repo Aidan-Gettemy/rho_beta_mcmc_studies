@@ -32,6 +32,7 @@ from brho.mpsrf import mpsrf_curve, convergence_iteration  # noqa: E402
 import msm_fieldplots as FP  # noqa: E402
 
 RANGE_KINDS = ("primal_raw", "primal_pinv")
+TWO = ("mixture", "alt", "mixture_inn")
 
 
 def ar_blocks(acc, move, lo, hi, g=None, block=500):
@@ -116,23 +117,24 @@ def main(argv=None):
     kind, n, M, se, K = st["kind"], st["n_iter"], st["adapt"], st["save_every"], st.get("phase_k")
     Z = np.load(os.path.join(a.dir, "chains.npz"))
     fdir = os.path.join(a.dir, "post"); os.makedirs(fdir, exist_ok=True)
-    S = ML.MSMSetup(); P, D = S.primal, S.dual
-    if P.r_plus != 58 or D.r_plus != 64:
-        raise SystemExit("GUARD: rank outcome changed (58 / 64 expected)")
+    pdim = st.get("primal_dim", 4)
+    S = ML.MSMSetup(primal_local_dim=pdim); P, D = S.primal, S.dual
+    if P.r_plus != (58 if pdim == 4 else 64) or D.r_plus != 64:
+        raise SystemExit("GUARD: rank outcome changed")
     data = MS.Data(S, st["sigma_rel"], st["data_seed"], data_relerr=st.get("data_relerr"))
     m = Z["theta"].shape[0]
     res = dict(kind=kind, chains=int(m))
     theta = Z["theta"].astype(float)                              # (m, n/se, r)
     # ---- phases: (name, first saved index, last+1, first iteration, acceptance window)
-    if kind == "sequence":
+    if kind in ("sequence", "sequence_exact"):
         ph = [("phase1", M // se, K // se, M, (M, K)), ("phase2", K // se + M // se, n // se, K + M, (K + M, n))]
     else:
         ph = [("run", M // se, n // se, M, (M, n))]
     # ---- 1. acceptance histograms
-    fig, axs = plt.subplots(1, len(ph) * (2 if kind == "mixture" else 1), figsize=(5 * len(ph) * (2 if kind == "mixture" else 1), 3.4), squeeze=False)
+    fig, axs = plt.subplots(1, len(ph) * (2 if kind in TWO else 1), figsize=(5 * len(ph) * (2 if kind in TWO else 1), 3.4), squeeze=False)
     k = 0
     for name, i0, i1, it0, (lo, hi) in ph:
-        for g in ((0, 1) if kind == "mixture" else (None,)):
+        for g in ((0, 1) if kind in TWO else (None,)):
             ab = ar_blocks(Z["acc"], Z["move"], lo, hi, g)
             axs[0, k].hist(ab.ravel(), bins=30, color="C0"); axs[0, k].axvline(0.25, color="k", ls=":")
             lab = name + ("" if g is None else (" primal" if g == 0 else " dual"))
@@ -148,7 +150,7 @@ def main(argv=None):
     ax.semilogy(x, np.median(rel, 0), label="median over chains")
     ax.fill_between(x, np.percentile(rel, 5, 0), np.percentile(rel, 95, 0), alpha=.3, label="5-95%")
     ax.axvline(M, color="k", ls=":"); ax.axhline(data.relerr_truth, color="C3", ls="--", label="noise level")
-    if kind == "sequence": ax.axvline(K, color="k", ls="-.")
+    if kind in ("sequence", "sequence_exact"): ax.axvline(K, color="k", ls="-.")
     ax.set_xlabel("iteration"); ax.set_ylabel("relative error"); ax.legend(); fig.tight_layout()
     fig.savefig(os.path.join(fdir, "relerr_traces.png"), dpi=130); plt.close(fig)
     res["relerr_post_M_median"] = float(np.median(rel[:, M:]))
@@ -159,8 +161,8 @@ def main(argv=None):
         j0 = (ps + a.mpsrf_start) // se                      # first saved sample of the MPSRF window
         itm = j0 * se
         th = theta[:, j0:i1]
-        tag = "" if kind != "sequence" else f"_{name}"
-        use_range = kind in RANGE_KINDS or (kind == "sequence" and name == "phase1")
+        tag = "" if kind not in ("sequence", "sequence_exact") else f"_{name}"
+        use_range = (kind in RANGE_KINDS or (kind in ("sequence", "sequence_exact") and name == "phase1")) and P.r_plus < P.r
         mpsrf_of(ML.range_coords(P, th) if use_range else th, itm, se, "theta" + tag + ("_range58" if use_range else ""), fdir, mp)
         if not use_range:      # same 58 coordinates for every experiment, so MPSRF is comparable across all six
             mpsrf_of(ML.range_coords(P, th), itm, se, "theta" + tag + "_range58_common", fdir, mp)
@@ -170,14 +172,14 @@ def main(argv=None):
                 mpsrf_of(np.concatenate([c, Z["zeta"][:, j0:i1].astype(float)], 2), itm, se, "c_local64_plus_zeta6_joint", fdir, mp)
             else:
                 mpsrf_of(c, itm, se, f"c_local{c.shape[2]}", fdir, mp)
-        if kind == "mixture":
+        if kind in ("mixture", "alt", "mixture_inn"):
             mpsrf_of(Z["c_primal"][:, j0:i1].astype(float), itm, se, "c_primal_proj", fdir, mp)
             mpsrf_of(Z["c_dual"][:, j0:i1].astype(float), itm, se, "c_dual_proj", fdir, mp)
-        if kind == "sequence":
+        if kind in ("sequence", "sequence_exact"):
             h = K // se
             c = (Z["c1"][:, j0:i1] if name == "phase1" else Z["c2"][:, j0 - h:i1 - h]).astype(float)
             mpsrf_of(c, itm, se, f"c_local{c.shape[2]}_{name}", fdir, mp)
-    if kind == "sequence":                       # theta across the full run
+    if kind in ("sequence", "sequence_exact"):   # theta across the full run
         mpsrf_of(theta[:, a.mpsrf_start // se:], a.mpsrf_start, se, "theta_full_run", fdir, mp)
     res["mpsrf"] = mp
     res["mpsrf_method"] = mpsrf_method(a.mpsrf_start, se)

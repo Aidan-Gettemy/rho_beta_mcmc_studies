@@ -51,6 +51,17 @@ class MSMSetup:
                                  block_idx=dual_block_index(self.points, blocks))
 
 
+# ------------------------------------------------------------ field-norm lift
+def field_lift(ms, T):
+    """Lift L (p x r) from global theta to local coefficients, c = L theta, by least squares in the
+    FIELD norm: c = argmin ||T (theta - B c)||_2 = (B' Lam B)^+ B' Lam theta with Lam = diag(T'T)
+    (the group's G = B' Lam B).  Surjective B (dual, p > r = rank): B c = theta exactly (lossless).
+    Rank-deficient B (primal, 4 modes): B c is the best field-norm approximation of theta in range(B)."""
+    lam = (np.asarray(T) ** 2).sum(0)
+    BtL = ms.B.T * lam[None, :]
+    return np.linalg.pinv(BtL @ ms.B, rcond=1e-10) @ BtL
+
+
 # ------------------------------------------------------------ rank test
 def rank_report(ms, tol=RANK_TOL):
     """The Sigma_ms rank test for one decomposition (spec Section 6, step 2).

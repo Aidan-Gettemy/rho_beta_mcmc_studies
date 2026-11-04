@@ -17,6 +17,8 @@
 # data (512 of 1024 cell centres), truth = fixed-seed prior draw (seed 2026); chain seeds [7, chain]
 # are the same in all six experiments.  Output: runs/msm_local_kle_2026-11/exp1_global/
 #   chains.npz, summary.json (raw, stay on the cluster) and post/ (figures + post_summary.json).
+# FIRST PASS (2026-11-02, saved every 100 iterations, 5,000 field samples, old MPSRF window). Kept as the record of
+# how the first results were made; do not resubmit (it would overwrite them).  Reruns: msm_*_s50.sbatch.
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
 mkdir -p logs
@@ -48,7 +50,7 @@ python experiments/run_msm_chains.py \
     --kind global \
     --chains 64 --workers 64 \
     --n-iter 100000 --adapt 10000 \
-    --s0 0.2 --save-every 50 \
+    --s0 0.2 --save-every 100 \
     --sigma-rel 0.003 --data-seed 2026 --seed0 7 \
     --out "$OUT"
 

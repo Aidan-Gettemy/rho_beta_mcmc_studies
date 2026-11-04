@@ -1142,3 +1142,8 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 ## 2026-11-03 - MSM: MPSRF convention and save interval
 - MPSRF/PSRF now computed per the group's convention: window starts at iteration 1,000 (of the phase for exp 5 phase 2), adaptation period included, grows to the end; skip 2, step 15 saved samples; max PSRF reported; method string written into every `post_summary.json` and the spec. Previous report numbers used a window starting after M and must be recomputed (rerun `run_msm_post.py` on the cluster).
 - Going forward the global theta and the local states are saved every 50 iterations (`--save-every 50` in the six sbatch scripts and the runner default); tested on 8-chain runs of 3b, 4 and 5.
+
+## 2026-11-03 - MSM experiment plan (second round) implemented
+- Plan: `docs/msm_experiment_plan_2026-11-03.md` (13 runs + post-only rerun of the first-pass 4 and 5; reruns 1, 2, 3a, 3b with 50-iteration saving and 10,000 field samples; alternating 6a-6d with the field-norm least-squares lift and frozen offset; 5b exact switch; 2-6, 2-8; 4-8; 4b).
+- Code: `field_lift` in `brho/msm_local.py`; kinds `alt`, `mixture_inn`, `sequence_exact` in `brho/msm_sampler.py`; `--primal-dim`, `--alt-L`, `--alt-no-offset` in `run_msm_chains.py`; post script handles all kinds and primal dim 6/8; tests `tests/test_msm_sampler.py`; prior test `run_msm_prior_test2.py` (alt variants sit at the predicted (Sigma_p + Sigma_d)/2, variance ratio 0.77; exp 4 reproduces 0.62).
+- 14 new sbatch scripts; the six first-pass scripts are marked FIRST PASS (save-every restored to 100). Tiny runs: 5b Phi before = after the switch exactly; 4-8 primal acceptance 0.22.
