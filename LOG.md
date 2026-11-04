@@ -1147,3 +1147,8 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 - Plan: `docs/msm_experiment_plan_2026-11-03.md` (13 runs + post-only rerun of the first-pass 4 and 5; reruns 1, 2, 3a, 3b with 50-iteration saving and 10,000 field samples; alternating 6a-6d with the field-norm least-squares lift and frozen offset; 5b exact switch; 2-6, 2-8; 4-8; 4b).
 - Code: `field_lift` in `brho/msm_local.py`; kinds `alt`, `mixture_inn`, `sequence_exact` in `brho/msm_sampler.py`; `--primal-dim`, `--alt-L`, `--alt-no-offset` in `run_msm_chains.py`; post script handles all kinds and primal dim 6/8; tests `tests/test_msm_sampler.py`; prior test `run_msm_prior_test2.py` (alt variants sit at the predicted (Sigma_p + Sigma_d)/2, variance ratio 0.77; exp 4 reproduces 0.62).
 - 14 new sbatch scripts; the six first-pass scripts are marked FIRST PASS (save-every restored to 100). Tiny runs: 5b Phi before = after the switch exactly; 4-8 primal acceptance 0.22.
+
+## 2026-11-04 - MSM round-2 report
+- Collected all 15 production runs (post_summary.json, fields.npz) into tables/msm_round2 and runs/msm_local_kle_2026-11/compare2 via experiments/make_msm_round2_table.py and make_msm_round2_figures.py.
+- Report: runs/msm_local_kle_2026-11/report/msm_round2_report.{tex,pdf} (6 pp). Main result: only 3b matches the global posterior sd (ratio 1.01); all faster samplers are 10-17% too narrow (mixtures 4/4.8 collapse, ratios 0.38/0.44; their "convergence" at 23k/16k is a false crossing). 114-dim dual-projection MPSRFs are not interpretable (rank 64).
+- Earlier failure of msm-post-old: summary.json was absent from the cluster checkout (diverged branch); run_msm_post.py now also caps the field sample at the available population.
