@@ -19,32 +19,44 @@
  "mpsrf": {
   "theta": {
    "dim": 64,
-   "n_samples": 900,
-   "mpsrf_final": 1.6112597118886645,
-   "psrf_max_final": 1.0928832273097067,
-   "convergence_iteration": null
+   "n_samples": 990,
+   "window_start_iteration": 1000,
+   "mpsrf_final": 1.3975863304313796,
+   "psrf_max_final": 1.0731974079442592,
+   "convergence_iteration": 23051.0
+  },
+  "theta_range58_common": {
+   "dim": 58,
+   "n_samples": 990,
+   "window_start_iteration": 1000,
+   "mpsrf_final": 1.3965645600328176,
+   "psrf_max_final": 1.083715699916087,
+   "convergence_iteration": 22690.0
   },
   "c_primal_proj": {
    "dim": 64,
-   "n_samples": 900,
-   "mpsrf_final": 1.5684123766300109,
-   "psrf_max_final": 1.0738145016444094,
-   "convergence_iteration": null
+   "n_samples": 990,
+   "window_start_iteration": 1000,
+   "mpsrf_final": 1.3830875043857271,
+   "psrf_max_final": 1.0587698707394317,
+   "convergence_iteration": 22800.0
   },
   "c_dual_proj": {
    "dim": 114,
-   "n_samples": 900,
-   "mpsrf_final": 1.8275175100173477,
-   "psrf_max_final": 1.1866686511238769,
+   "n_samples": 990,
+   "window_start_iteration": 1000,
+   "mpsrf_final": 1.4011292178744845,
+   "psrf_max_final": 1.1377271338016837,
    "convergence_iteration": null
   }
  },
+ "mpsrf_method": "MPSRF/PSRF follow the group's MATLAB convention (brho/mpsrf.py, getMSPRF / computeMPSRFcurve). Samples: the chain state saved every 100 iterations. The window STARTS at iteration 1000 of the run (of the phase, for the second phase of experiment 5), i.e. the adaptation period is NOT discarded, and GROWS to the end of the run: at curve point u it holds the saved samples from the start iteration to the current iteration, every 2-th sample (skip 2), with a curve point every 15 saved samples (1500 iterations). For each window, with m chains and n samples per chain: W = mean over chains of the within-chain covariance (divisor n-1), B/n = covariance of the m chain means (divisor m-1), MPSRF = sqrt((n-1)/n + (m+1)/m * lambda_max(W^-1 B/n)); the per-component PSRF_i = sqrt(V_ii / W_ii) with V = (n-1)/n W + (m+1)/m B/n, and the reported PSRF is max_i PSRF_i. 'convergence_iteration' = first curve point (ignoring the first 10 points) with MPSRF < 1.2, linearly interpolated. The x axis is the iteration of the last sample in the window. Not split-chain, no extra burn-in. Dimension: theta (64), or the 58 range coordinates V_+^T theta for runs whose theta lives in the rank-58 range; local coefficients as stated per entry.",
  "fields": {
   "run": {
-   "n": 5000,
-   "logk_sd_mean": 0.21681609116896083,
-   "p_sd_mean": 0.006325360935268816,
-   "logk_mean_error_rms": 0.5559402431535582
+   "n": 10000,
+   "logk_sd_mean": 0.21670575171400247,
+   "p_sd_mean": 0.006311780792752258,
+   "logk_mean_error_rms": 0.5564866625429687
   }
  }
 }

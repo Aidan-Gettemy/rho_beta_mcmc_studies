@@ -1,0 +1,53 @@
+{
+ "settings": {
+  "kind": "mixture_inn",
+  "chains": 64,
+  "n_iter": 100000,
+  "adapt": 10000,
+  "phase_k": null,
+  "s0": 0.2,
+  "primal_dim": 4,
+  "alt_L": 1,
+  "alt_no_offset": false,
+  "save_every": 50,
+  "sigma_rel": 0.003,
+  "data_relerr": null,
+  "data_seed": 2026,
+  "seed0": 7,
+  "workers": 64,
+  "out": "/scratch/ganymede2/arg210006/rho_beta_mcmc_studies/runs/msm_local_kle_2026-11/exp4b_mixture_innovation"
+ },
+ "data": {
+  "seed": 2026,
+  "sigma_rel": 0.003,
+  "data_relerr": 0.003,
+  "n_obs": 512,
+  "sigma_p": 0.0015598435620706884,
+  "data_norm": 11.765861993011809,
+  "relerr_at_truth": 0.0031934869328821354,
+  "phi_at_truth": 0.5665754883604969,
+  "phi_noise_floor_expected": 0.5
+ },
+ "wall_sec": 112.55750131607056,
+ "sec_per_chain": 103.02333477512002,
+ "post_acc_mean": 0.2467689236111111,
+ "post_acc_chain_min": 0.21122222222222223,
+ "post_acc_chain_max": 0.31177777777777776,
+ "post_relerr_median_of_chain_medians": 0.020314490422606468,
+ "post_relerr_chain_median_max": 0.020734000951051712,
+ "post_relerr_last": 0.020717065781354904,
+ "post_acc_grid0": 0.24872721160981642,
+ "post_acc_grid1": 0.2448110421869396,
+ "s_final_median": [
+  0.05133501812815666,
+  0.05133501812815666
+ ],
+ "s_final_min": [
+  0.040923964232206345,
+  0.040923964232206345
+ ],
+ "s_final_max": [
+  0.06439464539289474,
+  0.06439464539289474
+ ]
+}
