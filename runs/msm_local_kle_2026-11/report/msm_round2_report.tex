@@ -12,7 +12,7 @@ This report covers the 15 runs of Table~1: the second-round experiments and the 
 \begin{itemize}
 \item \textbf{Only experiment 3b reproduces the global posterior.} Its mean posterior standard deviation of $\log\kappa$ is $0.576$ against $0.570$ for global pCN, and its error of the posterior-mean field is $0.409$ against $0.416$. Every other local-KLE sampler is narrower: by $10$--$17\%$ (ratios $0.83$--$0.90$) for all except the mixtures 4 and 4.8, which collapse (ratios $0.38$ and $0.44$). Their mean fields are also further from the truth ($0.42$--$0.50$, and $0.56$ for the mixtures).
 \item \textbf{Speed and fidelity trade off, as you expected.} 3b reaches MPSRF $<1.2$ after $51$k iterations against $56$k for global pCN (about $9\%$ faster, a single replicate, so within plausible noise). The under-dispersed samplers (excluding the mixtures) reach it after $28$--$45$k. The fastest honest alternative, alternating with no offset (6d), needs $29$k, about $48\%$ fewer iterations than global pCN, but it samples a distribution about $14\%$ too narrow.
-\item \textbf{Experiment 4 is not rescued by a larger local dimension.} With 8 local modes per block the primal acceptance rises from $0.16\%$ to $25\%$, but the posterior spread is still only $0.44$ of the global one and the median relative error is $0.030$ against the $0.0204$ plateau of every other run. Raising the local dimension therefore does not remove the failure; the projection $\Pi_g$ at every switch is the likely cause (Section~\ref{sec:exp4}).
+\item \textbf{Experiment 4 is not rescued by a larger local dimension, and now we know why.} With 8 local modes the primal acceptance rises from $0.16\%$ to $25\%$, but the posterior spread is still only $0.44$ of the global one and the median relative error is $0.030$ against the $0.0204$ plateau. The round trip $B_g\Pi_g$ it applies contracts (mean eigenvalue $0.76$ primal, $0.93$ dual) and the chains sit at $|\theta|^2\approx$ 7--17 against about $55$ for global pCN, each at its own persistent level (Section~\ref{sec:exp4}). Alternating through the global state with $\Pi_g$ should be dropped.
 \item \textbf{The innovation form of the mixture (4b) and all alternating schemes (6a--6d) are well behaved}: acceptance $\approx25\%$ in both grids, plateau relative error $0.0203$--$0.0204$, MPSRF below $1.1$ in the 58 range coordinates. They share the under-dispersion (ratio $0.86$--$0.89$) of the raw primal sampler and are not prior preserving.
 \item \textbf{The number of inner iterations $L$ and the frozen-offset move matter little.} $L=1,10,100$ reach MPSRF $<1.2$ at $37$k, $36$k, $42$k; dropping the offset (6d) is fastest ($29$k) but also gives a slightly narrower posterior ($0.86$) than the offset versions ($0.88$--$0.89$).
 \end{itemize}
@@ -70,13 +70,39 @@ Eight local modes per block (2.8) raises the ratio from $0.83$ to $0.88$ and kee
 \caption{Posterior sd of $\log\kappa$, shared colour scale (jet, contourf), eight representative runs.}
 \end{figure}
 
-\subsection{Experiment 4: why larger local dimension does not fix it}\label{sec:exp4}
-In experiment 4 the primal proposals are almost never accepted ($0.16\%$ against $25\%$ for dual) and the median relative error is $0.033$, the chains sitting above the posterior plateau. Its MPSRF curve (Figure~3, left) dips to about $1.18$ near $25$k iterations and then rises to $1.40$, so the ``$22.7$k'' in Table~1 is a transient crossing, not convergence. Raising the local dimension to 8 (4.8) makes both grids accept at $25\%$, but the sd ratio is only $0.44$, the median relative error is $0.030$ and the final MPSRF is $1.28$. The acceptance problem was therefore a symptom; a likely explanation, which these runs support but do not prove, is that the projection $\Pi_g$ at every switch removes information from $\theta$ that the other grid cannot restore, so the state contracts. The innovation form (4b), which never projects the current state, does not show the failure: relative error $0.0203$, ratio $0.88$.
+\subsection{Experiment 4: why a larger local dimension does not fix it}\label{sec:exp4}
+In experiment 4 the primal proposals are almost never accepted ($0.16\%$ against $25\%$ for dual) and the median relative error is $0.033$, above the posterior plateau. Its MPSRF curve (Figure~\ref{fig:mpsrf}, left) dips to about $1.18$ near $25$k iterations and then rises to $1.40$, so the ``$22.7$k'' in Table~1 is a transient crossing, not convergence. With 8 local modes (4.8) both grids accept at $25\%$, but the sd ratio is only $0.44$, the median relative error is $0.030$ and the final MPSRF is $1.28$. The acceptance problem was therefore a symptom, not the cause. The per-chain traces of $\theta$ (Figure~\ref{fig:radius}) and the round-trip map explain what happens instead.
+
+\paragraph{The chains are contracted.} For global pCN $|\theta|^2$ fluctuates around about $55$ (the pilot runs give $54.95$), with every chain overlapping. For experiments 4 and 4.8 it sits at about $7$--$16$ and $10$--$17$ (read from the trace plots, not computed from the chain arrays), i.e.\ roughly $13$--$31\%$ of the global value, in every chain. In individual coordinates the spread is about half the global one, and some means move toward zero (for example $\theta_{30}$ is near $-1.4$ for global pCN and near $-0.5$ in experiment 4).
+
+\paragraph{The round trip contracts.} At each accepted move the mixture applies $\theta\mapsto B_g\Pi_g\theta$ to the part of $\theta$ it proposes in. A projection would have eigenvalues $0$ or $1$ only. The eigenvalues of $B_g\Pi_g$ are strictly between (Table~\ref{tab:rt}, Figure~\ref{fig:rt}): the primal map has mean $0.76$ (six zeros, $61\%$ of the eigenvalues below $0.95$, smallest non-zero $0.54$), the dual map has mean $0.93$ and smallest eigenvalue $0.66$. The maps are not normal (largest primal singular value $1.21$), so they contract in the eigenvalue sense, not in every norm. With acceptance based only on the likelihood ratio nothing restores the shrinkage in directions the data do not constrain.
+\begin{table}[h]\centering\small
+\begin{tabular}{@{}lcccc@{}}\toprule
+grid & mean eigenvalue & smallest & fraction $<0.95$ & largest singular value\\ \midrule
+primal ($p=64$) & 0.756 & $\approx0$ (6 directions) & 0.61 & 1.206\\
+dual ($p=114$) & 0.931 & 0.657 & 0.38 & 1.021\\ \bottomrule
+\end{tabular}
+\caption{Spectrum of the round-trip map $B_g\Pi_g$ ($64\times64$) used by experiments 4 and 4.8 (\texttt{experiments/msm\_roundtrip\_spectrum.py}).}\label{tab:rt}
+\end{table}
+
+\paragraph{The chains do not agree on how far from the origin to sit, though they agree on direction.} Ordering the chains by median relative error, the $|\theta|^2$ levels keep that order for the whole $90$k post-adaptation iterations (darkest chains at about $15$, lightest at about $8$--$10$ in experiment 4; Figure~\ref{fig:radius}). In 4.8 the chains' median relative errors range from $0.027$ to $0.033$, whereas the global chains share a single level ($0.0204$) with no ordering. The chain means do not differ in direction: in 4.8 the between-chain sd of the chain means is $0.02$--$0.1$ per coordinate against a within-chain sd of $0.12$--$0.47$, and the largest per-coordinate PSRF is only $1.04$, while the MPSRF is $1.28$ (experiment 4: $1.07$ and $1.40$). The MPSRF is high because $\lambda_{\max}$ picks out a combination of coordinates, which is consistent with a chain-level difference in overall size. \emph{Why} each chain settles at its own radius and stays there is not explained by these runs; it is a hypothesis that the contraction strength depends on each chain's history of accepted moves, which I have not tested.
+
+\begin{figure}[h]\centering
+\includegraphics[width=\textwidth]{fig2/fig_theta_radius_compare.png}
+\caption{$|\theta|^2$ (top, log scale; prior mean 64) and relative error (bottom) for all 64 chains, coloured by the chain's median relative error (dark = low). Global pCN overlaps with no ordering; both mixtures sit far below it and keep a persistent chain ordering. Panels cropped from \texttt{fig\_theta\_traces.png} of each run.}\label{fig:radius}
+\end{figure}
+\begin{figure}[h]\centering
+\includegraphics[width=0.52\textwidth]{fig2/fig_roundtrip_spectrum.png}
+\caption{Sorted eigenvalues of $B_g\Pi_g$ for the primal and dual grids.}\label{fig:rt}
+\end{figure}
+
+\paragraph{Conclusion.} Experiment 4 as defined (alternating through the global state with the projection $\Pi_g$) does not work, at 4 or at 8 local modes. This does not rule out alternating primal/dual updates in general: the samplers that avoid the round trip (4b, 6a--6d) reach the plateau and mix, but sample a posterior about $12$--$14\%$ too narrow.
 
 \begin{figure}[h]\centering
 \includegraphics[width=0.49\textwidth]{fig2/mpsrf_exp4.png}\hfill
 \includegraphics[width=0.49\textwidth]{fig2/mpsrf_exp6d.png}
 \caption{MPSRF and max PSRF of $\theta$ (64 dimensions). Left: experiment 4 (dips below $1.2$, then rises). Right: experiment 6d (monotone decrease, crosses $1.2$ at about $29$k).}
+\label{fig:mpsrf}
 \end{figure}
 
 \subsection{Alternating samplers and the primal$\to$dual sequence}

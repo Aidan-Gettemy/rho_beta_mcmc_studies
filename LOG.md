@@ -1152,3 +1152,8 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 - Collected all 15 production runs (post_summary.json, fields.npz) into tables/msm_round2 and runs/msm_local_kle_2026-11/compare2 via experiments/make_msm_round2_table.py and make_msm_round2_figures.py.
 - Report: runs/msm_local_kle_2026-11/report/msm_round2_report.{tex,pdf} (6 pp). Main result: only 3b matches the global posterior sd (ratio 1.01); all faster samplers are 10-17% too narrow (mixtures 4/4.8 collapse, ratios 0.38/0.44; their "convergence" at 23k/16k is a false crossing). 114-dim dual-projection MPSRFs are not interpretable (rank 64).
 - Earlier failure of msm-post-old: summary.json was absent from the cluster checkout (diverged branch); run_msm_post.py now also caps the field sample at the available population.
+
+## 2026-11-04 - experiment 4 diagnosis added to round-2 report
+- experiments/plot_msm_theta_chains.py output (cluster, on main via PR #192) read for exp 1, 4, 4.8: |theta|^2 ~55 (global) vs ~7-17 (mixtures), chains keep persistent level ordering; per-coordinate PSRF max 1.04 but MPSRF 1.28 (4.8).
+- experiments/msm_roundtrip_spectrum.py: eigenvalues of B_g Pi_g: primal mean 0.756 (6 zeros, smallest non-zero 0.537), dual mean 0.931 (min 0.657); primal sing. value max 1.206 (non-normal).
+- Conclusion in report: exp 4 (projection through global state) dropped; alternating without the round trip (4b, 6a-6d) mixes but is ~12-14% too narrow. Why each chain keeps its own radius is untested.
