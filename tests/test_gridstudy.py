@@ -7,6 +7,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from brho import gridstudy as G                       # noqa: E402
+from brho.kle import build_kle                        # noqa: E402
 
 
 @functools.lru_cache(maxsize=None)
@@ -38,9 +39,8 @@ def test_kle_same_modes_on_every_grid():
 def test_truncation_does_not_split_a_degenerate_pair():
     lam = _S(16).kle.lam
     assert len(lam) == 20
-    from brho.kle2d import Kle2D
     try:                                                  # modes 2 and 3 are an exactly tied pair
-        Kle2D(nq=8, r=2)
+        G.GridSetup(16, r=2)
     except ValueError:
         return
     raise AssertionError("tied cut was accepted")
@@ -49,15 +49,16 @@ def test_truncation_does_not_split_a_degenerate_pair():
 def test_kle_independent_of_eigensolver_signs_and_rotations():
     """Eigensolvers return eigenvectors up to sign, and up to rotation inside degenerate eigenspaces (the
     isotropic kernel on a square has such pairs).  The KLE, hence the truth, must not depend on it."""
-    from brho.kle2d import Kle2D
-    ref = Kle2D(nq=10, r=20)
+    ph = _S(16).phys
     P = np.random.default_rng(1).random((50, 2))
-    T0 = ref.extend(P)
+    kw = dict(energy=0.9999, method="nystrom", nq=10, r_max=20, basis="canonical")
+    prm = dict(ell=0.2, sigma2=1.0)
+    T0 = build_kle(P, ph.axes, "sqexp", prm, **kw).T
     real = np.linalg.eigh
+    sreal = __import__("scipy.linalg", fromlist=["eigh"]).eigh
     rng = np.random.default_rng(0)
 
-    def scrambled(a, *args, **kw):
-        lam, U = real(a, *args, **kw)
+    def scramble(lam, U):
         U = U.copy()
         i = 0
         while i < len(lam):                               # random orthogonal rotation inside each tied group
@@ -67,15 +68,27 @@ def test_kle_independent_of_eigensolver_signs_and_rotations():
             Q, _ = np.linalg.qr(rng.standard_normal((j - i, j - i)))
             U[:, i:j] = U[:, i:j] @ Q
             i = j
-        return lam, U
+        return U
 
-    np.linalg.eigh = scrambled
+    import scipy.linalg as sla
+
+    def seigh(a, *args, **k):
+        lam, U = sreal(a, *args, **k)
+        return lam, scramble(lam[::-1], U[:, ::-1])[:, ::-1]     # lam ascending here: scramble in descending view
+
+    sla.eigh = seigh
     try:
         for _ in range(3):
-            T1 = Kle2D(nq=10, r=20).extend(P)
+            T1 = build_kle(P, ph.axes, "sqexp", prm, **kw).T
             assert np.max(np.abs(T1 - T0)) < 1e-9
+        # the legacy basis does depend on it (guards that the scrambling above is effective)
+        Tl0 = build_kle(P, ph.axes, "sqexp", prm, energy=0.9999, method="nystrom", nq=10, r_max=20).T
     finally:
-        np.linalg.eigh = real
+        sla.eigh = sreal
+    Tl1 = build_kle(P, ph.axes, "sqexp", prm, energy=0.9999, method="nystrom", nq=10, r_max=20).T
+    assert np.max(np.abs(Tl0 - Tl1)) > 1e-3
+    # and the covariance T T' (basis independent) is the same as the legacy one
+    assert np.max(np.abs(T0 @ T0.T - Tl1 @ Tl1.T)) < 1e-9
 
 
 def test_observation_sets():

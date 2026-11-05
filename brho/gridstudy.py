@@ -35,46 +35,41 @@ SeedSequence([seed0, chain]); first draw rng.standard_normal(r)), here on theta 
 """
 import numpy as np
 
-from .kle2d import Kle2D
+from .kle import build_kle
 from .physics2d import Darcy2D
 from .samplers import StepAdapter
 
 GRIDS = (16, 32, 64)
 ARMS = ("check", "fixed", "abs")
 ELL, R, EPS, SEED = 0.2, 20, 0.003, 2026
+KLE_ENERGY = 0.9999          # only sets how many modes the builder computes; r_max keeps the first R
 NQ = 16                      # Gauss-Legendre points per axis for the eigenproblem (256 nodes)
 
 
-_KLE_CACHE = {}
-
-
 class GridKle:
-    """The r-mode 2D Nystrom KLE (brho/kle2d.py) extended to the cell centres of one grid: G = T theta."""
+    """The r-mode 2D Nystrom KLE on one grid: G = T theta.  Built with brho.kle.build_kle (method "nystrom",
+    canonical basis): the eigenproblem is solved on an nq x nq Gauss-Legendre rule independent of the grid and
+    only extended to the cell centres, so every grid gets samples of the same r eigenfunctions."""
 
-    def __init__(self, k2d, points):
-        self.T, self.r, self.lam = k2d.extend(points), k2d.r, k2d.lam.copy()
-        self.energy, self.nq = k2d.energy, k2d.nq
+    def __init__(self, phys, ell, r, nq):
+        kle = build_kle(phys.points, phys.axes, "sqexp", dict(ell=ell, sigma2=1.0), energy=KLE_ENERGY,
+                        method="nystrom", nq=nq, basis="canonical", r_max=r)
+        if kle.r != r:
+            raise ValueError("a cut at %d modes would split a degenerate group (the KLE has %d)" % (r, kle.r))
+        self.T, self.r, self.lam, self.nq = kle.T, r, np.asarray(kle.lam), nq
+        self.energy = float(self.lam.sum() / kle.total)
 
     def field(self, theta):
         return np.asarray(theta) @ self.T.T
 
 
-def get_kle2d(nq, ell, r):
-    key = (nq, ell, r)
-    if key not in _KLE_CACHE:
-        _KLE_CACHE[key] = Kle2D(nq=nq, ell=ell, sigma2=1.0, r=r)
-    return _KLE_CACHE[key]
-
-
 class GridSetup:
-    """Dirichlet permeameter on an n x n grid and its Nystrom KLE (r modes, correlation length ell).
-    The modes are solved ONCE on an nq x nq Gauss-Legendre rule (independent of n) and only extended to
-    the cell centres of the grid."""
+    """Dirichlet permeameter on an n x n grid and its Nystrom KLE (r modes, correlation length ell)."""
 
     def __init__(self, n, ell=ELL, r=R, nq=NQ):
         self.n, self.ell, self.r, self.nq = n, ell, r, nq
         self.phys = Darcy2D(n, bc="dirichlet")
-        self.kle = GridKle(get_kle2d(nq, ell, r), self.phys.points)
+        self.kle = GridKle(self.phys, ell, r, nq)
 
 
 def centre_cell_indices(n, base=16):
