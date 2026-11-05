@@ -126,18 +126,6 @@ def _fix_signs(U):
     return U * s
 
 
-def _fix_signs_projection(U, x):
-    """Rounding-independent signs for 1D eigenvectors of a symmetric kernel on [0, 1]: the projection
-    onto the coordinate x is positive.  (Odd modes have two equal extremes of opposite sign, so the
-    'largest entry' rule of _fix_signs is decided by rounding and can differ between library versions.)
-    Raises if a projection is too small to be trusted."""
-    proj = x @ U
-    scale = np.linalg.norm(x) * np.linalg.norm(U, axis=0)
-    bad = np.abs(proj) < 1e-6 * scale
-    s = np.where(proj < 0, -1.0, 1.0)
-    return U * s, bad
-
-
 def _discrete_dense(points, kname, params, energy):
     C = KN.get(kname)["cov"](points, points, params)
     lam, phi = np.linalg.eigh(C)
@@ -203,7 +191,51 @@ def _weighted_eig(A, total, energy, ties):
     return lam, U, r
 
 
-def _nystrom_full(points, kname, params, energy, nq, quad):
+def _reference_functions(X, n):
+    """n fixed, generic, smooth functions on the quadrature points (no symmetry of the square)."""
+    out = []
+    for k in range(n):
+        a, b, c = 1.3 + 0.71 * k, 0.9 + 1.13 * k, 0.37 + 0.59 * k
+        out.append(np.cos(a * X[:, 0] + b * X[:, 1] + c) + 0.3 * X[:, 0] * (k + 1) - 0.2 * X[:, 1] ** 2)
+    return np.stack(out, 1)
+
+
+def canonical_basis(lam, U, sw, X):
+    """Reproducible eigenvector basis.  An eigensolver returns eigenvectors only up to sign and, inside a
+    degenerate eigenspace (the isotropic kernel on a square has such pairs, (i, j) and (j, i)), only up to
+    rotation, so different LAPACK builds give different fields for the same theta.  The basis of each
+    (numerically) degenerate group of columns is replaced by one fixed through the eigenspace PROJECTOR,
+    which is basis independent: fixed smooth reference functions are projected onto the eigenspace and
+    Gram-Schmidt orthonormalised (the sign follows from the first projected function).  lam is descending;
+    U (M x k) must contain whole groups.  Returns the canonical U."""
+    n = U.shape[1]
+    G = _reference_functions(X, 8) * sw[:, None]
+    Uc = np.empty_like(U)
+    k = 0
+    while k < n:
+        m = k + 1
+        while m < n and abs(lam[m] - lam[k]) <= TIE_RTOL * lam[k]:
+            m += 1
+        E = U[:, k:m]
+        P = E @ (E.T @ G)
+        basis = []
+        for j in range(P.shape[1]):
+            v = P[:, j].copy()
+            for b in basis:
+                v -= (b @ v) * b
+            nv = np.linalg.norm(v)
+            if nv > 1e-6 * np.linalg.norm(G[:, j]):
+                basis.append(v / nv)
+            if len(basis) == m - k:
+                break
+        if len(basis) != m - k:
+            raise ValueError("reference functions do not span the eigenspace of modes %d..%d" % (k, m - 1))
+        Uc[:, k:m] = np.stack(basis, 1)
+        k = m
+    return Uc
+
+
+def _nystrom_full(points, kname, params, energy, nq, quad, basis="legacy", r_max=None):
     cov = KN.get(kname)["cov"]
     d = points.shape[1]
     Xq, wq = tensor_rule(quad, nq, d)
@@ -213,7 +245,16 @@ def _nystrom_full(points, kname, params, energy, nq, quad):
     A = 0.5 * (A + A.T)
     total = float(np.trace(A))                     # = sum_j w_j C(x_j, x_j)
     lam, U, r = _weighted_eig(A, total, energy, ties=True)
-    lam, U = lam[:r], _fix_signs(U[:, :r])
+    if r_max is not None and r > r_max:                    # cap the number of modes, never splitting a tie
+        r = r_max
+        while r < len(lam) and abs(lam[r] - lam[r - 1]) <= TIE_RTOL * lam[r - 1]:
+            r += 1
+    if basis == "canonical":
+        lam, U = lam[:r], canonical_basis(lam[:r], U[:, :r], sw, Xq)
+    elif basis == "legacy":
+        lam, U = lam[:r], _fix_signs(U[:, :r])
+    else:
+        raise ValueError(basis)
     # Nystrom extension:  T = K(P, Xq) (sqrt(w) * U) / sqrt(lam), in chunks
     B = (sw[:, None] * U) / np.sqrt(lam)[None, :]
     T = np.empty((len(points), r))
@@ -225,7 +266,7 @@ def _nystrom_full(points, kname, params, energy, nq, quad):
                dict(nq=nq, quadrature=quad, n_quad=len(Xq)))
 
 
-def _nystrom_separable(axes, kname, params, energy, nq, quad, sign_rule="argmax"):
+def _nystrom_separable(axes, kname, params, energy, nq, quad):
     kern, d = KN.get(kname), len(axes)
     spectra, ext = [], []
     for a, x_out in enumerate(axes):
@@ -233,17 +274,7 @@ def _nystrom_separable(axes, kname, params, energy, nq, quad, sign_rule="argmax"
         sw = np.sqrt(wq)
         Aa = sw[:, None] * kern["factor"](a, xq, xq, params, d) * sw[None, :]
         la, Ua = np.linalg.eigh(0.5 * (Aa + Aa.T))
-        la, Ua = np.clip(la[::-1], 0, None), Ua[:, ::-1]
-        if sign_rule == "argmax":
-            Ua = _fix_signs(Ua)
-        elif sign_rule == "projection":
-            Ua, bad = _fix_signs_projection(Ua, xq)
-            sel = la > 1e-6 * la[0]         # modes that can be selected
-            if np.any(bad & sel):
-                raise ValueError("projection sign rule is ambiguous for mode(s) %s"
-                                 % np.where(bad & sel)[0].tolist())
-        else:
-            raise ValueError(sign_rule)
+        la, Ua = np.clip(la[::-1], 0, None), _fix_signs(Ua[:, ::-1])
         spectra.append(la)
         # 1D Nystrom extension of every mode (tiny modes are never selected)
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -290,8 +321,10 @@ def resolve_method(method, N, kname):
 
 
 def build_kle(points, axes, kname, params, energy=0.95, method="auto",
-              nq=40, quadrature="gauss_legendre", sign_rule="argmax"):
-    """sign_rule (nystrom_sep only): "argmax" (legacy, default) or "projection" (rounding-independent).
+              nq=40, quadrature="gauss_legendre", basis="legacy", r_max=None):
+    """basis (method "nystrom"): "legacy" (eigh's basis, signs by the largest entry; default, as before) or
+    "canonical" (basis fixed through the eigenspace projectors, independent of the eigensolver; see
+    canonical_basis).  r_max caps the number of modes (a tied group is never split).
     points: (N, d) cell centers in cell order; axes: per-axis 1D cell
     coordinates of the same tensor grid."""
     points = np.asarray(points, float)
@@ -301,11 +334,11 @@ def build_kle(points, axes, kname, params, energy=0.95, method="auto",
     elif method == "kron":
         kle = _discrete_kron(axes, kname, params, energy)
     elif method == "nystrom":
-        kle = _nystrom_full(points, kname, params, energy, nq, quadrature)
+        kle = _nystrom_full(points, kname, params, energy, nq, quadrature, basis, r_max)
     elif method == "nystrom_sep":
         if not KN.is_separable(kname):
             raise ValueError(f"kernel {kname} is not separable")
-        kle = _nystrom_separable(axes, kname, params, energy, nq, quadrature, sign_rule)
+        kle = _nystrom_separable(axes, kname, params, energy, nq, quadrature)
     else:
         raise ValueError(method)
     kle.meta.update(kernel=kname, params={k: np.asarray(v).tolist()

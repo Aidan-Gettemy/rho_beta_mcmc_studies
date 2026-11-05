@@ -42,20 +42,22 @@ from .samplers import StepAdapter
 GRIDS = (16, 32, 64)
 ARMS = ("check", "fixed", "abs")
 ELL, R, EPS, SEED = 0.2, 20, 0.003, 2026
-KLE_ENERGY = 0.9999          # large enough that more than R modes exist; the first R are kept
+KLE_ENERGY = 0.9999          # only sets how many modes the builder computes; r_max keeps the first R
+NQ = 16                      # Gauss-Legendre points per axis for the eigenproblem (256 nodes)
 
 
-class TruncKLE:
-    """The first r modes of a built KLE: G = T theta."""
+class GridKle:
+    """The r-mode 2D Nystrom KLE on one grid: G = T theta.  Built with brho.kle.build_kle (method "nystrom",
+    canonical basis): the eigenproblem is solved on an nq x nq Gauss-Legendre rule independent of the grid and
+    only extended to the cell centres, so every grid gets samples of the same r eigenfunctions."""
 
-    def __init__(self, kle, r):
-        lam = np.asarray(kle.lam)
-        if len(lam) <= r:
-            raise ValueError("KLE has too few modes")
-        if abs(lam[r - 1] - lam[r]) <= 1e-9 * lam[r - 1]:
-            raise ValueError("mode r is tied with mode r + 1: truncating would split a degenerate pair")
-        self.T, self.r, self.lam = np.asarray(kle.T)[:, :r].copy(), r, lam[:r].copy()
-        self.energy = float(lam[:r].sum() / kle.total)
+    def __init__(self, phys, ell, r, nq):
+        kle = build_kle(phys.points, phys.axes, "sqexp", dict(ell=ell, sigma2=1.0), energy=KLE_ENERGY,
+                        method="nystrom", nq=nq, basis="canonical", r_max=r)
+        if kle.r != r:
+            raise ValueError("a cut at %d modes would split a degenerate group (the KLE has %d)" % (r, kle.r))
+        self.T, self.r, self.lam, self.nq = kle.T, r, np.asarray(kle.lam), nq
+        self.energy = float(self.lam.sum() / kle.total)
 
     def field(self, theta):
         return np.asarray(theta) @ self.T.T
@@ -64,12 +66,10 @@ class TruncKLE:
 class GridSetup:
     """Dirichlet permeameter on an n x n grid and its Nystrom KLE (r modes, correlation length ell)."""
 
-    def __init__(self, n, ell=ELL, r=R):
-        self.n, self.ell, self.r = n, ell, r
+    def __init__(self, n, ell=ELL, r=R, nq=NQ):
+        self.n, self.ell, self.r, self.nq = n, ell, r, nq
         self.phys = Darcy2D(n, bc="dirichlet")
-        kle = build_kle(self.phys.points, self.phys.axes, "sqexp", dict(ell=ell, sigma2=1.0),
-                        energy=KLE_ENERGY, method="nystrom_sep", sign_rule="projection")
-        self.kle = TruncKLE(kle, r)
+        self.kle = GridKle(self.phys, ell, r, nq)
 
 
 def centre_cell_indices(n, base=16):
