@@ -126,6 +126,18 @@ def _fix_signs(U):
     return U * s
 
 
+def _fix_signs_projection(U, x):
+    """Rounding-independent signs for 1D eigenvectors of a symmetric kernel on [0, 1]: the projection
+    onto the coordinate x is positive.  (Odd modes have two equal extremes of opposite sign, so the
+    'largest entry' rule of _fix_signs is decided by rounding and can differ between library versions.)
+    Raises if a projection is too small to be trusted."""
+    proj = x @ U
+    scale = np.linalg.norm(x) * np.linalg.norm(U, axis=0)
+    bad = np.abs(proj) < 1e-6 * scale
+    s = np.where(proj < 0, -1.0, 1.0)
+    return U * s, bad
+
+
 def _discrete_dense(points, kname, params, energy):
     C = KN.get(kname)["cov"](points, points, params)
     lam, phi = np.linalg.eigh(C)
@@ -213,7 +225,7 @@ def _nystrom_full(points, kname, params, energy, nq, quad):
                dict(nq=nq, quadrature=quad, n_quad=len(Xq)))
 
 
-def _nystrom_separable(axes, kname, params, energy, nq, quad):
+def _nystrom_separable(axes, kname, params, energy, nq, quad, sign_rule="argmax"):
     kern, d = KN.get(kname), len(axes)
     spectra, ext = [], []
     for a, x_out in enumerate(axes):
@@ -221,7 +233,17 @@ def _nystrom_separable(axes, kname, params, energy, nq, quad):
         sw = np.sqrt(wq)
         Aa = sw[:, None] * kern["factor"](a, xq, xq, params, d) * sw[None, :]
         la, Ua = np.linalg.eigh(0.5 * (Aa + Aa.T))
-        la, Ua = np.clip(la[::-1], 0, None), _fix_signs(Ua[:, ::-1])
+        la, Ua = np.clip(la[::-1], 0, None), Ua[:, ::-1]
+        if sign_rule == "argmax":
+            Ua = _fix_signs(Ua)
+        elif sign_rule == "projection":
+            Ua, bad = _fix_signs_projection(Ua, xq)
+            sel = la > 1e-6 * la[0]         # modes that can be selected
+            if np.any(bad & sel):
+                raise ValueError("projection sign rule is ambiguous for mode(s) %s"
+                                 % np.where(bad & sel)[0].tolist())
+        else:
+            raise ValueError(sign_rule)
         spectra.append(la)
         # 1D Nystrom extension of every mode (tiny modes are never selected)
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -268,8 +290,9 @@ def resolve_method(method, N, kname):
 
 
 def build_kle(points, axes, kname, params, energy=0.95, method="auto",
-              nq=40, quadrature="gauss_legendre"):
-    """points: (N, d) cell centers in cell order; axes: per-axis 1D cell
+              nq=40, quadrature="gauss_legendre", sign_rule="argmax"):
+    """sign_rule (nystrom_sep only): "argmax" (legacy, default) or "projection" (rounding-independent).
+    points: (N, d) cell centers in cell order; axes: per-axis 1D cell
     coordinates of the same tensor grid."""
     points = np.asarray(points, float)
     method = resolve_method(method, len(points), kname)
@@ -282,7 +305,7 @@ def build_kle(points, axes, kname, params, energy=0.95, method="auto",
     elif method == "nystrom_sep":
         if not KN.is_separable(kname):
             raise ValueError(f"kernel {kname} is not separable")
-        kle = _nystrom_separable(axes, kname, params, energy, nq, quadrature)
+        kle = _nystrom_separable(axes, kname, params, energy, nq, quadrature, sign_rule)
     else:
         raise ValueError(method)
     kle.meta.update(kernel=kname, params={k: np.asarray(v).tolist()
