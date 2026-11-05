@@ -1152,3 +1152,8 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 - Collected all 15 production runs (post_summary.json, fields.npz) into tables/msm_round2 and runs/msm_local_kle_2026-11/compare2 via experiments/make_msm_round2_table.py and make_msm_round2_figures.py.
 - Report: runs/msm_local_kle_2026-11/report/msm_round2_report.{tex,pdf} (6 pp). Main result: only 3b matches the global posterior sd (ratio 1.01); all faster samplers are 10-17% too narrow (mixtures 4/4.8 collapse, ratios 0.38/0.44; their "convergence" at 23k/16k is a false crossing). 114-dim dual-projection MPSRFs are not interpretable (rank 64).
 - Earlier failure of msm-post-old: summary.json was absent from the cluster checkout (diverged branch); run_msm_post.py now also caps the field sample at the available population.
+
+## 2026-11-04 grid-refinement study of global pCN (branch gridarms)
+New `brho/gridstudy.py`, runners `experiments/run_grid_{chains,post,compare}.py`, `grid_fisher_check.py`, nine sbatch jobs
+(`cluster/gen_grid_sbatch.py`, `submit_grid_arms.sh`), tests, and `docs/grid_arms_experiment.md` (incl. why sigma_abs = 0.0167).
+Pilot: arm-3 step 0.033 (16) -> 0.0084 (64), acceptance ~0.28, ~8 min per 100k-iteration chain at 64x64 in the sandbox.
