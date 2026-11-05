@@ -114,8 +114,9 @@ data). Reasons:
    from 4 to 8 to 11).
 4. **Feasible for pCN.** The adapted step size was expected to shrink roughly with the square root of the largest
    information eigenvalue (1.5e3 to 2.5e4, a factor of about 4 on the finest grid). The pilot (Section 9) agrees:
-   the adapted step falls from about 0.033 (16x16) to 0.008 (64x64) with acceptance near 25%, far from the floor
-   1e-4, so 100,000 iterations are a reasonable budget; whether it suffices for MPSRF < 1.2 is for the real runs to show.
+   the adapted step falls from 0.051 (16x16) to 0.026 (32x32) to 0.013 (64x64) with acceptance near 25%, far from
+   the floor 1e-4, so 100,000 iterations are a reasonable budget; whether it suffices for MPSRF < 1.2 is for the
+   real runs to show.
 
 **Alternative considered and not used as the default:** sigma_abs = 0.003 * rms(p) = 0.0021 (0.3% per
 observation), the literal 0.3% noise level. It is 128 times sharper than arms 1 and 2 at 16x16 (the likelihood
@@ -158,20 +159,25 @@ Each job runs its tests, then the chains, then the post-processing. Timing in a 
 0.4 / 1.7 / 5 ms per forward solve at 16 / 32 / 64 (about 40 s, 3 min, 9 min per 100,000-iteration chain);
 the cluster is expected to be faster.
 
-## 9. Pilot (sandbox, 8 chains, 20,000 iterations, M = 4,000; step-size/timing check only)
+## 9. Pilot (sandbox, 8 chains, 20,000 iterations, M = 4,000; step-size and timing check only)
 
-| run | n obs | adapted step s | post-M acceptance | median relerr (at truth) | Phi at truth (expected) | s per chain |
-|---|---|---|---|---|---|---|
-| check 16 | 128 | 0.037 | 0.268 | 0.0118 (0.0033) | 7.7 (0.6) | 9 |
-| abs 16 | 128 | 0.033 | 0.278 | 0.0362 (0.0375) | 73.4 (78.7) | 10 |
-| abs 64 | 2048 | 0.0084 (max 0.0105) | 0.278 | 0.0340 (0.0340) | 1031.7 (1024) | 93 |
+| run | n obs | adapted step s (max over chains) | post-M acceptance | median relerr | s per chain |
+|---|---|---|---|---|---|
+| check 16 | 128 | 0.0513 (0.0513) | 0.256 | 0.0117 | 9 |
+| check 64 | 2048 | 0.0513 (0.0513) | 0.264 | 0.0116 | 92 |
+| abs 16 | 128 | 0.0513 (0.0644) | 0.247 | 0.0363 | 9 |
+| abs 32 | 512 | 0.0260 (0.0326) | 0.248 | 0.0362 | 27 |
+| abs 64 | 2048 | 0.0132 (0.0132) | 0.253 | 0.0340 | 93 |
 
-* The arm-3 step shrinks by a factor of about 4 from 16x16 to 64x64, as the Fisher proxy predicts; no chain is near the
-  step floor. A 100,000-iteration chain on 64x64 takes about 8 minutes in the 2-core sandbox.
-* The pilots are too short to say anything about MPSRF (about 2 after 20,000 iterations at 16x16); the 32x32
-  pilots and the arm 1/2 runs at 64x64 were not needed for the design and are left to the cluster runs.
-* The 16x16 pilot posteriors of arms 1 and 3 differ (Gaussian-approximation KL about 10): arm 3 has noisier data
-  (Section 5, item 1), as expected.
+* Arm 1 (and, by the Fisher proxy, arm 2): the adapted step is the same on 16x16 and 64x64, as the
+  relative-error likelihood predicts (information does not grow with the data).
+* Arm 3: the step halves with each refinement (0.051, 0.026, 0.013), about the 4x in total that the largest
+  information eigenvalue predicts; no chain is near the step floor, and acceptance is at the 25% target everywhere.
+* Cost: a 100,000-iteration chain at 64x64 takes about 8 minutes in the 2-core sandbox.
+* The relative errors sit at the noise levels of the data (arm 1: 0.3% of ||d||; arm 3: 3.4%, falling to 3.3% as
+  the data grow), as expected for chains that have found the posterior.
+* The pilots are too short to say anything about MPSRF (the 100,000-iteration runs are the test of that). The 16x16
+  posteriors of arms 1 and 3 differ because arm 3's data carry about 11 times more noise (Section 5, item 1).
 
 ## 10. Caveats
 
