@@ -1157,3 +1157,5 @@ e5_soft_a4 / a7 / a14 = E5 with move A repeated 4 / 7 / 14 times per iteration):
 New `brho/gridstudy.py`, runners `experiments/run_grid_{chains,post,compare}.py`, `grid_fisher_check.py`, nine sbatch jobs
 (`cluster/gen_grid_sbatch.py`, `submit_grid_arms.sh`), tests, and `docs/grid_arms_experiment.md` (incl. why sigma_abs = 0.0167).
 Pilot: arm-3 step 0.033 (16) -> 0.0084 (64), acceptance ~0.28, ~8 min per 100k-iteration chain at 64x64 in the sandbox.
+
+## 2026-11-05 paper-MSM study built (brho/msmpaper.py, 8 experiments + prior test); pilots OK, cluster runs pending.
