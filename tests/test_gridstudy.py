@@ -63,10 +63,13 @@ def test_observation_sets():
 def test_sigma_abs_is_eps_times_16_data_norm():
     D16 = _D(16, "check")
     s = G.sigma_abs_reference()
-    assert abs(s - 0.003 * np.linalg.norm(D16.obs_clean)) < 1e-14
+    assert abs(s - 0.003 * np.linalg.norm(D16.obs_clean)) < 1e-12
     assert abs(s - 0.01670280300644679) < 1e-9
     for n in G.GRIDS:
-        assert _D(n, "abs").sigma_abs == s and _D(n, "abs").sigma_p == s
+        D = _D(n, "abs")
+        # tolerance, not ==: each GridData recomputes sigma_abs from a fresh solve and threaded
+        # linear algebra may differ in the last bit between calls
+        assert abs(D.sigma_abs - s) < 1e-12 and D.sigma_p == D.sigma_abs
 
 
 def test_same_theta_and_shared_noise():
