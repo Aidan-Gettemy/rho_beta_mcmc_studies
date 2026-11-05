@@ -108,6 +108,8 @@ def test_sigma_abs_is_eps_times_16_data_norm():
     D16 = _D(16, "check")
     s = G.sigma_abs_reference()
     assert abs(s - 0.003 * np.linalg.norm(D16.obs_clean)) < 1e-12
+    # Cross-machine invariant: with the canonical KLE basis the truth depends only on the kernel and the
+    # quadrature rule, so this value must be the same on every machine / LAPACK build (it differed with eigh's basis).
     assert abs(s - 0.023622782257887845) < 1e-9, f"sigma_abs_reference() = {s!r}, expected 0.023622782257887845"
     for n in G.GRIDS:
         D = _D(n, "abs")
