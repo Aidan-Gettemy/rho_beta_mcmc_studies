@@ -34,6 +34,16 @@ for a in ("arm1_check", "arm2_fixed", "arm3_abs"):
     rows.append("\\midrule")
 rows = rows[:-1]
 
+dm = {}
+for a in ("arm1_check", "arm2_fixed"):
+    z16 = np.load(f"{root}/{a}_n16/post/theta_stats.npz")
+    for n in (32, 64):
+        z = np.load(f"{root}/{a}_n{n}/post/theta_stats.npz")
+        d = (z["mean"] - z16["mean"]) / z16["sd"]
+        r = z["sd"] / z16["sd"]
+        dm[(a, n)] = (np.abs(d).max(), np.sqrt((d ** 2).mean()), r.min(), r.max())
+mcse = float(np.median(np.load(f"{root}/arm2_fixed_n16/post/theta_stats.npz")["chain_means"].std(0, ddof=1) / 8
+                       / np.load(f"{root}/arm2_fixed_n16/post/theta_stats.npz")["sd"]))
 a3 = {n: R[("arm3_abs", n)] for n in (16, 32, 64)}
 cost16 = a3[16]["sec"] * a3[16]["conv"] / 1e5
 cost32 = a3[32]["sec"] * a3[32]["conv"] / 1e5
@@ -49,6 +59,7 @@ tex = r"""\documentclass[11pt]{article}
 \section{Summary of findings}
 Nine runs (3 arms $\times$ grids $16^2,32^2,64^2$), each with 64 chains, $10^5$ iterations, adaptation to 25\% acceptance for the first $M=10^4$ iterations, state saved every 50 iterations. The parameter is the same 20-dimensional KLE vector on every grid, one fixed $\theta^*$.
 \begin{itemize}
+\item \textbf{The coarsest grid is sufficient for the forward model here.} At $16\times16$ there are $3.2$ cells per correlation length ($\ell=0.2$); refining to $32^2$ ($6.4$) and $64^2$ ($12.8$) does not change the posterior of $\theta$ when the data are held fixed (arm 2): the posterior means move by at most @A2MAX@ posterior sd (rms @A2RMS@), the posterior sds by $\le4\%$, and the sampler and its convergence are unchanged (Section~\ref{sec:adequacy}). Arm 1, where the data also grow with the grid, gives the same answer within $0.13$ posterior sd.
 \item \textbf{With the relative-error likelihood the posterior and the sampler do not depend on the grid (arms 1 and 2).} The adapted step is $0.0513$ on all six runs, acceptance is $0.250$--$0.253$, MPSRF falls below $1.2$ after $21$--$22$k iterations, and the mean posterior sd of $\theta$ is $0.54$--$0.55$ everywhere. This holds whether the number of observations grows (arm 1: 128, 512, 2048) or is fixed (arm 2: 128 at the cell closest to each coarse checkerboard centre). The posteriors on the three grids agree to within the sampling noise of the runs (Section~\ref{sec:arms12}).
 \item \textbf{With a fixed per-observation noise (arm 3) the posterior concentrates and pCN slows down in the way the information predicts.} The mean posterior sd falls from $0.547$ to $0.445$ to $0.324$, and the rms error of the posterior mean from $0.50$ to $0.45$ to $0.24$. The adapted step falls to $0.0260$ and $0.0132$, i.e.\ by $1.97\times$ and $3.89\times$, against $2.01\times$ and $4.03\times$ predicted from the growth of the Fisher-information trace ($4.05\times$, $16.2\times$).
 \item \textbf{Arm 3 is not converged on the $64^2$ grid within $10^5$ iterations} (MPSRF $1.457$, max PSRF $1.403$ at the end); on $32^2$ it reaches $1.2$ only after $79$k iterations (versus $21$k on $16^2$). The $64^2$ posterior numbers of arm 3 (sd $0.324$, error $0.236$) are therefore provisional.
@@ -90,6 +101,19 @@ arm & grid & obs & step $s$ & median $\rel$ (at truth) & iter.\ to 1.2 (k) & MPS
 
 \subsection{Arms 1 and 2: grid independence}\label{sec:arms12}
 Step size, acceptance, relative error, iterations to convergence and posterior spread are the same on all grids and in both arms, and the per-coordinate posterior sd curves of Figure~\ref{fig:sd} lie on top of each other. This is what the Fisher-information proxy ($\mathrm{tr}F$ within $1\%$ of the $16^2$ value in both arms) predicted. The KL divergences of the Gaussian fits from the $16^2$ fit are $0.04$--$0.13$. A rough noise floor for such a divergence between two independent fits of 20-dimensional Gaussians is $d(d+3)/(2N)$ with $N$ the effective number of samples; the chain-mean proxy gives $N\approx1.3$--$1.4\cdot10^3$ and a floor of $@FLOOR@$, so these differences are of the size of the sampling noise and I do not interpret them. The two arms agree with each other at every grid size. A caveat: both arms have a tempered likelihood (median $\Phi\approx7$ against about $0.6$ at the truth) and a posterior that is broad (mean sd $0.54$ against prior sd $1$), so this tests grid independence of the posterior and of pCN, not information gain.
+
+\subsection{Is the coarsest grid adequate for the forward model?}\label{sec:adequacy}
+The question is whether the forward-model discretisation matters for the posterior. The grid spacing $h=1/n$ over the correlation length is $3.2$, $6.4$, $12.8$ cells per $\ell$ for $n=16,32,64$. Arm 2 isolates the discretisation: the same 128 observation locations (the cell nearest to each coarse checkerboard centre), the same $\theta^*$ and nearly the same noise ($2.09$--$2.12\cdot10^{-3}$), so only the forward model and the resolution of the field change. Its results on the finer grids, relative to $16^2$:
+\begin{center}\small
+\begin{tabular}{@{}lcccc@{}}\toprule
+ & max $|\Delta\bar\theta_k|/\mathrm{sd}_k$ & rms $\Delta\bar\theta_k/\mathrm{sd}_k$ & range of $\mathrm{sd}_k$ ratio & KL (floor $\approx0.18$)\\ \midrule
+arm 2, $32^2$ & @A232MAX@ & @A232RMS@ & @A232LO@--@A232HI@ & @KL2_32@\\
+arm 2, $64^2$ & @A264MAX@ & @A264RMS@ & @A264LO@--@A264HI@ & @KL2_64@\\
+arm 1, $32^2$ & @A132MAX@ & @A132RMS@ & @A132LO@--@A132HI@ & @KL1_32@\\
+arm 1, $64^2$ & @A164MAX@ & @A164RMS@ & @A164LO@--@A164HI@ & @KL1_64@\\ \bottomrule
+\end{tabular}
+\end{center}
+The Monte Carlo standard error of each posterior mean is about @MCSE@ posterior sd (from the chain means), so the arm 2 differences are at the level of the sampling noise (the runs use the same chain seeds, so their errors are correlated and this is, if anything, an overestimate of the difference noise). The adapted step, acceptance, relative error, iterations to MPSRF $<1.2$ ($22.1$, $21.7$, $21.4$k) and the error of the posterior mean ($0.349$, $0.351$, $0.352$) are likewise unchanged. This agrees with the forward-model comparison at $\theta^*$: the block-averaged pressure of the three grids differs by only $0.04$--$0.05\%$, against $0.3\%$ noise. \textbf{What this supports:} for this problem (squared-exponential field, $\ell=0.2$, 20 modes, Dirichlet slab, relative noise $0.3\%$ of the rms pressure, one truth) the $16\times16$ grid, about 3 cells per correlation length, gives the same posterior as $32^2$ and $64^2$. \textbf{What it does not:} the check is at noise $0.3\%$ and a broad, tempered posterior (mean sd $0.54$). The discretisation difference in pressure ($0.04$--$0.05\%$) would become comparable to the noise only for data about six times more accurate than these, and a posterior much narrower than this one (as in arm 3, where the grids also differ in information) could be more sensitive to it; other correlation lengths and other noise levels are not tested here.
 
 \begin{figure}[h]\centering
 \includegraphics[width=\textwidth]{../compare/fig_theta_sd.png}
@@ -133,6 +157,17 @@ In the first version of the study, built on the separable Nystr\"om KLE with eig
 \paragraph{Sources.} \raggedright In \path|runs/grid_arms_2026-11/|: \path|compare/table.json|, and for each run \path|post/post_summary.json| and \path|post/theta_stats.npz|. Fisher proxy: \path|tables/grid_arms/fisher_proxy.md|. Design and pilot: \path|docs/grid_arms_experiment.md|.
 \end{document}
 """.replace("@FLOOR@", f"{kl_floor[('arm1_check', 32)]:.2f}")
+ph = {"@A2MAX@": f"{max(dm[('arm2_fixed', 32)][0], dm[('arm2_fixed', 64)][0]):.2f}",
+      "@A2RMS@": f"{max(dm[('arm2_fixed', 32)][1], dm[('arm2_fixed', 64)][1]):.3f}", "@MCSE@": f"{mcse:.3f}"}
+for tag, a in (("A2", "arm2_fixed"), ("A1", "arm1_check")):
+    for n in (32, 64):
+        m, rm, lo, hi = dm[(a, n)]
+        ph[f"@{tag}{n}MAX@"], ph[f"@{tag}{n}RMS@"] = f"{m:.3f}", f"{rm:.3f}"
+        ph[f"@{tag}{n}LO@"], ph[f"@{tag}{n}HI@"] = f"{lo:.3f}", f"{hi:.3f}"
+        ph[f"@KL{tag[1]}_{n}@"] = f"{R[(a, n)]['kl_own']:.2f}"
+for k, v in ph.items():
+    tex = tex.replace(k, v)
+assert "@A" not in tex and "@KL" not in tex and "@MC" not in tex
 open(f"{rep}/grid_arms_report.tex", "w").write(tex)
 for _ in range(2):
     subprocess.run(["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "grid_arms_report.tex"], cwd=rep, check=True,
