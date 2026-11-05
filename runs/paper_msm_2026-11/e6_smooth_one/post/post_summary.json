@@ -1,0 +1,78 @@
+{
+ "exp": "e6_smooth_one",
+ "spec": {
+  "field": "smooth",
+  "scan": "coord",
+  "n_iter": 150000,
+  "adapt": 30000,
+  "s0": 0.5
+ },
+ "n_obs": 128,
+ "chains": 64,
+ "n_iter": 150000,
+ "adapt": 30000,
+ "acceptance": {
+  "mean": 0.34986510416666666,
+  "sd": 0.02275999164720444,
+  "min": 0.258,
+  "max": 0.442,
+  "group_min": 0.24455729166666668,
+  "group_max": 0.8032473958333334
+ },
+ "step_final_median_per_group": [
+  0.2533155679702759,
+  0.949999988079071,
+  0.6272000074386597,
+  0.949999988079071,
+  0.949999988079071,
+  0.2533155679702759,
+  0.949999988079071,
+  0.949999988079071,
+  0.949999988079071,
+  0.949999988079071,
+  0.2019416093826294,
+  0.6272000074386597,
+  0.31775903701782227,
+  0.949999988079071,
+  0.949999988079071,
+  0.31775903701782227,
+  0.31775903701782227,
+  0.31775903701782227,
+  0.7867596745491028,
+  0.949999988079071
+ ],
+ "relerr_post_M_median": 0.012134565971791744,
+ "relerr_at_truth": 0.003326069770852951,
+ "phi_post_M_median": 8.180427551269531,
+ "mpsrf": {
+  "native": {
+   "dim": 20,
+   "n_samples": 2980,
+   "window_start_iteration": 1000,
+   "mpsrf_final": 1.1014111316364315,
+   "psrf_max_final": 1.0959904882082103,
+   "convergence_iteration": 89474.0
+  },
+  "common": {
+   "dim": 20,
+   "n_samples": 2980,
+   "window_start_iteration": 1000,
+   "mpsrf_final": 1.101473068979738,
+   "psrf_max_final": 1.0874767844946218,
+   "convergence_iteration": 89486.0
+  }
+ },
+ "mpsrf_method": "MPSRF/PSRF follow the group's MATLAB convention (brho/mpsrf.py, getMSPRF / computeMPSRFcurve). Samples: the chain state saved every 50 iterations. The window STARTS at iteration 1000 of the run (of the phase, for the second phase of experiment 5), i.e. the adaptation period is NOT discarded, and GROWS to the end of the run: at curve point u it holds the saved samples from the start iteration to the current iteration, every 2-th sample (skip 2), with a curve point every 15 saved samples (750 iterations). For each window, with m chains and n samples per chain: W = mean over chains of the within-chain covariance (divisor n-1), B/n = covariance of the m chain means (divisor m-1), MPSRF = sqrt((n-1)/n + (m+1)/m * lambda_max(W^-1 B/n)); the per-component PSRF_i = sqrt(V_ii / W_ii) with V = (n-1)/n W + (m+1)/m B/n, and the reported PSRF is max_i PSRF_i. 'convergence_iteration' = first curve point (ignoring the first 10 points) with MPSRF < 1.2, linearly interpolated. The x axis is the iteration of the last sample in the window. Not split-chain, no extra burn-in. Dimension 20: 'native' = the sampler's state (global theta for e0/e1, local coefficients c for e2-e7), 'common' = theta-coordinates (L2 projection onto the 20 global modes) of the field.",
+ "z_post": {
+  "sd_mean": 0.4099081321912852,
+  "sd_min": 0.16838393114307357,
+  "sd_max": 0.6341161748366668,
+  "rms_mean_error": 0.5224736575074151
+ },
+ "fields": {
+  "n": 10000,
+  "logk_sd_mean": 0.4449608468591414,
+  "p_sd_mean": 0.007705346203507024,
+  "logk_mean_error_rms": 0.6285363593686566
+ }
+}

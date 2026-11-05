@@ -26,3 +26,4 @@ external/data/
 external/fields/
 # MSM local-KLE study: raw chains stay on the cluster (summary.json, post/ and post/fields.npz are committed)
 runs/msm_local_kle_*/**/chains.npz
+runs/paper_msm_2026-11/*/chains.npz
