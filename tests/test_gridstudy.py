@@ -27,6 +27,7 @@ def test_kle_same_modes_on_every_grid():
     for n in G.GRIDS:
         assert _S(n).kle.T.shape == (n * n, 20)
         assert np.allclose(_S(n).kle.lam, _S(16).kle.lam, rtol=1e-12)
+        assert _S(n).kle.nq == _S(16).kle.nq
     def block(v, n, m):
         return v.reshape(m, n // m, m, n // m).mean((1, 3)).ravel()
     assert np.linalg.norm(block(f[64], 64, 16) - f[16]) / np.linalg.norm(f[16]) < 0.01
@@ -36,15 +37,45 @@ def test_kle_same_modes_on_every_grid():
 
 def test_truncation_does_not_split_a_degenerate_pair():
     lam = _S(16).kle.lam
-    assert lam[19] > lam[20] * (1 + 1e-6) if len(lam) > 20 else True
-    S = _S(16)
-    class K:                                              # a KLE whose modes 20 and 21 are tied is refused
-        lam = np.array([1.0, .5, .25, .25]); T = np.ones((4, 4)); total = 2.0
-    try:
-        G.TruncKLE(K, 3)
+    assert len(lam) == 20
+    from brho.kle2d import Kle2D
+    try:                                                  # modes 2 and 3 are an exactly tied pair
+        Kle2D(nq=8, r=2)
     except ValueError:
         return
     raise AssertionError("tied cut was accepted")
+
+
+def test_kle_independent_of_eigensolver_signs_and_rotations():
+    """Eigensolvers return eigenvectors up to sign, and up to rotation inside degenerate eigenspaces (the
+    isotropic kernel on a square has such pairs).  The KLE, hence the truth, must not depend on it."""
+    from brho.kle2d import Kle2D
+    ref = Kle2D(nq=10, r=20)
+    P = np.random.default_rng(1).random((50, 2))
+    T0 = ref.extend(P)
+    real = np.linalg.eigh
+    rng = np.random.default_rng(0)
+
+    def scrambled(a, *args, **kw):
+        lam, U = real(a, *args, **kw)
+        U = U.copy()
+        i = 0
+        while i < len(lam):                               # random orthogonal rotation inside each tied group
+            j = i + 1
+            while j < len(lam) and abs(lam[j] - lam[i]) <= 1e-9 * abs(lam[i]):
+                j += 1
+            Q, _ = np.linalg.qr(rng.standard_normal((j - i, j - i)))
+            U[:, i:j] = U[:, i:j] @ Q
+            i = j
+        return lam, U
+
+    np.linalg.eigh = scrambled
+    try:
+        for _ in range(3):
+            T1 = Kle2D(nq=10, r=20).extend(P)
+            assert np.max(np.abs(T1 - T0)) < 1e-9
+    finally:
+        np.linalg.eigh = real
 
 
 def test_observation_sets():
@@ -64,7 +95,7 @@ def test_sigma_abs_is_eps_times_16_data_norm():
     D16 = _D(16, "check")
     s = G.sigma_abs_reference()
     assert abs(s - 0.003 * np.linalg.norm(D16.obs_clean)) < 1e-12
-    assert abs(s - 0.01670280300644679) < 1e-9, f"sigma_abs_reference() = {s!r}, expected 0.01670280300644679 (sandbox value)"
+    assert abs(s - 0.023622782257887845) < 1e-9, f"sigma_abs_reference() = {s!r}, expected 0.023622782257887845"
     for n in G.GRIDS:
         D = _D(n, "abs")
         # tolerance, not ==: each GridData recomputes sigma_abs from a fresh solve and threaded
