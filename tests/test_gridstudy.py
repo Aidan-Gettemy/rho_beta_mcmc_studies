@@ -64,7 +64,7 @@ def test_sigma_abs_is_eps_times_16_data_norm():
     D16 = _D(16, "check")
     s = G.sigma_abs_reference()
     assert abs(s - 0.003 * np.linalg.norm(D16.obs_clean)) < 1e-12
-    assert abs(s - 0.01670280300644679) < 1e-9
+    assert abs(s - 0.01670280300644679) < 1e-9, f"sigma_abs_reference() = {s!r}, expected 0.01670280300644679 (sandbox value)"
     for n in G.GRIDS:
         D = _D(n, "abs")
         # tolerance, not ==: each GridData recomputes sigma_abs from a fresh solve and threaded
