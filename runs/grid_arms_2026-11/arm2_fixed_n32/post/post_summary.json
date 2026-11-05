@@ -1,0 +1,41 @@
+{
+ "arm": "fixed",
+ "n": 32,
+ "n_obs": 128,
+ "chains": 64,
+ "acceptance": {
+  "mean": 0.24997881944444444,
+  "sd": 0.04628389414191099,
+  "min": 0.102,
+  "max": 0.418
+ },
+ "relerr_post_M_median": 0.011525834910571575,
+ "relerr_at_truth": 0.0033260911789463592,
+ "phi_post_M_median": 7.380270004272461,
+ "phi_at_truth": 0.6146045850369323,
+ "mpsrf": {
+  "theta": {
+   "dim": 20,
+   "n_samples": 1980,
+   "window_start_iteration": 1000,
+   "mpsrf_final": 1.0534131219117921,
+   "psrf_max_final": 1.047883058520018,
+   "convergence_iteration": 21681.0
+  }
+ },
+ "mpsrf_method": "MPSRF/PSRF follow the group's MATLAB convention (brho/mpsrf.py, getMSPRF / computeMPSRFcurve). Samples: the chain state saved every 50 iterations. The window STARTS at iteration 1000 of the run (of the phase, for the second phase of experiment 5), i.e. the adaptation period is NOT discarded, and GROWS to the end of the run: at curve point u it holds the saved samples from the start iteration to the current iteration, every 2-th sample (skip 2), with a curve point every 15 saved samples (750 iterations). For each window, with m chains and n samples per chain: W = mean over chains of the within-chain covariance (divisor n-1), B/n = covariance of the m chain means (divisor m-1), MPSRF = sqrt((n-1)/n + (m+1)/m * lambda_max(W^-1 B/n)); the per-component PSRF_i = sqrt(V_ii / W_ii) with V = (n-1)/n W + (m+1)/m B/n, and the reported PSRF is max_i PSRF_i. 'convergence_iteration' = first curve point (ignoring the first 10 points) with MPSRF < 1.2, linearly interpolated. The x axis is the iteration of the last sample in the window. Not split-chain, no extra burn-in. Dimension: theta (20 KLE coefficients).",
+ "theta_post": {
+  "sd_mean": 0.5489434083035932,
+  "sd_min": 0.2546386774555541,
+  "sd_max": 0.8856054658068279,
+  "rms_mean_error": 0.3505083588980984
+ },
+ "fields": {
+  "run": {
+   "n": 10000,
+   "logk_sd_mean": 0.6182053993506589,
+   "p_sd_mean": 0.007435980175544127,
+   "logk_mean_error_rms": 0.42998592058563334
+  }
+ }
+}

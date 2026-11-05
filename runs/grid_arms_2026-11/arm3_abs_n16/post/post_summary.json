@@ -1,0 +1,41 @@
+{
+ "arm": "abs",
+ "n": 16,
+ "n_obs": 128,
+ "chains": 64,
+ "acceptance": {
+  "mean": 0.25522395833333333,
+  "sd": 0.050003741342228444,
+  "min": 0.108,
+  "max": 0.418
+ },
+ "relerr_post_M_median": 0.036234647035598755,
+ "relerr_at_truth": 0.03747467239053877,
+ "phi_post_M_median": 73.59841918945312,
+ "phi_at_truth": 78.72200115607185,
+ "mpsrf": {
+  "theta": {
+   "dim": 20,
+   "n_samples": 1980,
+   "window_start_iteration": 1000,
+   "mpsrf_final": 1.0464817495733783,
+   "psrf_max_final": 1.039598324115869,
+   "convergence_iteration": 21123.0
+  }
+ },
+ "mpsrf_method": "MPSRF/PSRF follow the group's MATLAB convention (brho/mpsrf.py, getMSPRF / computeMPSRFcurve). Samples: the chain state saved every 50 iterations. The window STARTS at iteration 1000 of the run (of the phase, for the second phase of experiment 5), i.e. the adaptation period is NOT discarded, and GROWS to the end of the run: at curve point u it holds the saved samples from the start iteration to the current iteration, every 2-th sample (skip 2), with a curve point every 15 saved samples (750 iterations). For each window, with m chains and n samples per chain: W = mean over chains of the within-chain covariance (divisor n-1), B/n = covariance of the m chain means (divisor m-1), MPSRF = sqrt((n-1)/n + (m+1)/m * lambda_max(W^-1 B/n)); the per-component PSRF_i = sqrt(V_ii / W_ii) with V = (n-1)/n W + (m+1)/m B/n, and the reported PSRF is max_i PSRF_i. 'convergence_iteration' = first curve point (ignoring the first 10 points) with MPSRF < 1.2, linearly interpolated. The x axis is the iteration of the last sample in the window. Not split-chain, no extra burn-in. Dimension: theta (20 KLE coefficients).",
+ "theta_post": {
+  "sd_mean": 0.5466049491565425,
+  "sd_min": 0.2709776515166478,
+  "sd_max": 0.8573657758385151,
+  "rms_mean_error": 0.5008500974701467
+ },
+ "fields": {
+  "run": {
+   "n": 10000,
+   "logk_sd_mean": 0.6130518699763052,
+   "p_sd_mean": 0.007290208985565604,
+   "logk_mean_error_rms": 0.5322025080930086
+  }
+ }
+}
