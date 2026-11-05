@@ -68,7 +68,7 @@ class GridSetup:
         self.n, self.ell, self.r = n, ell, r
         self.phys = Darcy2D(n, bc="dirichlet")
         kle = build_kle(self.phys.points, self.phys.axes, "sqexp", dict(ell=ell, sigma2=1.0),
-                        energy=KLE_ENERGY, method="nystrom_sep")
+                        energy=KLE_ENERGY, method="nystrom_sep", sign_rule="projection")
         self.kle = TruncKLE(kle, r)
 
 

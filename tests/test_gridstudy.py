@@ -72,6 +72,25 @@ def test_sigma_abs_is_eps_times_16_data_norm():
         assert abs(D.sigma_abs - s) < 1e-12 and D.sigma_p == D.sigma_abs
 
 
+def test_kle_signs_do_not_depend_on_eigensolver_signs():
+    """Different library versions return eigenvectors with different signs (and, for odd modes, the largest
+    entry is decided by rounding): the KLE, and therefore the truth, must not change."""
+    ref = G.GridSetup(16).kle.T.copy()
+    real = np.linalg.eigh
+    rng = np.random.default_rng(0)
+
+    def flipped(a, *args, **kw):
+        lam, U = real(a, *args, **kw)
+        return lam, U * rng.choice([-1.0, 1.0], size=U.shape[1])
+
+    np.linalg.eigh = flipped
+    try:
+        for _ in range(3):
+            assert np.max(np.abs(G.GridSetup(16).kle.T - ref)) < 1e-10
+    finally:
+        np.linalg.eigh = real
+
+
 def test_same_theta_and_shared_noise():
     th = G.theta_truth()
     for n in G.GRIDS:
