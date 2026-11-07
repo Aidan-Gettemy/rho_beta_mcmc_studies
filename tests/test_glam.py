@@ -514,3 +514,44 @@ def test_r24m2_scripts_selective_archive():
         assert cfg.restart_phi_tolerance == 30.0 and cfg.logdet_gain_scale == 10.0
         assert (cfg.exploit_fraction, cfg.frontier_fraction, cfg.explore_fraction) == (0.25, 0.25, 0.5)
         assert f"\nGLAM_TAG={tag} " in script and f"#SBATCH -J glam-{tag}\n" in script
+
+
+def test_replay_archive_selection():
+    """experiments/replay_archive_selection.py: load the newest anchor state and rethin it offline with other settings."""
+    import pickle
+    import sys
+    sys.path.insert(0, os.path.join(REPO, "experiments"))
+    import replay_archive_selection as R
+    from brho.glam.anchors import Anchor
+    rng = np.random.default_rng(0)
+    n_sub, m, n = 3, 40, 120
+    axes = [rng.standard_normal(m) / np.sqrt(m) for _ in range(n_sub)]
+    anchors = []
+    for i in range(n):
+        t = rng.uniform(0, 10)
+        th = [t * axes[b] + 0.5 * rng.standard_normal(m) for b in range(n_sub)] + [np.array([0.1 * rng.standard_normal()])]
+        anchors.append(Anchor(theta=th, phi=100.0 - t + rng.random(), anchor_id=i))
+    state = dict(anchors=anchors, best_anchor=min(anchors, key=lambda a: a.phi), numsubd=n_sub)
+    with tempfile.TemporaryDirectory() as d:
+        for it in (10, 20):
+            with open(os.path.join(d, f"anchor_state_ite{it:09d}_global.pkl"), "wb") as f:
+                pickle.dump(state, f)
+        st, it = R.load_state(d)
+        assert it == 20 and len(st["anchors"]) == n
+        assert R.load_state(d, 10)[1] == 10
+    cfg = C.GlamConfig(max_anchors=-1, minimum_anchor_distance=0.5, minimum_diversity_score=0.5, logdet_gain_scale=10.0,
+                       covariance_regularization=1e-6, quality_tolerance=100.0)
+
+    class Args:
+        eps, scale, mind, cap, minscore, alpha = "1e-6,0.1", "1,10", "0.5", "none,10", "", ""
+    settings = R.grid(Args, cfg)
+    assert settings[0]["label"] == "baseline" and len(settings) == 8       # baseline + 2*2*1*2 minus the duplicate of the baseline
+    rows = R.replay(cfg, st, settings, seed=0, log=lambda *_: None)
+    base = rows[0]
+    assert base["n"] == n and base["rej_score"] == 0 and base["cover_max"] < 1e-6      # nothing to thin at eps 1e-6
+    capped = [r for r in rows if r["cap"] == 10 and r["eps"] == 1e-6 and r["scale"] == 10.0][0]
+    assert capped["n"] == 10 and capped["cap_hit"] == 1 and capped["cover_max"] > 1.0
+    strict = [r for r in rows if r["eps"] == 0.1 and r["scale"] == 10.0 and r["cap"] == -1][0]
+    assert strict["rej_score"] > 0 and strict["n"] < n                                  # large eps + scale 10: the cut-off bites
+    for r in rows:
+        assert 0.0 < r["top_share"] <= 1.0 and r["eff_rank"] >= 1.0 and r["dmin"] > 0.0
