@@ -34,6 +34,7 @@ import itertools
 import os
 import pickle
 import re
+import subprocess
 import time
 
 import numpy as np
@@ -61,6 +62,15 @@ def load_state(state_dir, iteration=None):
         raise SystemExit(f"iteration {it} not in {state_dir}; available: {sorted(found)}")
     with open(os.path.join(state_dir, found[it]), "rb") as f:
         return pickle.load(f), it
+
+
+def cfg_from_sbatch(path):
+    """The GlamConfig a run was launched with, from the GLAM_FLAGS array of its sbatch script (used when the run's
+    manifest.json is missing from the results folder)."""
+    import run_glam
+    out = subprocess.run(["bash", "-c", f'source <(sed -n "/^GLAM_FLAGS=(/,/^)/p" "{path}"); printf "%s\\n" "${{GLAM_FLAGS[@]}}"'],
+                         capture_output=True, text=True, check=True).stdout.split("\n")[:-1]
+    return C.from_cli(run_glam.build_parser().parse_args(out), C.GlamConfig)
 
 
 def archive_metrics(X, pool_X):
@@ -158,6 +168,8 @@ def main():
     ap.add_argument("--root", default=None, help="BRHO_ROOT (default: $BRHO_ROOT, else runs/cluster if it exists, else the repo)")
     ap.add_argument("--state-dir", default=None, help="folder with anchor_state_ite*_global.pkl (default <results>/anchor_state)")
     ap.add_argument("--iteration", type=int, default=None, help="snapshot iteration (default: the newest)")
+    ap.add_argument("--sbatch", default=None, help="sbatch script holding the run's GLAM_FLAGS, used when the results folder has no "
+                                                   "manifest.json (default cluster/slurm/glam_<exp-tag>.sbatch)")
     ap.add_argument("--pool-size", type=int, default=0, help="subsample the pool to this many anchors (speed); 0 = all")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--eps", default="1e-6,1e-2,1e-1")
@@ -173,7 +185,16 @@ def main():
         os.environ["BRHO_ROOT"] = os.path.join(io.REPO, "runs", "cluster")
     exp = io.EXP_GLAM + (f"_{args.exp_tag}" if args.exp_tag else "")
     rdir = io.results_dir(exp)
-    cfg = C.from_dict(C.GlamConfig, io.read_manifest(exp)["configs"]["GlamConfig"])
+    manifest = os.path.join(rdir, "manifest.json")
+    if os.path.exists(manifest):
+        cfg = C.from_dict(C.GlamConfig, io.read_manifest(exp)["configs"]["GlamConfig"])
+        print(f"settings of the run: {manifest}")
+    else:
+        sb = args.sbatch or os.path.join(io.REPO, "cluster", "slurm", f"glam_{args.exp_tag}.sbatch")
+        if not os.path.exists(sb):
+            raise SystemExit(f"{manifest} not found and no sbatch script {sb} to read the run's settings from (pass --sbatch)")
+        cfg = cfg_from_sbatch(sb)
+        print(f"{manifest} not found; settings of the run read from {sb}")
     state_dir = args.state_dir or os.path.join(rdir, "anchor_state")
     if not os.path.isdir(state_dir):
         raise SystemExit(f"{state_dir} not found (wrong folder? pass --root or --state-dir; push it from Juno with git add -f)")
