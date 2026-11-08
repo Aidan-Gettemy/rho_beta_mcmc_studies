@@ -23,11 +23,11 @@
 # d=6001 Gaussian study (experiments/run_glam_gaussian.py).  Changes against r24m2:
 #   stages: global 1000 (200), local 500 (200)        -> chains spread longer before exchanging
 #   archive: max_anchors 300 (unlimited), quality_tolerance 400 (100), minimum_anchor_distance 12 (3)
-#   score:   covariance_regularization 0.1 (1e-6), diversity_alpha 0.7 (0.85), logdet_gain_scale 8 (10), minimum_diversity_score 0.5
+#   score:   covariance_regularization 0.01 (1e-6), diversity_alpha 0.7 (0.85), logdet_gain_scale 8 (10), minimum_diversity_score 0.5
 #   restarts: restart_phi_tolerance 50 (30), max_restart_attempts 10 (3), random_reach_attempts 0 (10); radii unchanged
 #   roles:   exploit 0.10 (0.25), frontier 0.35 (0.25), explore 0.55 (0.5)
 #   frontier ON: frontier_target_phi 800, frontier_minimum_distance 30, successful_region_distance 40 / merge 35, relative quality tolerance 300
-# RISK to read in the pilot: covariance_regularization 0.1 with gain 8 can make the log-det novelty small for every candidate, so the
+# RISK to read in the pilot: covariance_regularization 0.01 with gain 8 can make the log-det novelty small for every candidate, so the
 # 0.5 cut-off may stop the archive at a handful of anchors (r24m2 with eps >= 0.01 and gain 10 collapsed to 11-64 anchors).  Watch
 # anchor_count, rejected_below_score_count and selected_score_min in experiments/glam_exchange_summary.py after the first exchanges.
 # NOTE exchanges never stop here (anchor_stop_iteration -1): the tail is not a clean posterior sample.
@@ -113,7 +113,7 @@ GLAM_FLAGS=(
 
   # --- Anchor-manager settings (archive selection, roles, frontier, equilibrium allocation); the code defaults, written out so a later change of a default does not alter this run
   --archive-selection-mode diversity
-  --covariance-regularization 0.1        # r24m2: 1e-06
+  --covariance-regularization 0.01        # r24m2: 1e-06
   --pressure-covariance-regularization 1e-06
   --permeability-logdet-weight 1.0
   --pressure-logdet-weight 0.0
