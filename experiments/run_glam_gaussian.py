@@ -78,6 +78,9 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--tag", default="g1")
     ap.add_argument("--out-root", default=os.path.join(_common.REPO if hasattr(_common, "REPO") else ".", "runs", "gaussian"))
+    ap.add_argument("--preset", default="", choices=["", "stages", "r24m3b"],
+                    help="stages: g1 settings with 1000-iteration stages; r24m3b: stages + eps 1e-2, alpha 0.7, gain 8, cap 300, "
+                         "min score 0.5, 1000-iteration stages, matched explore restarts")
     ap.add_argument("--score-only", action="store_true", help="skip sampling, score an existing run")
     ap.add_argument("--set", nargs="*", default=[], help="GlamConfig overrides name=value")
     args = ap.parse_args()
@@ -86,6 +89,11 @@ def main():
     cfg = config(args.n_iter, args.window1 or args.n_iter // 4)
     d = dict(vars(cfg))
     d["frontier_target_phi"] = 1.3 * e_phi
+    if args.preset in ("stages", "r24m3b"):
+        d.update(global_stage_length=1000, local_stage_length=1000, min_global_stage_length=500, min_local_stage_length=500)
+    if args.preset == "r24m3b":
+        d.update(covariance_regularization=0.01, diversity_alpha=0.7, logdet_gain_scale=8.0, max_anchors=300,
+                 minimum_diversity_score=0.5)
     for kv in args.set:
         k, v = kv.split("=")
         d[k] = type(d[k])(v) if not isinstance(d[k], bool) else v.lower() == "true"
@@ -130,8 +138,14 @@ def main():
         a = e.get("archive", {})
         rows.append(dict(iteration=e["iteration"], phase=e["phase"],
                          **{k: a.get(k) for k in ("anchor_count", "anchor_effective_rank", "anchor_cov_largest_eigenvalue_fraction",
-                                                  "distance_min", "distance_median", "distance_max", "best_phi")}))
+                                                  "distance_min", "distance_median", "distance_max", "candidate_count_quality_eligible",
+                                                  "rejected_below_score_count", "selected_score_min", "selected_logdet_novelty_mean",
+                                                  "selected_distance_novelty_mean", "archive_hit_cap", "frontier_status",
+                                                  "successful_region_count")},
+                         **{k: e.get("restart", {}).get(k) for k in ("exploit_restart_success_rate", "explore_restart_success_rate",
+                                                                     "explore_restart_attempts_mean", "frontier_restart_success_rate")}))
     summary["exchanges"] = rows[:: max(1, len(rows) // 40)]
+    summary["preset"] = args.preset
     summary["n_exchanges"] = len(rows)
     with open(os.path.join(args.out_root, f"{args.tag}_summary.json"), "w") as f:
         json.dump(summary, f, indent=1, default=float)
