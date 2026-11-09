@@ -118,7 +118,10 @@ def mpsrf_curve(samples, skip=2, step=15, iter_burn=10, chains=None,
         if nw < 2 or m * (nw - 1) <= dim:             # W singular
             mp, pm, pi = np.nan, np.nan, np.full(dim, np.nan)
         else:
-            mp, pm, pi = _from_sums(S, Q, nw, m, dim, shift)
+            try:
+                mp, pm, pi = _from_sums(S, Q, nw, m, dim, shift)
+            except np.linalg.LinAlgError:             # W exactly singular (e.g. a coordinate that no chain moved in this window)
+                mp, pm, pi = np.nan, np.nan, np.full(dim, np.nan)
         out["k"].append(k)
         out["mpsrf"].append(mp)
         out["psrf"].append(pm)
