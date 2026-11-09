@@ -184,6 +184,17 @@ def test_mpsrf_cholesky_matches_dense_and_diagonal_psrf():
     assert G.converged_at(its, np.full(20, 3.0), 1.2, 10) is None
 
 
+def test_mpsrf_curve_survives_a_window_where_no_chain_moves():
+    """A coordinate that is constant in every chain over the first window (rho during a local stage) makes W exactly singular: that
+    curve point is NaN, the later points are computed (it used to raise LinAlgError and abort the whole MPSRF step)."""
+    from brho import mpsrf
+    rng = np.random.default_rng(5)
+    x = rng.standard_normal((4, 200, 1)) + 0.1
+    x[:, :60, :] = 1.0                                    # frozen coordinate over the first 60 samples, same value in every chain
+    r = mpsrf.mpsrf_curve(x, skip=2, step=15, iter_burn=10)
+    assert np.isnan(r["mpsrf"][0]) and np.isfinite(r["mpsrf"][-1])
+
+
 def test_windowed_acceptance():
     import plot_glam_diagnostics as D
     acc = np.array([1, 0, 1, 1, 0, 0, 0, 0, 1, 0] * 4, float); kind = np.array([0, 0, 0, 0, 0, 1, 1, 1, 1, 1] * 4)
