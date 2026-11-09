@@ -516,6 +516,30 @@ def test_r24m2_scripts_selective_archive():
         assert f"\nGLAM_TAG={tag} " in script and f"#SBATCH -J glam-{tag}\n" in script
 
 
+def test_pcn_baseline_script_never_exchanges():
+    """glam_pcn.sbatch = r24m3 with burn-in and stage lengths of 1e8: the sampler never leaves the burn-in phase, so there are no exchanges
+    and no local stages (plain global pCN chains).  Checked on the script's own flags with the linear-Gaussian toy."""
+    import dataclasses, glob, pickle, subprocess, sys, tempfile
+    sys.path.insert(0, os.path.join(REPO, "experiments"))
+    import run_glam as run_glam_cli
+    path = os.path.join(REPO, "cluster", "slurm", "glam_pcn.sbatch")
+    script = open(path).read()
+    out = subprocess.run(["bash", "-c", f'source <(sed -n "/^GLAM_FLAGS=(/,/^)/p" {path}); printf "%s\\n" "${{GLAM_FLAGS[@]}}"'],
+                         capture_output=True, text=True, check=True).stdout.split("\n")[:-1]
+    cfg = C.from_cli(run_glam_cli.build_parser().parse_args(out), C.GlamConfig)
+    assert cfg.n_iter == 40000 and cfg.window1 == 14000
+    assert min(cfg.burnin_length, cfg.global_stage_length, cfg.local_stage_length) >= 10 ** 8
+    assert "\nGLAM_TAG=pcn " in script and "#SBATCH -J glam-pcn\n" in script
+    model = LinearGaussianModel(n_sub=3, m=4, n_data=10, s=0.7, seed=3)
+    toy = dataclasses.replace(cfg, n_iter=600, window1=300, window2=0, save_every=10 ** 6, log_every=0, beta_g0=0.2)
+    d = tempfile.mkdtemp()
+    ThreadWorld(4).run(lambda comm: run_glam(model, toy, comm, d, log=lambda *_: None))
+    ch = load_chain(d, 0)
+    assert len(expand(ch, toy.n_iter)) == toy.n_iter
+    for f in glob.glob(os.path.join(d, "**", "exchanges.pkl"), recursive=True):
+        assert len(pickle.load(open(f, "rb"))) == 0
+
+
 def test_replay_archive_selection():
     """experiments/replay_archive_selection.py: load the newest anchor state and rethin it offline with other settings."""
     import pickle
