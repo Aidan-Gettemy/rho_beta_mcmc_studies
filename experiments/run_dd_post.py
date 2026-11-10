@@ -61,6 +61,16 @@ def mpsrf_blocks(Z, nb, start, se, level=RP.MPSRF_LEVEL):
     return its.astype(float), np.array(mp), np.array(ps), dims
 
 
+def stays_below(its, curve, level=RP.MPSRF_LEVEL):
+    """First curve point after the LAST point at or above `level` (no points ignored): the iteration from which the
+    curve stays below the level to the end of the run; None if the last point is not below it."""
+    c = np.asarray(curve, float)
+    if not np.isfinite(c[-1]) or c[-1] >= level:
+        return None
+    bad = np.flatnonzero(~(c < level))
+    return float(its[bad[-1] + 1]) if len(bad) else float(its[0])
+
+
 def curve_stats(its, curve, level=RP.MPSRF_LEVEL):
     return dict(final=float(curve[-1]), convergence_iteration=convergence_iteration(its, curve, level))
 
@@ -71,6 +81,8 @@ def main(argv=None):
     ap.add_argument("--out", required=True, help="output folder")
     ap.add_argument("--n-fields", type=int, default=5000, help="assembled global fields PER GRID")
     ap.add_argument("--mpsrf-start", type=int, default=1000)
+    ap.add_argument("--mpsrf-step-its", type=int, default=None,
+                    help="iterations between MPSRF curve points (default: %d saved samples)" % RP.MPSRF_STEP)
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument("--ref", default=REF, help="post_summary.json of the global-pCN run (sd ratio), optional")
     ap.add_argument("--cmap", default=None)
@@ -87,6 +99,8 @@ def main(argv=None):
         summ = json.load(open(os.path.join(d, "summary.json")))
         st = summ["settings"]
         grid_name, n, M, se = st["grid"], st["n_iter"], st["adapt"], st["save_every"]
+        if a.mpsrf_step_its:
+            RP.MPSRF_STEP = max(1, a.mpsrf_step_its // se)
         Z = np.load(os.path.join(d, "chains.npz"))
         S, data, spline, grid = build(Namespace(**st))
         nb, m = len(grid.blocks), Z["c_00"].shape[0]
@@ -99,6 +113,7 @@ def main(argv=None):
                              n_samples=int(Z["c_00"].shape[1] - a.mpsrf_start // se),
                              sup=dict(mpsrf_final=float(sup_mp[-1]), psrf_max_final=float(sup_ps[-1]),
                                       convergence_iteration=convergence_iteration(its, sup_mp, RP.MPSRF_LEVEL),
+                                      stays_below_from_iteration=stays_below(its, sup_mp),
                                       psrf_convergence_iteration=convergence_iteration(its, sup_ps, RP.MPSRF_LEVEL)),
                              blocks=[dict(block=k, dim=dims[k], mpsrf_final=float(mp[k][-1]),
                                           psrf_max_final=float(ps[k][-1]),

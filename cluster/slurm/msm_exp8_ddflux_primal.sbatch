@@ -56,5 +56,5 @@ python experiments/run_dd_chains.py \
     --out "$OUT"
 
 # ---- test A: primal only. Posterior fields from 5,000 assembled global fields (one independent saved state per subdomain)
-python experiments/run_dd_post.py --dirs "$OUT" --out "$OUT/post" --n-fields 5000 --mpsrf-start 1000 --seed 11 \
+python experiments/run_dd_post.py --dirs "$OUT" --out "$OUT/post" --n-fields 5000 --mpsrf-start 1000 --mpsrf-step-its 100 --seed 11 \
     --ref "$BRHO_ROOT/exp8_global_flux/post/post_summary.json"   # sd ratio to the global+flux run (run msm_exp8_global_flux.sbatch first; optional)

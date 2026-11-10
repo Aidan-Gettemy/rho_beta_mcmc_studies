@@ -54,4 +54,4 @@ python experiments/run_msm_chains.py \
     --out "$OUT"
 
 # ---- diagnostics: AR histograms, relative-error traces, MPSRF, field maps/pairs (10,000 samples) --
-python experiments/run_msm_post.py --dir "$OUT" --n-fields 10000 --mpsrf-start 1000 --seed 11
+python experiments/run_msm_post.py --dir "$OUT" --n-fields 10000 --mpsrf-start 1000 --mpsrf-step-its 100 --seed 11

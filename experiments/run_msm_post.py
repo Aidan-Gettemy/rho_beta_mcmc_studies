@@ -102,6 +102,8 @@ def main(argv=None):
     ap.add_argument("--n-fields", type=int, default=5000)
     ap.add_argument("--mpsrf-start", type=int, default=1000,
                     help="MPSRF window starts this many iterations after the start of the run (of the phase for 5)")
+    ap.add_argument("--mpsrf-step-its", type=int, default=None,
+                    help="iterations between MPSRF curve points (default: %d saved samples)" % MPSRF_STEP)
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument("--cmap", default=None, help="colormap of the field plots (default jet)")
     ap.add_argument("--cmap-std", default=None, help="colormap of the sd maps (default jet)")
@@ -115,6 +117,8 @@ def main(argv=None):
     summ = json.load(open(os.path.join(a.dir, "summary.json")))
     st = summ["settings"]
     kind, n, M, se, K = st["kind"], st["n_iter"], st["adapt"], st["save_every"], st.get("phase_k")
+    if a.mpsrf_step_its:                                          # curve point every a.mpsrf_step_its iterations
+        globals()["MPSRF_STEP"] = max(1, a.mpsrf_step_its // se)
     Z = np.load(os.path.join(a.dir, "chains.npz"))
     fdir = os.path.join(a.dir, "post"); os.makedirs(fdir, exist_ok=True)
     pdim = st.get("primal_dim", 4)

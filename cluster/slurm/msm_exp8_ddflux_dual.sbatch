@@ -58,5 +58,5 @@ python experiments/run_dd_chains.py \
 # ---- test B: primal + dual. 5,000 assembled fields from each grid pooled (10,000) for the pointwise mean / sd
 PRIMAL=$BRHO_ROOT/exp8_ddflux_primal
 [ -f "$PRIMAL/chains.npz" ] || { echo "ERROR: $PRIMAL/chains.npz missing - run msm_exp8_ddflux_primal.sbatch first" >&2; exit 1; }
-python experiments/run_dd_post.py --dirs "$PRIMAL" "$OUT" --out "$BRHO_ROOT/exp8_ddflux_pooled/post" --n-fields 5000 --mpsrf-start 1000 --seed 11 \
+python experiments/run_dd_post.py --dirs "$PRIMAL" "$OUT" --out "$BRHO_ROOT/exp8_ddflux_pooled/post" --n-fields 5000 --mpsrf-start 1000 --mpsrf-step-its 100 --seed 11 \
     --ref "$BRHO_ROOT/exp8_global_flux/post/post_summary.json"   # sd ratio to the global+flux run (run msm_exp8_global_flux.sbatch first; optional)
