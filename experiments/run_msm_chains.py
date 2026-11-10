@@ -35,13 +35,20 @@ def _init(args):
     if args.flux_noise_rel is not None:                       # flux studies: add the interface-flux likelihood term
         _G["data"] = MF.FluxGlobalData(_G["data"], MF.FluxData(S, _G["data"], args.flux_noise_rel, args.flux_sigma_rel))
     _G["a"] = args
+    _G["beta"] = None
+    if args.step_from:                                        # frozen step size from a pilot run (global pCN only)
+        if args.kind != "global":
+            raise SystemExit("--step-from is implemented for --kind global only")
+        from brho.msm_dd import pilot_step
+        _G["beta"] = pilot_step(np.load(os.path.join(args.step_from, "chains.npz"))["s_hist"])
 
 
 def _one(chain):
     a = _G["a"]
     t = time.time()
     o = MS.run_chain(a.kind, _G["S"], _G["data"], a.seed0, chain, a.n_iter, a.adapt,
-                     a.phase_k, a.s0, a.save_every, 0.25, a.alt_L, not a.alt_no_offset)
+                     a.phase_k, a.s0 if _G["beta"] is None else _G["beta"], a.save_every, 0.25, a.alt_L,
+                     not a.alt_no_offset, init_scale=a.init_scale)
     o["_sec"] = time.time() - t
     return o
 
@@ -55,6 +62,12 @@ def main(argv=None):
     ap.add_argument("--adapt", type=int, default=10000)
     ap.add_argument("--phase-k", type=int, default=None)
     ap.add_argument("--s0", type=float, default=0.2)
+    ap.add_argument("--step-from", default=None,
+                    help="pilot run folder (kind global): freeze the step size at the pilot value (use --adapt 0)")
+    ap.add_argument("--init-scale", type=float, default=1.0,
+                    help="kind global: initial theta = init_scale x N(0, I) (default: a prior draw)")
+    ap.add_argument("--burn", type=int, default=None,
+                    help="iterations discarded in the post-processing fields (default: --adapt)")
     ap.add_argument("--primal-dim", type=int, default=4, help="local modes per primal block (study: 4)")
     ap.add_argument("--alt-L", type=int, default=1, help="kind alt: iterations per grid before switching")
     ap.add_argument("--alt-no-offset", action="store_true", help="kind alt: primal move is lift only (no frozen offset)")
@@ -81,8 +94,9 @@ def main(argv=None):
     np.savez_compressed(os.path.join(a.out, "chains.npz"), **arr)
     _init(a)
     d = _G["data"]
-    n, M = a.n_iter, a.adapt
+    n, M = a.n_iter, (a.burn if a.burn is not None else a.adapt)
     summ = dict(settings=vars(a), data=d.summary(), wall_sec=time.time() - t0,
+                s_frozen=_G["beta"],
                 sec_per_chain=float(np.mean([o["_sec"] for o in res])))
     sh = arr["s_hist"][:, :, :]
     def phase_stats(lo, hi, tag):

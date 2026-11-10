@@ -117,6 +117,8 @@ def main(argv=None):
     summ = json.load(open(os.path.join(a.dir, "summary.json")))
     st = summ["settings"]
     kind, n, M, se, K = st["kind"], st["n_iter"], st["adapt"], st["save_every"], st.get("phase_k")
+    if st.get("burn") is not None:                                # frozen-step restart: discard `burn`, not the (zero) adaptation
+        M = st["burn"]
     if a.mpsrf_step_its:                                          # curve point every a.mpsrf_step_its iterations
         globals()["MPSRF_STEP"] = max(1, a.mpsrf_step_its // se)
     Z = np.load(os.path.join(a.dir, "chains.npz"))

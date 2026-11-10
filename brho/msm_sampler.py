@@ -79,7 +79,7 @@ def _pcn(x, s, rng):
 
 
 def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2,
-              save_every=100, target=0.25, alt_L=1, alt_offset=True):
+              save_every=100, target=0.25, alt_L=1, alt_offset=True, init_scale=1.0):
     """One chain.  Returns a dict of arrays (see docstring of the module for the state).
     relerr (n_iter,) state's relative error after every iteration; acc (n_iter,) accepted
     flags; move (n_iter,) grid used (0 primal, 1 dual; all 0 for the single-grid kinds);
@@ -98,7 +98,7 @@ def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2
         Lp, Ld = ML.field_lift(P, S.kle.T), ML.field_lift(D, S.kle.T)
     ad = StepAdapter([s0] * n_g, targets=[target] * n_g, every=100)
     # state and the map state -> theta
-    th0 = rng.standard_normal(r)                 # same first draw for every kind (paired seeds)
+    th0 = init_scale * rng.standard_normal(r)    # same first draw for every kind (paired seeds); init_scale 1 = prior draw
     c = z = None
     ms = P
     if kind == "global" or kind in TWO_GRID:

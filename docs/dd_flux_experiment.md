@@ -41,3 +41,9 @@ Post-processing as in experiment 7, plus the flux misfit of the assembled global
 ## Tests
 `python tests/run_tests.py test_msm_dd`: flux layout and noise, global potential at the truth, and exact face pressures
 + true K reproduce the true flux on every measured face (so the block flux potentials add up to the noise-only value).
+
+## Protocol
+Same two-stage protocol as `docs/dd_mcmc_experiment.md` (pilot of 10,000 iterations to find the step size, then restart
+from dispersed prior draws with the step size frozen, 1,000 iterations burned, MPSRF every 100 iterations from iteration
+1,000). Budgets: 50,000 per subdomain, 100,000 for the global problem. `msm_exp8_*` scripts replace the earlier single-stage
+settings (M = 5,000 / 10,000).

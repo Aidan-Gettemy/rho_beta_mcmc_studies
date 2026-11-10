@@ -42,3 +42,15 @@ than the local fits suggest: global relerr ~0.17 (local 0.01-0.09; global pCN pl
 face pressures instead of the spline does not change this (0.164 vs 0.161), so it is a property of the decomposition,
 not of the spline. Smoke posterior sd was about 1.3x the global one, and the mean rms error about 0.7 vs 0.415.
 The production runs are the real test.
+
+## Two-stage protocol (pilot, then frozen-step restart)
+To separate step-size adaptation from convergence, every sbatch script of experiments 7 and 8 runs two stages:
+1. **Pilot**, 10,000 iterations with the step size adapted throughout (`--adapt 10000`), 64 chains, output `<run>_pilot`.
+   The frozen step size beta of each subdomain (one for the global problem) is the geometric mean of the saved step sizes
+   of all chains over the last 30% of the pilot (`brho.msm_dd.pilot_step`).
+2. **Restart**, 50,000 iterations per subdomain (100,000 for the global problem) from new random points (fresh seeds,
+   initial state = a draw from the prior, `--init-scale 1.0`, far more dispersed than the posterior), step size frozen
+   (`--adapt 0 --step-from <pilot>`), the first 1,000 iterations discarded (`--burn 1000`) for the fields and the acceptance
+   statistics. MPSRF window starts at iteration 1,000 with a curve point every 100 iterations (`--mpsrf-step-its 100`).
+A no-flux global reference with the same protocol is `msm_exp7_global_ref.sbatch` (the earlier exp1 run used adaptation
+inside the run and is not reprocessed).

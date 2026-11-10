@@ -99,6 +99,8 @@ def main(argv=None):
         summ = json.load(open(os.path.join(d, "summary.json")))
         st = summ["settings"]
         grid_name, n, M, se = st["grid"], st["n_iter"], st["adapt"], st["save_every"]
+        if st.get("burn") is not None:                            # frozen-step restart: discard `burn`, not the (zero) adaptation
+            M = st["burn"]
         if a.mpsrf_step_its:
             RP.MPSRF_STEP = max(1, a.mpsrf_step_its // se)
         Z = np.load(os.path.join(d, "chains.npz"))
