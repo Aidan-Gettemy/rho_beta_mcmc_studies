@@ -25,7 +25,7 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from brho import msm_local as ML, msm_sampler as MS, msm_dd as DD
+from brho import msm_local as ML, msm_sampler as MS, msm_dd as DD, msm_flux as MF
 
 GRID_TAG = {"primal": 0, "dual": 1}
 _G = {}
@@ -40,7 +40,12 @@ def build(args):
     data = MS.Data(S, args.sigma_rel, args.data_seed, data_relerr=args.data_relerr)
     spline = DD.InterfaceSpline(S, data, args.smoothing, args.neighbors)
     ms = S.primal if args.grid == "primal" else S.dual
-    return S, data, spline, DD.DDGrid(S, ms, data, spline=spline)
+    flux = None
+    if getattr(args, "flux_noise_rel", None) is not None:           # flux studies (docs/dd_flux_experiment.md)
+        flux = MF.FluxData(S, data, args.flux_noise_rel, args.flux_sigma_rel)
+    grid = DD.DDGrid(S, ms, data, spline=spline, flux=flux)
+    grid.flux_data = flux
+    return S, data, spline, grid
 
 
 def _init(args):
@@ -71,6 +76,10 @@ def main(argv=None):
     ap.add_argument("--data-relerr", type=float, default=None)
     ap.add_argument("--data-seed", type=int, default=2026)
     ap.add_argument("--seed0", type=int, default=7)
+    ap.add_argument("--flux-noise-rel", type=float, default=None,
+                    help="flux studies: add interface flux data with this relative noise (default: no flux data)")
+    ap.add_argument("--flux-sigma-rel", type=float, default=0.08,
+                    help="flux studies: likelihood level sigma_rel of the flux term (accommodates the ~7%% spline flux error)")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--out", required=True)
     a = ap.parse_args(argv)
@@ -104,8 +113,10 @@ def main(argv=None):
                            acc_post_M_chain_max=float(acc.mean(1).max()),
                            s_final_median=float(np.median(sh)), s_final_min=float(sh.min()), s_final_max=float(sh.max()),
                            relerr_post_M_median=float(np.median(rel)),
+                           n_flux_faces=(b.flux.n_faces if b.flux is not None else 0),
                            kinds={s: b.kinds[s] for s in DD.SIDES}))
     summ = dict(settings=vars(a), data=data.summary(),
+                flux=(grid.flux_data.summary() if grid.flux_data is not None else None),
                 spline=dict(kernel=DD.SPLINE_KERNEL, smoothing=a.smoothing, neighbors=a.neighbors, n_sensors=int(len(spline.xy))),
                 grid=dict(name=a.grid, n_blocks=nb, r_k=grid.r_k, p=grid.p),
                 interface=dict(segments=iface, eps_int_mean=float(np.mean([r["eps_int"] for r in iface])),

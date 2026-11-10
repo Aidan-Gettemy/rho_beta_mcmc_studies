@@ -32,7 +32,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-from brho import msm_dd as DD  # noqa: E402
+from brho import msm_dd as DD, msm_flux as MF  # noqa: E402
 from brho.mpsrf import mpsrf_curve, convergence_iteration  # noqa: E402
 import run_msm_post as RP  # noqa: E402
 from run_dd_chains import build, GRID_TAG  # noqa: E402
@@ -136,6 +136,16 @@ def main(argv=None):
             pr[j] = S.phys.solve(np.exp(lk[j]))
         r2 = ((pr[:, S.phys.obs_mask] - data.d[None]) ** 2).sum(1)
         rel = np.sqrt(r2) / data.dnorm
+        fl = getattr(grid, "flux_data", None)
+        if fl is not None:                                                      # flux studies: flux misfit of the assembled fields
+            nn = S.n
+            qm = np.stack([MF.face_flux(np.exp(lk[j]).reshape(nn, nn), pr[j].reshape(nn, nn), fl.ia, fl.ja, fl.ib, fl.jb)
+                           for j in range(len(lk))])
+            e_q = np.linalg.norm(qm - fl.q[None], axis=1) / fl.qnorm
+            gres["assembled_flux_relerr"] = dict(median=float(np.median(e_q)), q05=float(np.percentile(e_q, 5)),
+                                                 q95=float(np.percentile(e_q, 95)), noise_level=fl.relerr_truth,
+                                                 phi_q_median=float(np.median(0.5 * fl.w * ((qm - fl.q[None]) ** 2).sum(1))))
+            print(f"  [{grid_name}] assembled flux relerr median {np.median(e_q):.4f}", flush=True)
         gres["assembled_global_relerr"] = dict(median=float(np.median(rel)), q05=float(np.percentile(rel, 5)),
                                                q95=float(np.percentile(rel, 95)),
                                                phi_median=float(np.median(0.5 * data.w * r2)),

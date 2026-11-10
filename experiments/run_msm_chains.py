@@ -19,7 +19,7 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from brho import msm_local as ML, msm_sampler as MS
+from brho import msm_local as ML, msm_sampler as MS, msm_flux as MF
 
 _G = {}
 
@@ -32,6 +32,8 @@ def _init(args):
                          f"(decision of 2026-11-02); got {S.primal.r_plus} / {S.dual.r_plus}")
     _G["S"] = S
     _G["data"] = MS.Data(S, args.sigma_rel, args.data_seed, data_relerr=args.data_relerr)
+    if args.flux_noise_rel is not None:                       # flux studies: add the interface-flux likelihood term
+        _G["data"] = MF.FluxGlobalData(_G["data"], MF.FluxData(S, _G["data"], args.flux_noise_rel, args.flux_sigma_rel))
     _G["a"] = args
 
 
@@ -61,6 +63,9 @@ def main(argv=None):
     ap.add_argument("--data-relerr", type=float, default=None)
     ap.add_argument("--data-seed", type=int, default=2026)
     ap.add_argument("--seed0", type=int, default=7)
+    ap.add_argument("--flux-noise-rel", type=float, default=None,
+                    help="flux studies (kind global only): add interface flux data with this relative noise")
+    ap.add_argument("--flux-sigma-rel", type=float, default=0.08, help="likelihood level of the flux term")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--out", required=True)
     a = ap.parse_args(argv)

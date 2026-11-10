@@ -140,6 +140,7 @@ class Block:
         self.d_loc = np.asarray(data.d, float)[sens[self.obs_loc]]
         self.dnorm_loc = float(np.linalg.norm(self.d_loc))
         self.w = data.w
+        self.flux = None                                             # BlockFlux (brho/msm_flux.py) or None
 
     def log_field(self, c):
         return self.psi @ (self.sqmu * np.asarray(c, float))
@@ -149,16 +150,20 @@ class Block:
 
     def potential(self, c):
         """(Phi_i, local relative error) of local coefficients c."""
-        p = self.pressure(c)
+        lf = self.log_field(c)
+        p = self.solver.solve(np.exp(lf))
         r2 = float(np.sum((self.d_loc - p[self.obs_loc]) ** 2))
-        return 0.5 * self.w * r2, np.sqrt(r2) / self.dnorm_loc
+        phi = 0.5 * self.w * r2
+        if self.flux is not None:                                    # interface-flux penalty (flux studies)
+            phi += self.flux.phi(self, p, np.exp(lf))
+        return phi, np.sqrt(r2) / self.dnorm_loc
 
 
 class DDGrid:
     """All blocks of one decomposition `ms` (an MSInnovation) with boundary data from `spline` (the method) or
     from an exact finite-volume solution `exact = (K2, p2)` (tests)."""
 
-    def __init__(self, S, ms, data, spline=None, exact=None):
+    def __init__(self, S, ms, data, spline=None, exact=None, flux=None):
         if (spline is None) == (exact is None):
             raise ValueError("pass exactly one of spline / exact")
         self.S, self.ms, self.n = S, ms, S.n
@@ -191,6 +196,10 @@ class DDGrid:
             self.blocks.append(Block(S, ms, k, data, bc, kinds, faces))
         self.r_k = list(ms.r_k)
         self.p = int(ms.p)
+        if flux is not None:                                         # flux studies: FluxData of brho/msm_flux.py
+            from .msm_flux import BlockFlux
+            for b in self.blocks:
+                b.flux = BlockFlux(flux, b)
 
     def theta(self, c_blocks):
         """Global theta (..., r) from the blocks' local coefficients (list of (..., r_k) arrays)."""

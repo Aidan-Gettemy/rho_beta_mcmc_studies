@@ -94,3 +94,47 @@ def test_interface_report_and_chain_smoke():
     o = DD.run_block_chain(grid.blocks[5], [7, 0, 5, 0], 400, 200, save_every=50)
     assert o["c"].shape == (8, 6) and o["acc"].shape == (400,)
     assert np.all(np.isfinite(o["phi"])) and 0.0 < o["acc"].mean() < 1.0
+
+
+# ------------------------------------------------------------ flux data (brho/msm_flux.py)
+def _flux(S, data):
+    from brho import msm_flux as MF
+    return MF.FluxData(S, data)
+
+
+def test_flux_data_layout_and_noise():
+    S, data = _setup()
+    fd = _flux(S, data)
+    assert fd.m == 14 * 16 and sorted(set(fd.line)) == [4, 8, 12, 16, 20, 24, 28]
+    assert abs(fd.relerr_truth - 0.003) < 0.0008                       # noise as for the pressure data
+    d2 = MS.Data(S, 0.003, 2026)
+    assert np.array_equal(d2.d, data.d)                                # pressure data untouched
+
+
+def test_global_flux_potential_at_truth():
+    from brho import msm_flux as MF
+    S, data = _setup()
+    fd = _flux(S, data)
+    gd = MF.FluxGlobalData(data, fd)
+    phi, rel = gd.potential(data.theta_true)
+    phi_p, rel_p = data.potential(data.theta_true)
+    assert abs(phi - phi_p - fd.phi_truth) < 1e-8 * max(1.0, phi) and abs(rel - rel_p) < 1e-12
+
+
+def test_block_flux_equals_true_flux_with_exact_faces():
+    """Exact face pressures + true K: the one-sided block flux on every measured face is the true flux, so the
+    block flux potentials add up to the noise-only potential (each face counted by both neighbours)."""
+    S, data = _setup()
+    fd = _flux(S, data)
+    n = S.n
+    K = np.exp(S.kle.field(data.theta_true))
+    p = S.phys.solve(K)
+    for ms, nlines in ((S.primal, 3), (S.dual, 4)):
+        grid = DD.DDGrid(S, ms, data, exact=(K.reshape(n, n), p.reshape(n, n)), flux=fd)
+        tot, nf = 0.0, 0
+        for b in grid.blocks:
+            pl = b.solver.solve(K[b.cells])
+            tot += b.flux.phi(b, pl, K[b.cells])
+            nf += b.flux.n_faces
+        assert nf == 2 * 2 * nlines * 16                                # two lines families x lines x 16, both sides
+        assert abs(tot - 2 * 0.5 * fd.w * float(np.sum((fd.q - fd.q_true)[np.isin(fd.line, [8, 16, 24] if nlines == 3 else [4, 12, 20, 28])] ** 2))) < 1e-8 * max(1.0, tot)
