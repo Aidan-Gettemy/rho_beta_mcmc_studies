@@ -1,0 +1,123 @@
+"""
+Run the chains of one decomposition of the domain-decomposed (DD-MCMC, spline interface) study
+(brho/msm_dd.py, docs/dd_mcmc_experiment.md).  Every (block, chain) pair is an independent pCN chain
+(multiprocessing, one task each); the blocks of one grid are independent because the interface pressure
+(a thin-plate spline through all sensor data) is frozen.  Same data and truth as the MSM study (MS.Data).
+Writes to <out>/ :
+    chains.npz    c_<kk> (chains, n_save, r_k)  local states every --save-every iterations, block kk
+                  acc_<kk> (chains, n_iter) uint8, relerr_<kk> (chains, n_iter) float32 (local relative error)
+                  s_hist_<kk> (chains, n_save)
+                  theta (chains, n_save, r): the GLOBAL state, theta = B c_all assembled from chain j of every
+                  block (blocks are independent, so pairing by chain index is arbitrary; derived, not sampled jointly)
+    summary.json  settings, data summary, spline settings, interface errors against the truth (eps_int per segment),
+                  per-block acceptance / step size / relative error
+
+    python experiments/run_dd_chains.py --grid primal --chains 64 --n-iter 50000 --adapt 5000 \
+        --out runs/msm_local_kle_2026-11/exp7_dd_primal
+"""
+import _common  # noqa: F401  (first: pins threads before NumPy loads)
+import argparse
+import json
+import os
+import sys
+import time
+from multiprocessing import Pool
+
+import numpy as np
+
+from brho import msm_local as ML, msm_sampler as MS, msm_dd as DD
+
+GRID_TAG = {"primal": 0, "dual": 1}
+_G = {}
+
+
+def build(args):
+    """Setup, data, spline and the DDGrid of the chosen decomposition (guards as in the MSM study)."""
+    S = ML.MSMSetup(primal_local_dim=6)
+    if S.primal.r_k != [6] * 16 or S.primal.r_plus != 64 or S.dual.r_plus != 64 or S.dual.p != 114:
+        raise SystemExit(f"GUARD: expected 16 primal blocks of 6 modes (95% rule), r_+ 64 / 64 and dual p 114; got "
+                         f"{S.primal.r_k}, {S.primal.r_plus}, {S.dual.r_plus}, {S.dual.p}")
+    data = MS.Data(S, args.sigma_rel, args.data_seed, data_relerr=args.data_relerr)
+    spline = DD.InterfaceSpline(S, data, args.smoothing, args.neighbors)
+    ms = S.primal if args.grid == "primal" else S.dual
+    return S, data, spline, DD.DDGrid(S, ms, data, spline=spline)
+
+
+def _init(args):
+    S, data, spline, grid = build(args)
+    _G.update(a=args, S=S, data=data, grid=grid)
+
+
+def _one(task):
+    k, chain = task
+    a = _G["a"]
+    t = time.time()
+    o = DD.run_block_chain(_G["grid"].blocks[k], [a.seed0, GRID_TAG[a.grid], k, chain], a.n_iter, a.adapt,
+                           a.s0, a.save_every)
+    return k, chain, o, time.time() - t
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--grid", required=True, choices=list(GRID_TAG))
+    ap.add_argument("--chains", type=int, default=64)
+    ap.add_argument("--n-iter", type=int, default=50000)
+    ap.add_argument("--adapt", type=int, default=5000)
+    ap.add_argument("--s0", type=float, default=0.2)
+    ap.add_argument("--save-every", type=int, default=50)
+    ap.add_argument("--smoothing", type=float, default=DD.SPLINE_SMOOTHING, help="thin-plate spline smoothing")
+    ap.add_argument("--neighbors", type=int, default=DD.SPLINE_NEIGHBORS)
+    ap.add_argument("--sigma-rel", type=float, default=0.003)
+    ap.add_argument("--data-relerr", type=float, default=None)
+    ap.add_argument("--data-seed", type=int, default=2026)
+    ap.add_argument("--seed0", type=int, default=7)
+    ap.add_argument("--workers", type=int, default=None)
+    ap.add_argument("--out", required=True)
+    a = ap.parse_args(argv)
+    os.makedirs(a.out, exist_ok=True)
+    t0 = time.time()
+    S, data, spline, grid = build(a)
+    nb = len(grid.blocks)
+    tasks = [(k, j) for k in range(nb) for j in range(a.chains)]
+    with Pool(a.workers or min(len(tasks), os.cpu_count()), _init, (a,)) as pool:
+        res = pool.map(_one, tasks, chunksize=1)
+    arr, secs = {}, []
+    for k in range(nb):
+        rows = sorted([r for r in res if r[0] == k], key=lambda r: r[1])
+        for key, name in (("c", "c"), ("acc", "acc"), ("relerr", "relerr"), ("s_hist", "s_hist")):
+            arr[f"{name}_{k:02d}"] = np.stack([r[2][key] for r in rows])
+        secs += [r[3] for r in rows]
+    arr["theta"] = grid.theta([arr[f"c_{k:02d}"].astype(float) for k in range(nb)]).astype(np.float32)
+    np.savez_compressed(os.path.join(a.out, "chains.npz"), **arr)
+    # ---- summary
+    n_ = S.n
+    K2 = np.exp(S.kle.field(data.theta_true)).reshape(n_, n_)
+    p2 = S.phys.solve(K2.ravel()).reshape(n_, n_)
+    iface = grid.interface_report(K2, p2, spline)
+    M = a.adapt
+    blocks = []
+    for k, b in enumerate(grid.blocks):
+        acc, rel = arr[f"acc_{k:02d}"][:, M:], arr[f"relerr_{k:02d}"][:, M:]
+        sh = arr[f"s_hist_{k:02d}"][:, -1]
+        blocks.append(dict(block=k, cells=f"{b.nxl}x{b.nyl}", r_k=b.r_k, n_sensors=int(len(b.d_loc)),
+                           acc_post_M_mean=float(acc.mean()), acc_post_M_chain_min=float(acc.mean(1).min()),
+                           acc_post_M_chain_max=float(acc.mean(1).max()),
+                           s_final_median=float(np.median(sh)), s_final_min=float(sh.min()), s_final_max=float(sh.max()),
+                           relerr_post_M_median=float(np.median(rel)),
+                           kinds={s: b.kinds[s] for s in DD.SIDES}))
+    summ = dict(settings=vars(a), data=data.summary(),
+                spline=dict(kernel=DD.SPLINE_KERNEL, smoothing=a.smoothing, neighbors=a.neighbors, n_sensors=int(len(spline.xy))),
+                grid=dict(name=a.grid, n_blocks=nb, r_k=grid.r_k, p=grid.p),
+                interface=dict(segments=iface, eps_int_mean=float(np.mean([r["eps_int"] for r in iface])),
+                               eps_int_max=float(np.max([r["eps_int"] for r in iface]))),
+                blocks=blocks, wall_sec=time.time() - t0, sec_per_chain=float(np.mean(secs)))
+    with open(os.path.join(a.out, "summary.json"), "w") as f:
+        json.dump(summ, f, indent=1)
+    print(json.dumps({k: v for k, v in summ.items() if k not in ("settings", "blocks")}, indent=1))
+    print("acceptance post-M (block mean): min %.3f  max %.3f" % (min(b["acc_post_M_mean"] for b in blocks),
+                                                                 max(b["acc_post_M_mean"] for b in blocks)))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
