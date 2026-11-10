@@ -32,7 +32,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-from brho import msm_dd as DD  # noqa: E402
+from brho import msm_dd as DD, msm_flux as MF  # noqa: E402
 from brho.mpsrf import mpsrf_curve, convergence_iteration  # noqa: E402
 import run_msm_post as RP  # noqa: E402
 from run_dd_chains import build, GRID_TAG  # noqa: E402
@@ -61,6 +61,16 @@ def mpsrf_blocks(Z, nb, start, se, level=RP.MPSRF_LEVEL):
     return its.astype(float), np.array(mp), np.array(ps), dims
 
 
+def stays_below(its, curve, level=RP.MPSRF_LEVEL):
+    """First curve point after the LAST point at or above `level` (no points ignored): the iteration from which the
+    curve stays below the level to the end of the run; None if the last point is not below it."""
+    c = np.asarray(curve, float)
+    if not np.isfinite(c[-1]) or c[-1] >= level:
+        return None
+    bad = np.flatnonzero(~(c < level))
+    return float(its[bad[-1] + 1]) if len(bad) else float(its[0])
+
+
 def curve_stats(its, curve, level=RP.MPSRF_LEVEL):
     return dict(final=float(curve[-1]), convergence_iteration=convergence_iteration(its, curve, level))
 
@@ -71,6 +81,8 @@ def main(argv=None):
     ap.add_argument("--out", required=True, help="output folder")
     ap.add_argument("--n-fields", type=int, default=5000, help="assembled global fields PER GRID")
     ap.add_argument("--mpsrf-start", type=int, default=1000)
+    ap.add_argument("--mpsrf-step-its", type=int, default=None,
+                    help="iterations between MPSRF curve points (default: %d saved samples)" % RP.MPSRF_STEP)
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument("--ref", default=REF, help="post_summary.json of the global-pCN run (sd ratio), optional")
     ap.add_argument("--cmap", default=None)
@@ -87,6 +99,10 @@ def main(argv=None):
         summ = json.load(open(os.path.join(d, "summary.json")))
         st = summ["settings"]
         grid_name, n, M, se = st["grid"], st["n_iter"], st["adapt"], st["save_every"]
+        if st.get("burn") is not None:                            # frozen-step restart: discard `burn`, not the (zero) adaptation
+            M = st["burn"]
+        if a.mpsrf_step_its:
+            RP.MPSRF_STEP = max(1, a.mpsrf_step_its // se)
         Z = np.load(os.path.join(d, "chains.npz"))
         S, data, spline, grid = build(Namespace(**st))
         nb, m = len(grid.blocks), Z["c_00"].shape[0]
@@ -99,6 +115,7 @@ def main(argv=None):
                              n_samples=int(Z["c_00"].shape[1] - a.mpsrf_start // se),
                              sup=dict(mpsrf_final=float(sup_mp[-1]), psrf_max_final=float(sup_ps[-1]),
                                       convergence_iteration=convergence_iteration(its, sup_mp, RP.MPSRF_LEVEL),
+                                      stays_below_from_iteration=stays_below(its, sup_mp),
                                       psrf_convergence_iteration=convergence_iteration(its, sup_ps, RP.MPSRF_LEVEL)),
                              blocks=[dict(block=k, dim=dims[k], mpsrf_final=float(mp[k][-1]),
                                           psrf_max_final=float(ps[k][-1]),
@@ -136,6 +153,16 @@ def main(argv=None):
             pr[j] = S.phys.solve(np.exp(lk[j]))
         r2 = ((pr[:, S.phys.obs_mask] - data.d[None]) ** 2).sum(1)
         rel = np.sqrt(r2) / data.dnorm
+        fl = getattr(grid, "flux_data", None)
+        if fl is not None:                                                      # flux studies: flux misfit of the assembled fields
+            nn = S.n
+            qm = np.stack([MF.face_flux(np.exp(lk[j]).reshape(nn, nn), pr[j].reshape(nn, nn), fl.ia, fl.ja, fl.ib, fl.jb)
+                           for j in range(len(lk))])
+            e_q = np.linalg.norm(qm - fl.q[None], axis=1) / fl.qnorm
+            gres["assembled_flux_relerr"] = dict(median=float(np.median(e_q)), q05=float(np.percentile(e_q, 5)),
+                                                 q95=float(np.percentile(e_q, 95)), noise_level=fl.relerr_truth,
+                                                 phi_q_median=float(np.median(0.5 * fl.w * ((qm - fl.q[None]) ** 2).sum(1))))
+            print(f"  [{grid_name}] assembled flux relerr median {np.median(e_q):.4f}", flush=True)
         gres["assembled_global_relerr"] = dict(median=float(np.median(rel)), q05=float(np.percentile(rel, 5)),
                                                q95=float(np.percentile(rel, 95)),
                                                phi_median=float(np.median(0.5 * data.w * r2)),

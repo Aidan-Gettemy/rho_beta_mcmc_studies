@@ -4,20 +4,23 @@
 #SBATCH --cpus-per-task=64            # one worker process per (subdomain, chain) task, 64 at a time
 #SBATCH --mem=32G
 #SBATCH --partition=g1mig
-#SBATCH --time=00:40:00
+#SBATCH --time=01:00:00
 #SBATCH -J msm-dd-dual
 #SBATCH -o logs/msm-dd-dual-%j.out
 #
-# Domain-decomposed MCMC with spline interface (Xu, Liao & Li 2022), dual 5x5 grid (25 subdomains, local dimensions 3-6). Run AFTER msm_exp7_dd_primal.sbatch (test B pools the two grids): sbatch --dependency=afterok:<primal job id> cluster/slurm/msm_exp7_dd_dual.sbatch
-# Spec: docs/dd_mcmc_experiment.md.  Self-contained: every run flag is written below, so rereading this file shows
-# how the run was made.  Submit from the repo root:
-#     sbatch cluster/slurm/msm_exp7_dd_dual.sbatch
-# Settings: 64 independent chains per subdomain, N = 50,000 iterations, step size adapted to 25% acceptance for the
-# first M = 5,000 iterations, then frozen; local KLE of 95% energy (dual); sigma_rel = 0.003; checkerboard data
-# (512 of 1024 cell centres), truth = fixed-seed prior draw (seed 2026); chain seeds [7, grid, block, chain].
-# Interface pressure: thin-plate spline through all sensors (smoothing 1e-3, 60 neighbours), Dirichlet on the faces.
-# States saved every 50 iterations; MPSRF per subdomain from iteration 1,000, sup over subdomains.
-# Output: runs/msm_local_kle_2026-11/exp7_dd_dual/ (chains.npz, summary.json); the pooled test-B post-processing writes runs/msm_local_kle_2026-11/exp7_dd_pooled/post/
+# Domain-decomposed MCMC, spline interface: dual grid (25 subdomains), pilot + frozen-step restart
+# Spec: docs/dd_mcmc_experiment.md.  Self-contained: every run flag is written below, so rereading this file shows how the run was made.
+# Submit from the repo root:   sbatch cluster/slurm/msm_exp7_dd_dual.sbatch
+# TWO STAGES, to separate adaptation from convergence:
+#   1. PILOT   10,000 iterations, step size adapted to 25% acceptance the whole time (64 chains) -> exp7_dd_dual_pilot
+#              the frozen step size beta is the geometric mean of the saved step sizes of all chains over the last 30%
+#              of the pilot, one beta per subdomain (one for the global problem);
+#   2. RESTART 50,000 iterations from NEW random starting points (fresh seeds, initial state = a draw from the prior,
+#              far more dispersed than the posterior), step size frozen at beta (--adapt 0), first 1,000 iterations
+#              discarded for the fields and the acceptance statistics (--burn 1000).
+# Settings: 64 chains, states saved every 50 iterations, sigma_rel = 0.003, checkerboard data (512 of 1024 cells), truth =
+# seed-2026 prior draw. MPSRF: window from iteration 1,000, curve point every 100 iterations, group convention.
+# Run AFTER the primal script (test B pools the two grids): sbatch --dependency=afterok:<primal job id> cluster/slurm/msm_exp7_dd_dual.sbatch
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
 mkdir -p logs
@@ -40,21 +43,24 @@ export NUMBA_CACHE_DIR=/tmp/numba_cache_$SLURM_JOB_ID
 export BRHO_ROOT=$PWD/runs/msm_local_kle_2026-11
 export PYTHONPATH=$PWD:${PYTHONPATH:-}
 OUT=$BRHO_ROOT/exp7_dd_dual
+PILOT=${OUT}_pilot
 
 # ---- tests that must pass before sampling (no pytest needed) ------------------------------------
 python tests/run_tests.py test_msm_dd
 
-# ---- chains (64 chains x all subdomains of the dual grid, 50,000 iterations) ---------------------
-python experiments/run_dd_chains.py \
-    --grid dual \
-    --chains 64 --workers 64 \
-    --n-iter 50000 --adapt 5000 \
-    --s0 0.2 --save-every 50 \
-    --smoothing 1e-3 --neighbors 60 \
-    --sigma-rel 0.003 --data-seed 2026 --seed0 7 \
+COMMON="--grid dual --chains 64 --workers 64 --save-every 50 --smoothing 1e-3 --neighbors 60 --sigma-rel 0.003 --data-seed 2026 "
+
+# ---- stage 1: pilot, step size adapted throughout --------------------------------------------------
+python experiments/run_dd_chains.py $COMMON \
+    --n-iter 10000 --adapt 10000 --burn 5000 --s0 0.2 --seed0 7 \
+    --out "$PILOT"
+
+# ---- stage 2: restart from dispersed prior draws with the step size frozen ---------------------------
+python experiments/run_dd_chains.py $COMMON \
+    --n-iter 50000 --adapt 0 --burn 1000 --step-from "$PILOT" --init-scale 1.0 --seed0 1007 \
     --out "$OUT"
 
-# ---- test B: primal + dual. 5,000 assembled fields from each grid pooled (10,000) for the pointwise mean / sd
+# ---- test B: primal + dual, 5,000 assembled fields from each grid pooled
 PRIMAL=$BRHO_ROOT/exp7_dd_primal
-[ -f "$PRIMAL/chains.npz" ] || { echo "ERROR: $PRIMAL/chains.npz missing - run msm_exp7_dd_primal.sbatch first" >&2; exit 1; }
-python experiments/run_dd_post.py --dirs "$PRIMAL" "$OUT" --out "$BRHO_ROOT/exp7_dd_pooled/post" --n-fields 5000 --mpsrf-start 1000 --seed 11
+[ -f "$PRIMAL/chains.npz" ] || { echo "ERROR: $PRIMAL/chains.npz missing - run the primal script first" >&2; exit 1; }
+python experiments/run_dd_post.py --dirs "$PRIMAL" "$OUT" --out "$BRHO_ROOT/exp7_dd_pooled/post" --n-fields 5000 --mpsrf-start 1000 --mpsrf-step-its 100 --seed 11 --ref "$BRHO_ROOT/exp7_global_ref/post/post_summary.json"

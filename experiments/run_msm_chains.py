@@ -19,7 +19,7 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from brho import msm_local as ML, msm_sampler as MS
+from brho import msm_local as ML, msm_sampler as MS, msm_flux as MF
 
 _G = {}
 
@@ -32,14 +32,23 @@ def _init(args):
                          f"(decision of 2026-11-02); got {S.primal.r_plus} / {S.dual.r_plus}")
     _G["S"] = S
     _G["data"] = MS.Data(S, args.sigma_rel, args.data_seed, data_relerr=args.data_relerr)
+    if args.flux_noise_rel is not None:                       # flux studies: add the interface-flux likelihood term
+        _G["data"] = MF.FluxGlobalData(_G["data"], MF.FluxData(S, _G["data"], args.flux_noise_rel, args.flux_sigma_rel))
     _G["a"] = args
+    _G["beta"] = None
+    if args.step_from:                                        # frozen step size from a pilot run (global pCN only)
+        if args.kind != "global":
+            raise SystemExit("--step-from is implemented for --kind global only")
+        from brho.msm_dd import pilot_step
+        _G["beta"] = pilot_step(np.load(os.path.join(args.step_from, "chains.npz"))["s_hist"])
 
 
 def _one(chain):
     a = _G["a"]
     t = time.time()
     o = MS.run_chain(a.kind, _G["S"], _G["data"], a.seed0, chain, a.n_iter, a.adapt,
-                     a.phase_k, a.s0, a.save_every, 0.25, a.alt_L, not a.alt_no_offset)
+                     a.phase_k, a.s0 if _G["beta"] is None else _G["beta"], a.save_every, 0.25, a.alt_L,
+                     not a.alt_no_offset, init_scale=a.init_scale)
     o["_sec"] = time.time() - t
     return o
 
@@ -53,6 +62,12 @@ def main(argv=None):
     ap.add_argument("--adapt", type=int, default=10000)
     ap.add_argument("--phase-k", type=int, default=None)
     ap.add_argument("--s0", type=float, default=0.2)
+    ap.add_argument("--step-from", default=None,
+                    help="pilot run folder (kind global): freeze the step size at the pilot value (use --adapt 0)")
+    ap.add_argument("--init-scale", type=float, default=1.0,
+                    help="kind global: initial theta = init_scale x N(0, I) (default: a prior draw)")
+    ap.add_argument("--burn", type=int, default=None,
+                    help="iterations discarded in the post-processing fields (default: --adapt)")
     ap.add_argument("--primal-dim", type=int, default=4, help="local modes per primal block (study: 4)")
     ap.add_argument("--alt-L", type=int, default=1, help="kind alt: iterations per grid before switching")
     ap.add_argument("--alt-no-offset", action="store_true", help="kind alt: primal move is lift only (no frozen offset)")
@@ -61,6 +76,9 @@ def main(argv=None):
     ap.add_argument("--data-relerr", type=float, default=None)
     ap.add_argument("--data-seed", type=int, default=2026)
     ap.add_argument("--seed0", type=int, default=7)
+    ap.add_argument("--flux-noise-rel", type=float, default=None,
+                    help="flux studies (kind global only): add interface flux data with this relative noise")
+    ap.add_argument("--flux-sigma-rel", type=float, default=0.08, help="likelihood level of the flux term")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--out", required=True)
     a = ap.parse_args(argv)
@@ -76,8 +94,9 @@ def main(argv=None):
     np.savez_compressed(os.path.join(a.out, "chains.npz"), **arr)
     _init(a)
     d = _G["data"]
-    n, M = a.n_iter, a.adapt
+    n, M = a.n_iter, (a.burn if a.burn is not None else a.adapt)
     summ = dict(settings=vars(a), data=d.summary(), wall_sec=time.time() - t0,
+                s_frozen=_G["beta"],
                 sec_per_chain=float(np.mean([o["_sec"] for o in res])))
     sh = arr["s_hist"][:, :, :]
     def phase_stats(lo, hi, tag):

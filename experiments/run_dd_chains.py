@@ -25,7 +25,7 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from brho import msm_local as ML, msm_sampler as MS, msm_dd as DD
+from brho import msm_local as ML, msm_sampler as MS, msm_dd as DD, msm_flux as MF
 
 GRID_TAG = {"primal": 0, "dual": 1}
 _G = {}
@@ -40,20 +40,35 @@ def build(args):
     data = MS.Data(S, args.sigma_rel, args.data_seed, data_relerr=args.data_relerr)
     spline = DD.InterfaceSpline(S, data, args.smoothing, args.neighbors)
     ms = S.primal if args.grid == "primal" else S.dual
-    return S, data, spline, DD.DDGrid(S, ms, data, spline=spline)
+    flux = None
+    if getattr(args, "flux_noise_rel", None) is not None:           # flux studies (docs/dd_flux_experiment.md)
+        flux = MF.FluxData(S, data, args.flux_noise_rel, args.flux_sigma_rel)
+    grid = DD.DDGrid(S, ms, data, spline=spline, flux=flux)
+    grid.flux_data = flux
+    return S, data, spline, grid
+
+
+def pilot_betas(args, nb):
+    """Per-block frozen step sizes from the pilot run folder args.step_from (same grid), or None."""
+    if not args.step_from:
+        return None
+    Z = np.load(os.path.join(args.step_from, "chains.npz"))
+    return [DD.pilot_step(Z[f"s_hist_{k:02d}"]) for k in range(nb)]
 
 
 def _init(args):
     S, data, spline, grid = build(args)
-    _G.update(a=args, S=S, data=data, grid=grid)
+    _G.update(a=args, S=S, data=data, grid=grid, beta=pilot_betas(args, len(grid.blocks)))
 
 
 def _one(task):
     k, chain = task
     a = _G["a"]
     t = time.time()
-    o = DD.run_block_chain(_G["grid"].blocks[k], [a.seed0, GRID_TAG[a.grid], k, chain], a.n_iter, a.adapt,
-                           a.s0, a.save_every)
+    beta = _G.get("beta")                                          # frozen step sizes from a pilot run (or None)
+    key = [a.seed0, GRID_TAG[a.grid], k, chain] + ([1] if beta is not None else [])
+    o = DD.run_block_chain(_G["grid"].blocks[k], key, a.n_iter, a.adapt, a.s0 if beta is None else beta[k],
+                           a.save_every, init_scale=a.init_scale)
     return k, chain, o, time.time() - t
 
 
@@ -64,6 +79,12 @@ def main(argv=None):
     ap.add_argument("--n-iter", type=int, default=50000)
     ap.add_argument("--adapt", type=int, default=5000)
     ap.add_argument("--s0", type=float, default=0.2)
+    ap.add_argument("--step-from", default=None,
+                    help="pilot run folder (same grid): freeze every block's step size at its pilot value (use --adapt 0)")
+    ap.add_argument("--init-scale", type=float, default=1.0,
+                    help="initial local coefficients = init_scale x N(0, I) (default: a prior draw)")
+    ap.add_argument("--burn", type=int, default=None,
+                    help="iterations discarded in the summary and in the post-processing fields (default: --adapt)")
     ap.add_argument("--save-every", type=int, default=50)
     ap.add_argument("--smoothing", type=float, default=DD.SPLINE_SMOOTHING, help="thin-plate spline smoothing")
     ap.add_argument("--neighbors", type=int, default=DD.SPLINE_NEIGHBORS)
@@ -71,6 +92,10 @@ def main(argv=None):
     ap.add_argument("--data-relerr", type=float, default=None)
     ap.add_argument("--data-seed", type=int, default=2026)
     ap.add_argument("--seed0", type=int, default=7)
+    ap.add_argument("--flux-noise-rel", type=float, default=None,
+                    help="flux studies: add interface flux data with this relative noise (default: no flux data)")
+    ap.add_argument("--flux-sigma-rel", type=float, default=0.08,
+                    help="flux studies: likelihood level sigma_rel of the flux term (accommodates the ~7%% spline flux error)")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--out", required=True)
     a = ap.parse_args(argv)
@@ -94,7 +119,8 @@ def main(argv=None):
     K2 = np.exp(S.kle.field(data.theta_true)).reshape(n_, n_)
     p2 = S.phys.solve(K2.ravel()).reshape(n_, n_)
     iface = grid.interface_report(K2, p2, spline)
-    M = a.adapt
+    M = a.burn if a.burn is not None else a.adapt
+    betas = pilot_betas(a, nb)
     blocks = []
     for k, b in enumerate(grid.blocks):
         acc, rel = arr[f"acc_{k:02d}"][:, M:], arr[f"relerr_{k:02d}"][:, M:]
@@ -102,10 +128,14 @@ def main(argv=None):
         blocks.append(dict(block=k, cells=f"{b.nxl}x{b.nyl}", r_k=b.r_k, n_sensors=int(len(b.d_loc)),
                            acc_post_M_mean=float(acc.mean()), acc_post_M_chain_min=float(acc.mean(1).min()),
                            acc_post_M_chain_max=float(acc.mean(1).max()),
+                           s_used=(float(betas[k]) if betas else None),
+                           s_pilot_or_final_geomean=float(DD.pilot_step(arr[f"s_hist_{k:02d}"])),
                            s_final_median=float(np.median(sh)), s_final_min=float(sh.min()), s_final_max=float(sh.max()),
                            relerr_post_M_median=float(np.median(rel)),
+                           n_flux_faces=(b.flux.n_faces if b.flux is not None else 0),
                            kinds={s: b.kinds[s] for s in DD.SIDES}))
     summ = dict(settings=vars(a), data=data.summary(),
+                flux=(grid.flux_data.summary() if grid.flux_data is not None else None),
                 spline=dict(kernel=DD.SPLINE_KERNEL, smoothing=a.smoothing, neighbors=a.neighbors, n_sensors=int(len(spline.xy))),
                 grid=dict(name=a.grid, n_blocks=nb, r_k=grid.r_k, p=grid.p),
                 interface=dict(segments=iface, eps_int_mean=float(np.mean([r["eps_int"] for r in iface])),
