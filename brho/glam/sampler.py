@@ -155,15 +155,40 @@ def _init_state(model, rng, rank, tries=200):
     raise RuntimeError("no finite-potential initial state found")
 
 
-def run_glam(model, cfg, comm, out_dir, resume=False, log=print, keep_mask=None, selection_constrained_only=False):
+def _write_chain_snapshot(snap_dir, rank, it, theta, phi_cur, re_cur, rng, adapter, writer, cur_start, keep=3):
+    """State of one chain at the top of iteration `it` (before its move).  The chain parts written so far are flushed first; the
+    run of identical states that is still open is NOT closed, so the chain records are the same as without snapshots."""
+    os.makedirs(snap_dir, exist_ok=True)
+    writer.flush()
+    path = os.path.join(snap_dir, f"chain_r{rank:03d}_ite{it}.pkl")
+    with open(path + ".tmp", "wb") as f:
+        pickle.dump(dict(theta=theta, phi=phi_cur, re=re_cur, rng=rng.bit_generator.state, adapter=adapter.state(),
+                         next_it=it, part=writer.part, cur_start=cur_start), f)
+    os.replace(path + ".tmp", path)
+    mine = sorted(int(m.group(1)) for fn in os.listdir(snap_dir)
+                  if (m := re.fullmatch(rf"chain_r{rank:03d}_ite(\d+)\.pkl", fn)))
+    for old in mine[:-keep]:
+        os.remove(os.path.join(snap_dir, f"chain_r{rank:03d}_ite{old}.pkl"))
+
+
+def run_glam(model, cfg, comm, out_dir, resume=False, log=print, keep_mask=None, selection_constrained_only=False,
+             snapshot_every=0, fixed_steps=False):
+    """snapshot_every K > 0 (plain-pCN runs only, i.e. no exchange ever happens): every K iterations, and at the end, each rank
+    writes its state (theta, phi, rng, adapter) to anchor_state/chain_r*_ite*.pkl, so an interrupted run resumes from the newest
+    complete generation, and a finished run can be extended with a larger n_iter.  GLAM runs resume at their exchanges.
+    fixed_steps: no step-size adaptation; beta_g0 / beta_l0 are used throughout (set them to the values adapted in an earlier run)."""
     rank, P = comm.Get_rank(), comm.Get_size()
+    if snapshot_every and cfg.burnin_length < cfg.n_iter:
+        raise ValueError("snapshot_every is for runs without exchanges (burnin_length >= n_iter): a GLAM run is resumed from its exchange snapshots")
     n_sub = model.n_sub
     os.makedirs(out_dir, exist_ok=True)
     rng = np.random.default_rng([cfg.seed0, rank])
     mgr = make_manager(cfg, n_sub, rank, n_chains=P, keep_mask=keep_mask, selection_constrained_only=selection_constrained_only)
-    adapter = TwoStepAdapter(comm, cfg.beta_g0, cfg.beta_l0, cfg.target, adapt_start=0, adapt_stop=cfg.window1,
+    adapter = TwoStepAdapter(comm, cfg.beta_g0, cfg.beta_l0, cfg.target, adapt_start=0, adapt_stop=max(cfg.window1, 1),
                              adapt_interval=cfg.adapt_interval, initial_gain=cfg.adapt_gain,
                              gain_exponent=cfg.adapt_gain_exponent, gain_hold=cfg.adapt_gain_hold)
+    if fixed_steps:
+        adapter.freeze()
     snap_dir = os.path.join(out_dir, "anchor_state")
 
     # --- manager callbacks (no forward solve for a rho outside the PCHIP range)
@@ -185,7 +210,9 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print, keep_mask=None,
         mine = {int(m.group(1)) for fn in os.listdir(snap_dir)
                 if (m := re.fullmatch(rf"chain_r{rank:03d}_ite(\d+)\.pkl", fn))}
         common = set.intersection(*comm.allgather(mine))
-        if common:
+        if common and snapshot_every:                        # no manager state to restore: chains only
+            it_s = max(common)
+        elif common:
             it_s = mgr.load_anchor_state(snap_dir, max_iteration=max(common), rank=rank, comm=comm)
         if it_s is not None and int(it_s) not in common:
             raise RuntimeError(f"rank {rank}: anchor state of iteration {it_s} has no chain snapshot on every rank")
@@ -218,6 +245,8 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print, keep_mask=None,
     t0 = time.time()
     for it in range(it0, cfg.n_iter):
         anchors_on = cfg.anchor_stop_iteration < 0 or it <= cfg.anchor_stop_iteration
+        if snapshot_every and it > it0 and it % snapshot_every == 0:
+            _write_chain_snapshot(snap_dir, rank, it, theta, phi_cur, re_cur, rng, adapter, writer, cur_start)
         # ---------------------------------------------------------------- 1. exchange
         if anchors_on and mgr.phase_has_ended(it):
             res, _ = mgr.close_phase_and_restart_mpi(
@@ -282,6 +311,8 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print, keep_mask=None,
             n_acc_win[:] = 0; n_att_win[:] = 0
     writer.emit(cur_start, cfg.n_iter - cur_start, theta, phi_cur)
     writer.flush()
+    if snapshot_every:                                       # final snapshot: lets the run be extended (resume with a larger n_iter)
+        _write_chain_snapshot(snap_dir, rank, cfg.n_iter, theta, phi_cur, re_cur, rng, adapter, writer, cfg.n_iter)
     comm.Barrier()
     if rank == 0:
         with open(os.path.join(out_dir, "exchanges.pkl"), "wb") as f:
