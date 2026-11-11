@@ -41,9 +41,10 @@ SOLVER_RTOL=1e-8
 # ------------------------------------------------------------------ sampler flags (every GlamConfig field)
 GLAM_FLAGS=(
   # --- Length and windows  (window 1: step sizes adapt; window 2: steps frozen, local stages still run; the tail for post-processing starts at window1)
+  --fixed-steps                       # no step-size adaptation: beta-g0 / beta-l0 are used for the whole run
   --n-iter 80000
-  --window1 14000                     # same as r24m3: step sizes adapt in the first 14000 iterations in every arm
-  --window2 66000                     # local stages (GLAM arms) run until window1 + window2 = 80000
+  --window1 0                         # no adaptation window (fixed step sizes below); post-process with an explicit --start-iteration
+  --window2 80000                     # local stages (GLAM arms) run until window1 + window2 = 80000
 
   # --- Stage schedule (exchanges happen at the end of every stage)
   --burnin-length 500
@@ -57,8 +58,8 @@ GLAM_FLAGS=(
   --num-cycles 1000000000
 
   # --- Step-size adaptation (pCN, two step sizes; Robbins-Monro on the logit scale, pooled over chains)
-  --beta-g0 0.01
-  --beta-l0 0.02
+  --beta-g0 FILL_IN                   # EDIT: global step size, "beta"[0] in results/e6_glam_r24m3/adaptation.json (the frozen value of that run)
+  --beta-l0 FILL_IN                   # EDIT: local step size, "beta"[1] in results/e6_glam_r24m3/adaptation.json
   --target 0.25
   --adapt-interval 50
   --adapt-gain 2.0
@@ -193,6 +194,7 @@ trap 'kill $GPUMON 2>/dev/null || true' EXIT
 # after a requeue (preemption, node failure) continue from the newest complete snapshot instead of starting over
 RESUME_FLAG=""
 if [ "${SLURM_RESTART_COUNT:-0}" -gt 0 ] || [ -n "${GLAM_RESUME:-}" ]; then RESUME_FLAG="--resume"; echo "requeued (restart ${SLURM_RESTART_COUNT:-0}): resuming"; fi
+printf '%s\n' "${GLAM_FLAGS[@]}" | grep -q FILL_IN && { echo "ERROR: fill in the step sizes (FILL_IN) in GLAM_FLAGS from adaptation.json of the earlier run"; exit 1; }
 $LAUNCH -n "$SLURM_NTASKS" python experiments/run_glam.py --cfg "$EXT_CFG" --matrix-dir "$EXT_MATRICES" \
     --tag "$EXT_TAG" --whitening "$EXT_WHITENING" --phi-npy "$PHI_NPY" --fits-json "$GLAM_FITS" \
     --conc "$EXT_DATA_CONC" --pdrop "$EXT_REF_PDROP" --work "$GLAM_WORK" --phi-mode "$PHI_MODE" --n-sub "$N_SUB" --rtol "$SOLVER_RTOL" ${TRACER_DIR:+--tracer-dir "$TRACER_DIR"} \

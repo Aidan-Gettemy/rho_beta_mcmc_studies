@@ -7,21 +7,24 @@
 #SBATCH --gres=gpu:1
 #SBATCH --time=24:00:00               # 80000 iterations = about 2x r24m3 (40000, 12 h limit used there); EDIT to the partition limit
 #SBATCH -J glam-s80k_pcn
+#SBATCH --requeue                     # a killed job goes back in the queue and resumes from its last snapshot
+#SBATCH --open-mode=append            # keep the log of earlier attempts
 #SBATCH -o logs/glam-s80k_pcn-%j.out
 #
 # GLAM on the PCHIP beta(rho) curve, external Darcy solver + GPU tracer.  SELF-CONTAINED RECORD OF ONE EXPERIMENT:
 # every sampler flag is written out below (GLAM_FLAGS), so this file alone says how the run was made.  Copy it for a
 # new experiment (e.g. cp glam_run_template.sbatch glam_r24m.sbatch), edit the lines marked EDIT, and submit from the repo root:
 #       sbatch cluster/slurm/<your copy>.sbatch
+# Resume after a time-out:  sbatch --export=ALL,GLAM_RESUME=1 cluster/slurm/study80k/s80k_1_pcn.sbatch
 # Post-process:             GLAM_TAG=s80k_pcn sbatch cluster/slurm/node_glam_post.sbatch
 #
 # STUDY s80k, ARM 1 of 5: plain pCN (baseline and goal).  Same model, data, 24 chains, random initialization (seed0 2026) and step-size
 # adaptation as the GLAM arms; NO exchanges, NO local stages (burn-in never ends).  80000 iterations.  Its tail is the reference the other
 # arms are compared with, and its per-coordinate variance by coefficient index (experiments/coef_variance_by_index.py --exp-tag s80k_pcn)
 # gives the keep-own mask for arms 4 and 5.  See cluster/slurm/study80k/README.md.
-# THIS RUN CANNOT BE RESUMED: snapshots are written only at exchanges and there are none.  There is therefore no --requeue here, the
-# script never passes --resume, and it refuses to start if results/e6_glam_s80k_pcn already holds chains.  If the time limit is hit,
-# the chain parts written so far are intact (save-every 200) and can be post-processed, but not continued.  Choose the time limit generously.
+# Resumable: --snapshot-every 500 writes each chain's state (theta, Phi, RNG) every 500 iterations, so a time-out or preemption loses at most 500
+# iterations.  Resume with  sbatch --export=ALL,GLAM_RESUME=1 cluster/slurm/study80k/s80k_1_pcn.sbatch  (a requeue resumes by itself).  A finished run can
+# also be EXTENDED (e.g. to 120000): same command with a larger --n-iter.  Step sizes are fixed (taken from the earlier pcn run), so nothing adapts.
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
 # ------------------------------------------------------------------ run identity and external inputs
@@ -40,10 +43,12 @@ SOLVER_RTOL=1e-8
 
 # ------------------------------------------------------------------ sampler flags (every GlamConfig field)
 GLAM_FLAGS=(
+  --snapshot-every 500                # pCN run: every chain writes a resumable state every 500 iterations and at the end (anchor_state/chain_r*_ite*.pkl)
   # --- Length and windows  (window 1: step sizes adapt; window 2: steps frozen, local stages still run; the tail for post-processing starts at window1)
+  --fixed-steps                       # no step-size adaptation: beta-g0 / beta-l0 are used for the whole run
   --n-iter 80000
-  --window1 14000                     # same as r24m3: step sizes adapt in the first 14000 iterations in every arm
-  --window2 66000                     # local stages (GLAM arms) run until window1 + window2 = 80000
+  --window1 0                         # no adaptation window (fixed step sizes below); post-process with an explicit --start-iteration
+  --window2 80000                     # local stages (GLAM arms) run until window1 + window2 = 80000
 
   # --- Stage schedule (exchanges happen at the end of every stage)
   --burnin-length 100000000        # r24m3: 500.  Burn-in never ends: pure global pCN, no exchange
@@ -57,8 +62,8 @@ GLAM_FLAGS=(
   --num-cycles 1000000000
 
   # --- Step-size adaptation (pCN, two step sizes; Robbins-Monro on the logit scale, pooled over chains)
-  --beta-g0 0.01
-  --beta-l0 0.02
+  --beta-g0 FILL_IN                   # EDIT: global step size, "beta"[0] in results/e6_glam_pcn/adaptation.json (the frozen value of that run)
+  --beta-l0 0.02                      # unused: a pCN run has no local stages
   --target 0.25
   --adapt-interval 50
   --adapt-gain 2.0
@@ -190,9 +195,11 @@ $LAUNCH -n 4 python -c "from mpi4py import MPI; c = MPI.COMM_WORLD; assert c.Get
 GPUMON=$!
 trap 'kill $GPUMON 2>/dev/null || true' EXIT
 
-# a pCN run has no snapshots: never resume, and never overwrite
+# after a requeue (preemption, node failure) or with GLAM_RESUME=1 continue from the newest complete snapshot
 RESUME_FLAG=""
-if ls results/e6_glam_${GLAM_TAG}/chains/*.npz >/dev/null 2>&1; then echo "ERROR: results/e6_glam_${GLAM_TAG}/chains already holds chains; move them away first (this run cannot be resumed)."; exit 1; fi
+if [ "${SLURM_RESTART_COUNT:-0}" -gt 0 ] || [ -n "${GLAM_RESUME:-}" ]; then RESUME_FLAG="--resume"; echo "resuming (restart ${SLURM_RESTART_COUNT:-0})"
+elif ls results/e6_glam_${GLAM_TAG}/chains/*.npz >/dev/null 2>&1; then echo "ERROR: results/e6_glam_${GLAM_TAG}/chains already holds chains; move them away, or resume with GLAM_RESUME=1."; exit 1; fi
+printf '%s\n' "${GLAM_FLAGS[@]}" | grep -q FILL_IN && { echo "ERROR: fill in the step sizes (FILL_IN) in GLAM_FLAGS from adaptation.json of the earlier run"; exit 1; }
 $LAUNCH -n "$SLURM_NTASKS" python experiments/run_glam.py --cfg "$EXT_CFG" --matrix-dir "$EXT_MATRICES" \
     --tag "$EXT_TAG" --whitening "$EXT_WHITENING" --phi-npy "$PHI_NPY" --fits-json "$GLAM_FITS" \
     --conc "$EXT_DATA_CONC" --pdrop "$EXT_REF_PDROP" --work "$GLAM_WORK" --phi-mode "$PHI_MODE" --n-sub "$N_SUB" --rtol "$SOLVER_RTOL" ${TRACER_DIR:+--tracer-dir "$TRACER_DIR"} \

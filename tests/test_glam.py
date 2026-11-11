@@ -604,4 +604,4 @@ def test_fixed_steps_keep_the_given_step_sizes():
     from brho.glam import post
     for r in range(2):
         ch = post.load_chain(out, r)
-        assert np.allclose(ch["trace_beta_g"], 0.037) and np.allclose(ch["trace_beta_l"], 0.081)
+        assert np.allclose(ch["beta_g"], 0.037) and np.allclose(ch["beta_l"], 0.081)
