@@ -330,7 +330,8 @@ def test_every_manager_setting_is_a_config_field_with_the_manager_default():
                                    "minimum_global_stage_length", "minimum_local_stage_length", "global_stage_decay",
                                    "local_stage_decay", "disable_local_after_iteration", "current_iteration_only",
                                    "start_iteration", "seed", "extra_state_blocks", "extra_block_weights",
-                                   "relative_error_fn", "restart_basis", "include_previous_anchors"}
+                                   "relative_error_fn", "restart_basis", "include_previous_anchors",
+                                   "keep_own_mask", "selection_constrained_only"}
     assert set(sig) - {"self"} <= covered, set(sig) - {"self"} - covered
     # negative sentinel -> None, and values reach the manager
     cfg = C.GlamConfig(max_restart_attempts=7, frontier_target_phi=12.5, restart_phi_tolerance=9.0, random_reach_attempts=0)

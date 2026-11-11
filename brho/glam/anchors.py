@@ -410,6 +410,8 @@ class GlobalLocalAnchorManager:
         random_reach_attempts: int = 10,
         random_reach_initial_scale: float | None = None,
         random_reach_decay: float = 0.95,
+        keep_own_mask: Sequence[np.ndarray] | None = None,
+        selection_constrained_only: bool = False,
         start_iteration: int = 0,
         duplicate_tolerance: float = 1.0e-12,
         current_iteration_only: bool = False,
@@ -767,6 +769,15 @@ class GlobalLocalAnchorManager:
             else random_reach_initial_scale
         )
         self.random_reach_decay = float(random_reach_decay)
+        # restart as a subspace transplant: keep_own_mask[b] (bool, shape of block b) marks the coordinates a restarted chain KEEPS
+        # from its own current state (the ones the data barely constrain); every other coordinate is taken from the anchor
+        self.keep_own_mask = None if keep_own_mask is None else [np.asarray(m, dtype=bool) for m in keep_own_mask]
+        self.selection_constrained_only = bool(selection_constrained_only)
+        self._restart_current_theta = None
+        if self.keep_own_mask is not None and self.random_reach_attempts > 0:
+            raise ValueError("keep_own_mask needs random_reach_attempts = 0 (the random-reach fallback ignores the mask).")
+        if self.selection_constrained_only and self.keep_own_mask is None:
+            raise ValueError("selection_constrained_only needs keep_own_mask.")
 
         self.rng = np.random.default_rng(seed)
 
@@ -846,7 +857,7 @@ class GlobalLocalAnchorManager:
         """Return theta-space archive geometry/phi diagnostics using small matrices."""
         if not self.anchors:
             raise RuntimeError("Cannot summarize an empty anchor archive.")
-        X = np.vstack([flatten_theta(anchor.theta, self.nstate, self.block_weights) for anchor in self.anchors])
+        X = np.vstack([self._flatten(anchor.theta) for anchor in self.anchors])
         n_anchor, dimension = X.shape
         phi = np.array([anchor.phi for anchor in self.anchors], dtype=float)
 
@@ -1353,7 +1364,7 @@ class GlobalLocalAnchorManager:
         def add_protected(anchor: Anchor, *, require_distance: bool = True) -> bool:
             nonlocal selected, selected_vectors_list
             candidate = self._ensure_anchor_id(anchor)
-            vector = flatten_theta(candidate.theta, self.nstate, self.block_weights)
+            vector = self._flatten(candidate.theta)
             if selected_vectors_list:
                 X = np.vstack(selected_vectors_list)
                 nearest_sq = float(np.min(np.sum((X - vector) ** 2, axis=1)))
@@ -1380,7 +1391,7 @@ class GlobalLocalAnchorManager:
         if not selected:
             add_protected(best_anchor, require_distance=False)
         else:
-            best_vec = flatten_theta(best_anchor.theta, self.nstate, self.block_weights)
+            best_vec = self._flatten(best_anchor.theta)
             X = np.vstack(selected_vectors_list)
             nearest_index = int(np.argmin(np.sum((X - best_vec) ** 2, axis=1)))
             nearest_sq = float(np.sum((X[nearest_index] - best_vec) ** 2))
@@ -1410,7 +1421,7 @@ class GlobalLocalAnchorManager:
             # stochastic pool under another copy.
             if candidate.anchor_id >= 0 and int(candidate.anchor_id) in selected_ids:
                 continue
-            vector = flatten_theta(candidate.theta, self.nstate, self.block_weights)
+            vector = self._flatten(candidate.theta)
             nearest_sq = float(np.min(np.sum((selected_vectors - vector) ** 2, axis=1)))
             if nearest_sq <= duplicate_tolerance_sq:
                 continue
@@ -1603,7 +1614,7 @@ class GlobalLocalAnchorManager:
             dmin = dmedian = 0.0
         else:
             X = np.vstack([
-                flatten_theta(a.theta, self.nstate, self.block_weights)
+                self._flatten(a.theta)
                 for a in self.successful_anchors
             ])
             diff = X[:, None, :] - X[None, :, :]
@@ -1742,7 +1753,7 @@ class GlobalLocalAnchorManager:
 
         X = np.vstack(
             [
-                flatten_theta(anchor.theta, self.nstate, self.block_weights)
+                self._flatten(anchor.theta)
                 for anchor in self.successful_anchors
             ]
         )
@@ -2698,11 +2709,11 @@ class GlobalLocalAnchorManager:
             return visit
 
         reference_vectors = np.vstack([
-            flatten_theta(self.anchors[i].theta, self.nstate, self.block_weights)
+            self._flatten(self.anchors[i].theta)
             for i in references
         ])
         candidate_vectors = np.vstack([
-            flatten_theta(self.anchors[i].theta, self.nstate, self.block_weights)
+            self._flatten(self.anchors[i].theta)
             for i in available
         ])
         cand_norm = np.sum(candidate_vectors**2, axis=1)
@@ -2934,6 +2945,23 @@ class GlobalLocalAnchorManager:
         perturbation = scale * (basis @ noise)
         return np.asarray(perturbation).reshape(component.shape)
 
+    def _apply_keep_own(self, trial: Theta) -> Theta:
+        """Subspace transplant: coordinates flagged in keep_own_mask come from the chain's own state before the restart."""
+        if self.keep_own_mask is None or self._restart_current_theta is None:
+            return trial
+        cur = self._restart_current_theta
+        return [np.where(self.keep_own_mask[b], cur[b], trial[b]) if b < len(self.keep_own_mask) else trial[b]
+                for b in range(len(trial))]
+
+    def _flatten(self, theta) -> np.ndarray:
+        """Weighted state vector used by the archive selection; with selection_constrained_only the coordinates the chains keep
+        (the unconstrained ones) are dropped, so distances and log-det measure only the part the restart installs."""
+        v = flatten_theta(theta, self.nstate, self.block_weights)
+        if self.selection_constrained_only:
+            keep = np.concatenate([self.keep_own_mask[b].ravel() for b in range(self.nstate)])
+            v = v[~keep]
+        return v
+
     def propose_around_anchor(
         self,
         anchor: Anchor,
@@ -3089,7 +3117,7 @@ class GlobalLocalAnchorManager:
             # We still keep the archive lightweight: simuldata is NOT stored in
             # Anchor. It is reconstructed here only for the newly installed chain
             # state and returned transiently through RestartResult.
-            theta_copy = copy_theta(anchor.theta)
+            theta_copy = self._apply_keep_own(copy_theta(anchor.theta))
             field_payload, simuldata, phi = self.evaluate_theta(
                 theta_copy,
                 field_builder=field_builder,
@@ -3122,7 +3150,7 @@ class GlobalLocalAnchorManager:
         tried_phis: list[float] = []
 
         for attempt in range(1, self.max_restart_attempts + 1):
-            trial = self.propose_around_anchor(anchor, rank=rank, scale=scale)
+            trial = self._apply_keep_own(self.propose_around_anchor(anchor, rank=rank, scale=scale))
             field_payload, simuldata, phi = self.evaluate_theta(
                 trial,
                 field_builder=field_builder,
@@ -3199,7 +3227,7 @@ class GlobalLocalAnchorManager:
                     source_anchor_id=int(anchor.anchor_id),
                 )
 
-            theta_fallback = copy_theta(anchor.theta)
+            theta_fallback = self._apply_keep_own(copy_theta(anchor.theta))
 
             fallback_field, fallback_simuldata, fallback_phi = self.evaluate_theta(
                 theta_fallback,
@@ -3263,7 +3291,7 @@ class GlobalLocalAnchorManager:
         # ------------------------------------------------------------------
         if not success:
 
-            theta_fallback = copy_theta(anchor.theta)
+            theta_fallback = self._apply_keep_own(copy_theta(anchor.theta))
 
             fallback_field, fallback_simuldata, fallback_phi = self.evaluate_theta(
                 theta_fallback,
@@ -3704,6 +3732,7 @@ class GlobalLocalAnchorManager:
                 )
             return None, []
 
+        self._restart_current_theta = copy_theta(current_theta)
         t_restart = time.perf_counter()
         result = self.restart_population_mpi(
             rank=rank, number_of_chains=number_of_chains, comm=comm,

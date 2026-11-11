@@ -29,7 +29,7 @@ from brho import config as C
 from brho import io
 from brho.glam.comm import world
 from brho.glam.model import BetaPchip
-from brho.glam.sampler import run_glam
+from brho.glam.sampler import load_keep_mask, run_glam
 
 
 def build_model(args, cfg, rank):
@@ -68,6 +68,9 @@ def build_parser(doc=None):
     ap.add_argument("--forward", choices=["external", "toy"], default="external")
     ap.add_argument("--exp-tag", default="")
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--restart-keep-mask", default="", help="npz (m0..m<n_sub>, True = keep the chain's own coordinate): a restart installs the "
+                    "anchor only in the other coordinates (subspace transplant); empty = ordinary restarts")
+    ap.add_argument("--selection-constrained-only", action="store_true", help="archive selection (distance, log-det) on the transplanted coordinates only")
     ap.add_argument("--fits-json", default=os.environ.get("GLAM_FITS", os.path.join(
         io.REPO, "runs", "juno_external_2026-10", "tables", "e3_external", "fits.json")),
         help="fits.json of the offline curve (holds the PCHIP nodes and Kexp)")
@@ -111,7 +114,8 @@ def main():
     model = build_model(args, cfg, rank)
     if rank == 0:
         io.save_json(os.path.join(out, "block_dims.json"), dict(block_dims=[int(d) for d in model.block_dims]))
-    run_glam(model, cfg, comm, out, resume=args.resume)
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+    run_glam(model, cfg, comm, out, resume=args.resume, keep_mask=keep, selection_constrained_only=args.selection_constrained_only)
     if rank == 0:
         print("[glam] done:", out, flush=True)
 
