@@ -48,7 +48,7 @@ PILOT=${OUT}_pilot
 # ---- tests that must pass before sampling (no pytest needed) ------------------------------------
 python tests/run_tests.py test_dirichlet test_msm_local test_msm_sampler test_msm_dd
 
-COMMON="--kind global --chains 64 --workers 64 --save-every 50 --sigma-rel 0.00013258252 --data-relerr 0.003 --data-seed 2026 --flux-noise-rel 0.003 --flux-sigma-rel 0.00020045"
+COMMON="--kind global --chains 64 --workers 64 --save-every 50 --sigma-rel 0.00013258252 --data-relerr 0.003 --data-seed 2026 --flux-noise-rel 0.003 --flux-sigma-rel 0.08"
 
 # ---- stage 1: pilot, step size adapted throughout --------------------------------------------------
 python experiments/run_msm_chains.py $COMMON \
