@@ -85,12 +85,24 @@ class BlockSolver:
         self.ax, self.bx = idx[:-1, :].ravel(), idx[1:, :].ravel()
         self.ay, self.by = idx[:, :-1].ravel(), idx[:, 1:].ravel()
         side_cells = dict(L=idx[0, :], R=idx[-1, :], B=idx[:, 0], T=idx[:, -1])
-        self.dirichlet = [(side_cells[s], np.asarray(v, float)) for s, v in bc.items() if v is not None]
+        # side value: array g (Dirichlet) or dict(g=, h=, ainv=) for a mixed Dirichlet/Robin side: per face a datum g (pressure),
+        # h = K dp/dn_out (minus the outward Darcy flux) and ainv = 1/alpha (0 = Dirichlet face); the Robin face
+        # alpha p + K dp/dn = alpha g + h is a link of conductance 1/(1/T + ainv) to the pressure g + ainv h (T = 2K).
+        self.dirichlet = []
+        for s, v in bc.items():
+            if v is None:
+                continue
+            if isinstance(v, dict):
+                g, h, ainv = (np.asarray(v[k], float) for k in ("g", "h", "ainv"))
+            else:
+                g = np.asarray(v, float)
+                h = ainv = np.zeros_like(g)
+            self.dirichlet.append((side_cells[s], g + ainv * h, ainv))
         if not self.dirichlet:
-            raise ValueError("a block needs at least one Dirichlet side")
-        for ids, v in self.dirichlet:
+            raise ValueError("a block needs at least one Dirichlet (or Robin) side")
+        for ids, v, _ in self.dirichlet:
             if len(ids) != len(v):
-                raise ValueError("Dirichlet value array does not match its side")
+                raise ValueError("boundary value array does not match its side")
         self.diag_pos = np.arange(self.N) * (self.N + 1)
 
     def solve(self, K):
@@ -107,8 +119,10 @@ class BlockSolver:
         diag = (np.bincount(ax, Tx, N) + np.bincount(bx, Tx, N)
                 + np.bincount(ay, Ty, N) + np.bincount(by, Ty, N))
         b = np.zeros(N)
-        for ids, vals in self.dirichlet:
+        for ids, vals, ainv in self.dirichlet:
             t = 2.0 * K[ids]
+            if np.any(ainv):
+                t = t / (1.0 + t * ainv)                                 # series conductance of the Robin face
             diag[ids] += t
             b[ids] += t * vals
         A.flat[self.diag_pos] = diag
@@ -136,11 +150,39 @@ class Block:
         gpos = -np.ones(S.phys.N, int)
         gpos[np.flatnonzero(S.phys.obs_mask)] = np.arange(data.n_obs)
         sens = gpos[cells]
+        core = getattr(ms, "block_core", None)                       # overlapping blocks: only the core's sensors count
+        if core is not None:
+            sens = np.where(np.isin(cells, core[k]), sens, -1)
         self.obs_loc = np.flatnonzero(sens >= 0)
         self.d_loc = np.asarray(data.d, float)[sens[self.obs_loc]]
         self.dnorm_loc = float(np.linalg.norm(self.d_loc))
         self.w = data.w
         self.flux = None                                             # BlockFlux (brho/msm_flux.py) or None
+        self.robin = False
+
+    def set_robin(self, fd, alpha, kind="cubic"):
+        """Robin condition alpha p + K dp/dn = alpha g + h on every interface side that lies on a flux-data line: g the
+        spline pressure already in self.bc, h = -(outward Darcy flux) from the flux data interpolated along the line
+        (brho/msm_flux.py).  Sides off the flux lines stay Dirichlet.  The solver is rebuilt; no flux penalty is used."""
+        sign = dict(L=+1.0, R=-1.0, B=+1.0, T=-1.0)
+        bc = {}
+        for side, v in self.bc.items():
+            if v is None or self.kinds[side] != "iface":
+                bc[side] = v
+                continue
+            xy, (ia, ja, ib, jb) = self.faces[side]
+            vertical = side in ("L", "R")
+            line = int(ib[0]) if vertical else int(jb[0])
+            orient = "v" if vertical else "h"
+            if not fd.has_line(orient, line):
+                bc[side] = v
+                continue
+            along = ja if vertical else ia
+            q = fd.line_flux(orient, line, kind)[along]
+            bc[side] = dict(g=np.asarray(v, float), h=sign[side] * q, ainv=np.full(len(v), 1.0 / alpha))
+        self.bc = bc
+        self.solver = BlockSolver(self.nxl, self.nyl, bc)
+        self.robin = True
 
     def log_field(self, c):
         return self.psi @ (self.sqmu * np.asarray(c, float))
@@ -163,7 +205,7 @@ class DDGrid:
     """All blocks of one decomposition `ms` (an MSInnovation) with boundary data from `spline` (the method) or
     from an exact finite-volume solution `exact = (K2, p2)` (tests)."""
 
-    def __init__(self, S, ms, data, spline=None, exact=None, flux=None):
+    def __init__(self, S, ms, data, spline=None, exact=None, flux=None, robin_alpha=None, robin_interp="cubic"):
         if (spline is None) == (exact is None):
             raise ValueError("pass exactly one of spline / exact")
         self.S, self.ms, self.n = S, ms, S.n
@@ -196,7 +238,10 @@ class DDGrid:
             self.blocks.append(Block(S, ms, k, data, bc, kinds, faces))
         self.r_k = list(ms.r_k)
         self.p = int(ms.p)
-        if flux is not None:                                         # flux studies: FluxData of brho/msm_flux.py
+        if flux is not None and robin_alpha is not None:             # flux enters the boundary condition (Robin), not the likelihood
+            for b in self.blocks:
+                b.set_robin(flux, robin_alpha, robin_interp)
+        elif flux is not None:                                       # flux studies: FluxData of brho/msm_flux.py
             from .msm_flux import BlockFlux
             for b in self.blocks:
                 b.flux = BlockFlux(flux, b)
