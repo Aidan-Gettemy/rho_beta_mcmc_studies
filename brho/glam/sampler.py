@@ -117,7 +117,13 @@ def manager_kwargs(cfg):
     return kw
 
 
-def make_manager(cfg, n_sub, rank, start_iteration=0, n_chains=1):
+def load_keep_mask(path, n_sub):
+    """npz with boolean arrays m0 .. m<n_sub> (block b; True = the chain keeps its own coordinate at a restart) -> list of arrays."""
+    z = np.load(path)
+    return [np.asarray(z[f"m{b}"], dtype=bool) for b in range(n_sub + 1)]
+
+
+def make_manager(cfg, n_sub, rank, start_iteration=0, n_chains=1, keep_mask=None, selection_constrained_only=False):
     max_anchors = None if cfg.max_anchors < 0 else (cfg.max_anchors or 2 * max(int(n_chains), 1))
     return GlobalLocalAnchorManager(
         numsubd=n_sub,
@@ -135,6 +141,7 @@ def make_manager(cfg, n_sub, rank, start_iteration=0, n_chains=1):
         start_iteration=start_iteration,
         extra_state_blocks=1, extra_block_weights=[cfg.rho_distance_weight],
         seed=cfg.seed0 + 7919 * rank,
+        keep_own_mask=keep_mask, selection_constrained_only=selection_constrained_only,
         **manager_kwargs(cfg),
     )
 
@@ -148,12 +155,12 @@ def _init_state(model, rng, rank, tries=200):
     raise RuntimeError("no finite-potential initial state found")
 
 
-def run_glam(model, cfg, comm, out_dir, resume=False, log=print):
+def run_glam(model, cfg, comm, out_dir, resume=False, log=print, keep_mask=None, selection_constrained_only=False):
     rank, P = comm.Get_rank(), comm.Get_size()
     n_sub = model.n_sub
     os.makedirs(out_dir, exist_ok=True)
     rng = np.random.default_rng([cfg.seed0, rank])
-    mgr = make_manager(cfg, n_sub, rank, n_chains=P)
+    mgr = make_manager(cfg, n_sub, rank, n_chains=P, keep_mask=keep_mask, selection_constrained_only=selection_constrained_only)
     adapter = TwoStepAdapter(comm, cfg.beta_g0, cfg.beta_l0, cfg.target, adapt_start=0, adapt_stop=cfg.window1,
                              adapt_interval=cfg.adapt_interval, initial_gain=cfg.adapt_gain,
                              gain_exponent=cfg.adapt_gain_exponent, gain_hold=cfg.adapt_gain_hold)
