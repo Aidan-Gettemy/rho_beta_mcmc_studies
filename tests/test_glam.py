@@ -556,3 +556,52 @@ def test_replay_archive_selection():
     assert strict["rej_score"] > 0 and strict["n"] < n                                  # large eps + scale 10: the cut-off bites
     for r in rows:
         assert 0.0 < r["top_share"] <= 1.0 and r["eff_rank"] >= 1.0 and r["dmin"] > 0.0
+
+
+def _pcn_run(n_iter, out, resume=False, **kw):
+    kw.setdefault("snapshot_every", 40)
+    snap = kw.pop("snapshot_every")
+    model = ToyModel(_beta(), n_sub=4, m=6, n_cells=60, n_times=3, seed=5, sigma_conc=0.05, sigma_dp=0.05)
+    cfg = C.GlamConfig(n_iter=n_iter, window1=50, window2=0, burnin_length=10 ** 8, global_stage_length=10 ** 8,
+                       local_stage_length=10 ** 8, min_global_stage_length=10 ** 8, min_local_stage_length=10 ** 8,
+                       adapt_interval=10, beta_g0=0.1, save_every=25, log_every=0, **kw)
+    res = ThreadWorld(3).run(lambda comm: run_glam(model, cfg, comm, out, resume=resume, log=lambda *_: None, snapshot_every=snap))
+    return cfg, res
+
+
+def test_pcn_snapshots_resume_and_extend_exactly():
+    full, part = tempfile.mkdtemp(), tempfile.mkdtemp()
+    cfg, a = _pcn_run(200, full, snapshot_every=0)
+    _pcn_run(130, part)                                           # snapshots at 40, 80, 120 and the final one at 130
+    for r in range(3):                                            # killed run: the final generation never got written
+        os.remove(os.path.join(part, "anchor_state", f"chain_r{r:03d}_ite130.pkl"))
+    _, b = _pcn_run(200, part, resume=True)                       # resumes from 120
+    _pcn_run(120, full + "_x")
+    _, c = _pcn_run(200, full + "_x", resume=True)                # finished run extended from its final snapshot
+    for other in (b, c):
+        for ra, rb in zip(a, other):
+            assert all(np.array_equal(x, y) for x, y in zip(ra["theta"], rb["theta"]))
+            assert ra["phi"] == rb["phi"]
+    for d in (part, full + "_x"):
+        for r in range(3):
+            ca, cb = load_chain(full, r), load_chain(d, r)
+            ia, ib = expand(ca, 200), expand(cb, 200)
+            assert np.array_equal(ca["theta"][ia], cb["theta"][ib])
+    assert len(glob.glob(os.path.join(part, "anchor_state", "chain_r000_ite*.pkl"))) <= 3
+    import pytest
+    model = ToyModel(_beta(), n_sub=4, m=6, n_cells=60, n_times=3, seed=5)
+    gl = C.GlamConfig(n_iter=50, window1=10, window2=10, burnin_length=10, save_every=25, log_every=0)
+    with pytest.raises(ValueError):                               # a GLAM run (exchanges on) refuses snapshot_every
+        ThreadWorld(1).run(lambda comm: run_glam(model, gl, comm, tempfile.mkdtemp(), log=lambda *_: None, snapshot_every=10))
+
+
+def test_fixed_steps_keep_the_given_step_sizes():
+    out = tempfile.mkdtemp()
+    model = ToyModel(_beta(), n_sub=4, m=6, n_cells=60, n_times=3, seed=5, sigma_conc=0.05, sigma_dp=0.05)
+    cfg = C.GlamConfig(n_iter=120, window1=60, window2=60, burnin_length=20, global_stage_length=20, local_stage_length=15,
+                       min_global_stage_length=10, min_local_stage_length=10, beta_g0=0.037, beta_l0=0.081, save_every=25, log_every=0)
+    ThreadWorld(2).run(lambda comm: run_glam(model, cfg, comm, out, log=lambda *_: None, fixed_steps=True))
+    from brho.glam import post
+    for r in range(2):
+        ch = post.load_chain(out, r)
+        assert np.allclose(ch["trace_beta_g"], 0.037) and np.allclose(ch["trace_beta_l"], 0.081)
