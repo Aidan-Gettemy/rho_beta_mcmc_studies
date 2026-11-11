@@ -184,6 +184,8 @@ def main():
             pass
         if keep is not None:
             res["kept_fraction"] = float(np.mean(np.concatenate([m_.ravel() for m_ in keep])))
+        if arm != "pcn":                                   # chains are ~1 GB per 1000 iterations: keep only pcn (the mask is estimated from it)
+            import shutil; shutil.rmtree(os.path.join(out, "chains"), ignore_errors=True)
         summary[arm] = res
         json.dump(summary, open(sfile, "w"), indent=1, default=float)
         print(f"[{arm}] {wall:.0f}s " + json.dumps({k: (round(v, 3) if isinstance(v, float) else v) for k, v in res.items()}), flush=True)
