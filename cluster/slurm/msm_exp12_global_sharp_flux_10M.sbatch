@@ -12,7 +12,7 @@
 # Spec: docs/dd_overlap_robin_experiment.md.  Self-contained: every run flag is written below, so rereading this file shows how the run was made.
 # Submit from the repo root:   sbatch cluster/slurm/msm_exp12_global_sharp_flux_10M.sbatch
 # TWO STAGES, to separate adaptation from convergence:
-#   1. PILOT   100,000 iterations (step-size floor lowered to 1e-4), step size adapted to 25% acceptance the whole time (64 chains) -> exp12_global_sharp_flux_10M_pilot
+#   1. PILOT   100,000 iterations (step-size floor lowered to 1e-4; adaptation window 500 iterations instead of 100, so each up/down decision rests on ~125 proposals instead of ~25), step size adapted to 25% acceptance the whole time (64 chains) -> exp12_global_sharp_flux_10M_pilot
 #              the frozen step size beta is the geometric mean of the saved step sizes of all chains over the last 30%
 #              of the pilot, one beta per subdomain (one for the global problem);
 #   2. RESTART 10,000,000 iterations from NEW random starting points (fresh seeds, initial state = a draw from the prior,
@@ -52,7 +52,7 @@ COMMON="--kind global --chains 64 --workers 64 --sigma-rel 0.00013258252 --data-
 
 # ---- stage 1: pilot, step size adapted throughout --------------------------------------------------
 python experiments/run_msm_chains.py $COMMON \
-    --save-every 50 --n-iter 100000 --adapt 100000 --burn 50000 --s0 0.2 --s-min 1e-4 --seed0 7 \
+    --save-every 50 --n-iter 100000 --adapt 100000 --burn 50000 --s0 0.2 --s-min 1e-4 --adapt-every 500 --seed0 7 \
     --out "$PILOT"
 
 # ---- stage 2: restart from dispersed prior draws with the step size frozen ---------------------------

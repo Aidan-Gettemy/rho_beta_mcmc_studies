@@ -79,7 +79,7 @@ def _pcn(x, s, rng):
 
 
 def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2,
-              save_every=100, target=0.25, alt_L=1, alt_offset=True, init_scale=1.0, s_min=1e-3):
+              save_every=100, target=0.25, alt_L=1, alt_offset=True, init_scale=1.0, s_min=1e-3, every=100):
     """One chain.  Returns a dict of arrays (see docstring of the module for the state).
     relerr (n_iter,) state's relative error after every iteration; acc (n_iter,) accepted
     flags; move (n_iter,) grid used (0 primal, 1 dual; all 0 for the single-grid kinds);
@@ -96,7 +96,7 @@ def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2
     n_g = 2 if kind in TWO_GRID else 1
     if kind in ("alt", "mixture_inn", "sequence_exact"):
         Lp, Ld = ML.field_lift(P, S.kle.T), ML.field_lift(D, S.kle.T)
-    ad = StepAdapter([s0] * n_g, targets=[target] * n_g, every=100, s_min=s_min)
+    ad = StepAdapter([s0] * n_g, targets=[target] * n_g, every=every, s_min=s_min)
     # state and the map state -> theta
     th0 = init_scale * rng.standard_normal(r)    # same first draw for every kind (paired seeds); init_scale 1 = prior draw
     c = z = None
@@ -135,7 +135,7 @@ def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2
                 theta = D.B @ c
             phi, rel = data.potential(theta)       # (sequence) the lossy projection changes the field
             out["phi1"], out["rel1"] = phi, rel
-            ad = StepAdapter([s0], targets=[target], every=100, s_min=s_min)
+            ad = StepAdapter([s0], targets=[target], every=every, s_min=s_min)
         k_it = it - K if (kind in SEQ and it >= K) else it
         if it % save_every == 0:
             j = it // save_every

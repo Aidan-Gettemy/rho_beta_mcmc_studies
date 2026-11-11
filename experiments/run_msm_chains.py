@@ -48,7 +48,7 @@ def _one(chain):
     t = time.time()
     o = MS.run_chain(a.kind, _G["S"], _G["data"], a.seed0, chain, a.n_iter, a.adapt,
                      a.phase_k, a.s0 if _G["beta"] is None else _G["beta"], a.save_every, 0.25, a.alt_L,
-                     not a.alt_no_offset, init_scale=a.init_scale, s_min=a.s_min)
+                     not a.alt_no_offset, init_scale=a.init_scale, s_min=a.s_min, every=a.adapt_every)
     o["_sec"] = time.time() - t
     return o
 
@@ -65,6 +65,7 @@ def main(argv=None):
     ap.add_argument("--step-from", default=None,
                     help="pilot run folder (kind global): freeze the step size at the pilot value (use --adapt 0)")
     ap.add_argument("--s-min", type=float, default=1e-3, help="lower clamp of the adapted step size (default 1e-3)")
+    ap.add_argument("--adapt-every", type=int, default=100, help="iterations per step-size adaptation window (default 100)")
     ap.add_argument("--init-scale", type=float, default=1.0,
                     help="kind global: initial theta = init_scale x N(0, I) (default: a prior draw)")
     ap.add_argument("--burn", type=int, default=None,
