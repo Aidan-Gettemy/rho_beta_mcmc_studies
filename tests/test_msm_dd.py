@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from brho import msm_local as ML                      # noqa: E402
 from brho import msm_sampler as MS                    # noqa: E402
 from brho import msm_dd as DD                         # noqa: E402
+from brho import msm_flux as MF                       # noqa: E402
 
 
 @functools.lru_cache(maxsize=None)
@@ -98,7 +99,6 @@ def test_interface_report_and_chain_smoke():
 
 # ------------------------------------------------------------ flux data (brho/msm_flux.py)
 def _flux(S, data):
-    from brho import msm_flux as MF
     return MF.FluxData(S, data)
 
 
@@ -138,3 +138,63 @@ def test_block_flux_equals_true_flux_with_exact_faces():
             nf += b.flux.n_faces
         assert nf == 2 * 2 * nlines * 16                                # two lines families x lines x 16, both sides
         assert abs(tot - 2 * 0.5 * fd.w * float(np.sum((fd.q - fd.q_true)[np.isin(fd.line, [8, 16, 24] if nlines == 3 else [4, 12, 20, 28])] ** 2))) < 1e-8 * max(1.0, tot)
+
+
+# ------------------------------------------------------------ Robin interface condition and overlapping blocks
+def test_robin_with_exact_data_reproduces_the_global_solution():
+    """Robin condition built from the EXACT face pressure and the EXACT flux on every face of every interface line
+    (any alpha): the block solution is the global one, since the true solution satisfies alpha p + K dp/dn =
+    alpha g + h identically."""
+    S, data = _setup()
+    fd = _flux(S, data)
+    n = S.n
+    K = np.exp(S.kle.field(data.theta_true))
+    p = S.phys.solve(K)
+    K2, p2 = K.reshape(n, n), p.reshape(n, n)
+
+    def exact_line_flux(orient, line, kind="cubic"):
+        t = np.arange(n)
+        if orient == "v":
+            return MF.face_flux(K2, p2, np.full(n, line - 1), t, np.full(n, line), t)
+        return MF.face_flux(K2, p2, t, np.full(n, line - 1), t, np.full(n, line))
+    fd.line_flux = exact_line_flux
+    for ms in (S.primal, S.dual):
+        for alpha in (0.3, 5.0):
+            grid = DD.DDGrid(S, ms, data, exact=(K2, p2), flux=fd, robin_alpha=alpha)
+            assert all(b.robin for b in grid.blocks)
+            for b in grid.blocks:
+                assert np.abs(b.solver.solve(K[b.cells]) - p[b.cells]).max() < 1e-9 * np.abs(p).max(), (alpha, b.k)
+
+
+def test_robin_alpha_infinite_is_dirichlet_and_small_alpha_uses_flux():
+    S, data = _setup()
+    fd = _flux(S, data)
+    sp = DD.InterfaceSpline(S, data)
+    g_d = DD.DDGrid(S, S.primal, data, spline=sp)
+    g_r = DD.DDGrid(S, S.primal, data, spline=sp, flux=fd, robin_alpha=1e12)
+    K = np.exp(S.kle.field(data.theta_true))
+    for bd, br in zip(g_d.blocks, g_r.blocks):
+        assert np.abs(bd.solver.solve(K[bd.cells]) - br.solver.solve(K[br.cells])).max() < 1e-6
+    g_s = DD.DDGrid(S, S.primal, data, spline=sp, flux=fd, robin_alpha=0.05)
+    assert any(np.abs(bd.solver.solve(K[bd.cells]) - bs.solver.solve(K[bs.cells])).max() > 1e-5
+               for bd, bs in zip(g_d.blocks, g_s.blocks))
+
+
+def test_overlap_blocks_core_sensors_and_exact_faces():
+    from brho import msm_dd_overlap as OV
+    S, data = _setup()
+    K = np.exp(S.kle.field(data.theta_true))
+    p = S.phys.solve(K)
+    n = S.n
+    for ms in (S.primal, S.dual):
+        ov = OV.OverlapDecomp(S, ms, 2)
+        assert ov.B.shape == (S.r, ov.p) and all(r >= r0 for r, r0 in zip(ov.r_k, ms.r_k))
+        grid = DD.DDGrid(S, ov, data, exact=(K.reshape(n, n), p.reshape(n, n)))
+        assert sum(len(b.d_loc) for b in grid.blocks) == data.n_obs         # every sensor counted once (core only)
+        phi_glob = 0.5 * data.w * float(np.sum((data.d - p[S.phys.obs_mask]) ** 2))
+        phi_sum = 0.0
+        for b in grid.blocks:
+            pl = b.solver.solve(K[b.cells])
+            assert np.abs(pl - p[b.cells]).max() < 1e-9 * np.abs(p).max()
+            phi_sum += 0.5 * data.w * float(np.sum((b.d_loc - pl[b.obs_loc]) ** 2))
+        assert abs(phi_sum - phi_glob) < 1e-8 * max(1.0, phi_glob)

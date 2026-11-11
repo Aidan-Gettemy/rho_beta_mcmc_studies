@@ -25,7 +25,7 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from brho import msm_local as ML, msm_sampler as MS, msm_dd as DD, msm_flux as MF
+from brho import msm_local as ML, msm_sampler as MS, msm_dd as DD, msm_flux as MF, msm_dd_overlap as OV
 
 GRID_TAG = {"primal": 0, "dual": 1}
 _G = {}
@@ -43,7 +43,14 @@ def build(args):
     flux = None
     if getattr(args, "flux_noise_rel", None) is not None:           # flux studies (docs/dd_flux_experiment.md)
         flux = MF.FluxData(S, data, args.flux_noise_rel, args.flux_sigma_rel)
-    grid = DD.DDGrid(S, ms, data, spline=spline, flux=flux)
+    halo = getattr(args, "overlap_halo", 0) or 0
+    if halo:                                                          # overlapping subdomains (docs/dd_overlap_robin_experiment.md)
+        ms = OV.OverlapDecomp(S, ms, halo)
+    alpha = getattr(args, "robin_alpha", None)
+    if alpha is not None and flux is None:
+        raise SystemExit("--robin-alpha needs flux data (--flux-noise-rel)")
+    grid = DD.DDGrid(S, ms, data, spline=spline, flux=flux, robin_alpha=alpha,
+                     robin_interp=getattr(args, "robin_interp", "cubic"))
     grid.flux_data = flux
     return S, data, spline, grid
 
@@ -96,6 +103,12 @@ def main(argv=None):
                     help="flux studies: add interface flux data with this relative noise (default: no flux data)")
     ap.add_argument("--flux-sigma-rel", type=float, default=0.08,
                     help="flux studies: likelihood level sigma_rel of the flux term (accommodates the ~7%% spline flux error)")
+    ap.add_argument("--overlap-halo", type=int, default=0,
+                    help="extend every subdomain by this many cells towards each interior interface (likelihood on the core only)")
+    ap.add_argument("--robin-alpha", type=float, default=None,
+                    help="Robin interface condition alpha p + K dp/dn = alpha g + h with g the spline pressure and h the flux data "
+                         "(needs --flux-noise-rel); replaces the flux penalty; sides off the flux lines stay Dirichlet")
+    ap.add_argument("--robin-interp", default="cubic", choices=["linear", "cubic"], help="interpolation of the flux along a line")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--out", required=True)
     a = ap.parse_args(argv)
@@ -137,7 +150,8 @@ def main(argv=None):
     summ = dict(settings=vars(a), data=data.summary(),
                 flux=(grid.flux_data.summary() if grid.flux_data is not None else None),
                 spline=dict(kernel=DD.SPLINE_KERNEL, smoothing=a.smoothing, neighbors=a.neighbors, n_sensors=int(len(spline.xy))),
-                grid=dict(name=a.grid, n_blocks=nb, r_k=grid.r_k, p=grid.p),
+                grid=dict(name=a.grid, n_blocks=nb, r_k=grid.r_k, p=grid.p, halo=a.overlap_halo,
+                          robin_alpha=a.robin_alpha, robin_sides=sum(1 for b in grid.blocks if b.robin)),
                 interface=dict(segments=iface, eps_int_mean=float(np.mean([r["eps_int"] for r in iface])),
                                eps_int_max=float(np.max([r["eps_int"] for r in iface]))),
                 blocks=blocks, wall_sec=time.time() - t0, sec_per_chain=float(np.mean(secs)))

@@ -64,6 +64,18 @@ class FluxData:
         self.relerr_truth = float(np.linalg.norm(self.q - self.q_true) / self.qnorm)
         self.phi_truth = 0.5 * self.w * float(np.sum((self.q - self.q_true) ** 2))
 
+    def has_line(self, orient, line):
+        return bool(np.any((self.orient == orient) & (self.line == line)))
+
+    def line_flux(self, orient, line, kind="linear"):
+        """Flux at ALL n faces of one interface line, interpolated (linear / cubic) from the measured ones."""
+        sel = np.flatnonzero((self.orient == orient) & (self.line == line))
+        t, q = self.pos[sel], self.q[sel]
+        if kind == "cubic":
+            from scipy.interpolate import CubicSpline
+            return CubicSpline(t, q, bc_type="natural", extrapolate=True)(np.arange(self.n))
+        return np.interp(np.arange(self.n), t, q)
+
     def summary(self):
         return dict(n_flux=self.m, lines=interface_lines(self.n), stride=self.stride, offset=self.offset,
                     noise_rel=self.noise_rel, sigma_rel=self.sigma_rel, sigma_q=float(self.sigma_q),
