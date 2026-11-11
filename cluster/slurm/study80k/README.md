@@ -14,10 +14,8 @@ heuristic, not as exact MCMC.  Only arm 1 is the correctness reference.
 
 Identical in all arms: `--n-iter 80000`, `--fixed-steps` (NO step-size adaptation; `--window1 0 --window2 80000`), likelihood, prior, 24 ranks, seed.
 
-**Before submitting, fill in the step sizes** (`FILL_IN` in `GLAM_FLAGS`; the script refuses to start otherwise).  On Juno:
-`python -c "import json; print(json.load(open('results/e6_glam_r24m3/adaptation.json'))['beta'])"` gives `[beta_G, beta_L]` (same for `e6_glam_pcn`).
-Arm 1 takes beta_G from the pcn run; arms 2-3 take beta_G and beta_L from r24m3 (see the note on comparability in the hand-over message).
-Submit from the repo root:  `sbatch cluster/slurm/study80k/s80k_1_pcn.sbatch` (same for 2 and 3; they are independent).
+**Step sizes (fixed, same in every arm):** beta_G = 0.011952 (= 0.8 x 0.01494, the frozen global step of the pcn run) and beta_L = 0.061968
+(= 0.8 x 0.07746, the frozen local step of r24m3; arm 1 has no local stages).  The 20% reduction anticipates the acceptance rate falling as chains approach the posterior.
 
 Storage: the code fixes the layout `results/e6_glam_<tag>`, `figures/e6_glam_<tag>`, `tables/e6_glam_<tag>`, so the shared `s80k_` tag prefix
 is what groups the study; the post-processing scripts work unchanged.  Scripts live here; the final comparison report goes to `reports/glam_study80k/`.

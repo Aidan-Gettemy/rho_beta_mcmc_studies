@@ -58,8 +58,8 @@ GLAM_FLAGS=(
   --num-cycles 1000000000
 
   # --- Step-size adaptation (pCN, two step sizes; Robbins-Monro on the logit scale, pooled over chains)
-  --beta-g0 FILL_IN                   # EDIT: global step size, "beta"[0] in results/e6_glam_r24m3/adaptation.json (the frozen value of that run)
-  --beta-l0 FILL_IN                   # EDIT: local step size, "beta"[1] in results/e6_glam_r24m3/adaptation.json
+  --beta-g0 0.011952                  # pcn run frozen beta_G 0.01494 (e6_glam_pcn) x 0.8: acceptance falls as the chains approach the posterior, so 20% smaller; same in all arms
+  --beta-l0 0.061968                  # r24m3 frozen beta_L 0.07746 (e6_glam_r24m3) x 0.8; the pcn run never adapted a local step (0.02 was only its start value); unused in arm 1
   --target 0.25
   --adapt-interval 50
   --adapt-gain 2.0
@@ -194,7 +194,6 @@ trap 'kill $GPUMON 2>/dev/null || true' EXIT
 # after a requeue (preemption, node failure) continue from the newest complete snapshot instead of starting over
 RESUME_FLAG=""
 if [ "${SLURM_RESTART_COUNT:-0}" -gt 0 ] || [ -n "${GLAM_RESUME:-}" ]; then RESUME_FLAG="--resume"; echo "requeued (restart ${SLURM_RESTART_COUNT:-0}): resuming"; fi
-printf '%s\n' "${GLAM_FLAGS[@]}" | grep -q FILL_IN && { echo "ERROR: fill in the step sizes (FILL_IN) in GLAM_FLAGS from adaptation.json of the earlier run"; exit 1; }
 $LAUNCH -n "$SLURM_NTASKS" python experiments/run_glam.py --cfg "$EXT_CFG" --matrix-dir "$EXT_MATRICES" \
     --tag "$EXT_TAG" --whitening "$EXT_WHITENING" --phi-npy "$PHI_NPY" --fits-json "$GLAM_FITS" \
     --conc "$EXT_DATA_CONC" --pdrop "$EXT_REF_PDROP" --work "$GLAM_WORK" --phi-mode "$PHI_MODE" --n-sub "$N_SUB" --rtol "$SOLVER_RTOL" ${TRACER_DIR:+--tracer-dir "$TRACER_DIR"} \
