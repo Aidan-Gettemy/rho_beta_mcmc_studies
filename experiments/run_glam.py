@@ -70,6 +70,10 @@ def build_parser(doc=None):
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--restart-keep-mask", default="", help="npz (m0..m<n_sub>, True = keep the chain's own coordinate): a restart installs the "
                     "anchor only in the other coordinates (subspace transplant); empty = ordinary restarts")
+    ap.add_argument("--snapshot-every", type=int, default=0, help="plain-pCN runs only (burnin_length >= n_iter): write a resumable state of every "
+                    "chain every K iterations and at the end (resume with --resume; extend a finished run with --resume and a larger --n-iter); 0 = off")
+    ap.add_argument("--fixed-steps", action="store_true", help="no step-size adaptation: --beta-g0 / --beta-l0 are used for the whole run "
+                    "(take them from adaptation.json of an earlier run); window1 then only marks the start of the post-processing tail")
     ap.add_argument("--selection-constrained-only", action="store_true", help="archive selection (distance, log-det) on the transplanted coordinates only")
     ap.add_argument("--fits-json", default=os.environ.get("GLAM_FITS", os.path.join(
         io.REPO, "runs", "juno_external_2026-10", "tables", "e3_external", "fits.json")),
@@ -115,7 +119,8 @@ def main():
     if rank == 0:
         io.save_json(os.path.join(out, "block_dims.json"), dict(block_dims=[int(d) for d in model.block_dims]))
     keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
-    run_glam(model, cfg, comm, out, resume=args.resume, keep_mask=keep, selection_constrained_only=args.selection_constrained_only)
+    run_glam(model, cfg, comm, out, resume=args.resume, keep_mask=keep, selection_constrained_only=args.selection_constrained_only,
+             snapshot_every=args.snapshot_every, fixed_steps=args.fixed_steps)
     if rank == 0:
         print("[glam] done:", out, flush=True)
 
