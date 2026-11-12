@@ -26,3 +26,20 @@ The global-norm flux weight w_q = 1/(sigma_rel_q^2 ||q_obs||^2) with sigma_rel_q
 0.08 ||q_obs|| = 0.08 sqrt(224) rms(q) ~ 1.2 rms flux, i.e. almost uninformative. The exp. 9/11/12 "global + flux"
 references therefore use the flux data very weakly; the matching reference for a DD run that trusts the flux data at its
 noise level is exp. 14.
+
+
+## Interior-flux likelihood, per-face h prior, and the same-basis global run (2026-11-12)
+
+Data parity. In the DD chains each block saw only the flux on its own boundary lines (via the Robin datum h); the other
+decomposition's lines, which run through the block interior, were unused, while the global run uses all 224. Two options
+(`GibbsBlock(interior=True, eps_meas=...)`, CLI `--interior-flux`, `--h-prior-meas-rel`) fix this: measured faces with
+both cells inside a block enter as likelihood terms (weight from `--flux-sigma-rel`, use 0.00020045 for the noise level;
+linear in h, so the Gibbs draw of h stays exact) and h gets prior sd `h-prior-meas-rel` x rms on measured faces, `h-prior-rel` x rms elsewhere.
+
+Sandbox (8 chains, 20k iterations/block, eps 3%; rms error of log k / mean sd / median |e|/sd): with the default bases
+interior flux does not help (primal 0.084 -> 0.085, dual 0.085 -> 0.106, sd halves, overconfident); with bases 10/0.99 the error
+falls 0.047 -> 0.032 (primal), 0.045 -> 0.034 (dual) with calibrated sd, but sup-MPSRF is 4-18 at 20k iterations.
+
+Same-basis global run (exp15 primal, exp16 dual): the GLOBAL likelihood (full solve, 512 sharp pressure data + 224 flux data at
+noise level, as exp14) sampled in the local-KLE coefficients c (theta = B c, prior N(0, I)), kinds `primal_raw` / `dual_raw`
+of `experiments/run_msm_chains.py`. It separates what the local parametrisation costs from what the decomposition costs.

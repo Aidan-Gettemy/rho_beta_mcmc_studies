@@ -220,3 +220,29 @@ def test_gibbs_block_potential_matches_the_block_and_tiny_prior_keeps_h():
     gw = GB.GibbsBlock(b, eps=0.5, corr_len=4.0)
     h2 = gw.draw_h(c, gw.h_hat0, *gw.potential(c, gw.h_hat0)[1:], rng)
     assert np.abs(h2 - gw.h_hat0).max() > 1e-3 * np.abs(gw.h_hat0).max()
+
+
+def test_gibbs_interior_flux_and_per_face_prior():
+    """Interior flux faces add a likelihood term that is linear in h (the exact draw pulls the interior flux towards the
+    data when the prior is wide); eps_meas sets the prior sd of h on measured faces only."""
+    S, data = _setup()
+    fd = _flux(S, data)
+    grid = DD.DDGrid(S, S.primal, data, spline=DD.InterfaceSpline(S, data), flux=fd, robin_alpha=0.1)
+    b = grid.blocks[5]
+    rng = np.random.default_rng(4)
+    c = rng.standard_normal(b.r_k)
+    g0 = GB.GibbsBlock(b, eps=0.5, corr_len=4.0, fd=fd)
+    g1 = GB.GibbsBlock(b, eps=0.5, corr_len=4.0, fd=fd, interior=True)
+    assert g0.n_interior() == 0 and g1.n_interior() > 0
+    phi0 = g0.potential(c, g0.h_hat0)[0]
+    phi1, Ainv, Gs, p = g1.potential(c, g1.h_hat0)
+    assert phi1 > phi0
+    g1.wq = 1e8 * g1.wq                                            # flux dominates: the draw must fit the interior flux
+    K = np.exp(b.log_field(c))
+    res = lambda pp: np.linalg.norm(g1.fq - g1._T(K) * (pp[g1.fa] - pp[g1.fb]))
+    h = g1.draw_h(c, g1.h_hat0, Ainv, Gs, p, rng)
+    assert res(Ainv @ g1.rhs(Gs, h)) < res(p)
+    gm = GB.GibbsBlock(b, eps=0.5, corr_len=4.0, fd=fd, eps_meas=0.01)
+    d = np.sqrt(np.diag(gm.Sigma0))
+    meas = np.array(gm.h_meas)
+    assert meas.any() and (~meas).any() and d[meas].max() < d[~meas].min()

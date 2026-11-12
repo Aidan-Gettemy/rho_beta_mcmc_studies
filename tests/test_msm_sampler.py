@@ -47,3 +47,11 @@ def test_alt_schedule_follows_L():
     S, data = _setup()
     o = MS.run_chain("alt", S, data, 3, 0, 120, 60, save_every=60, alt_L=10)
     assert np.array_equal(o["move"], (np.arange(120) // 10) % 2)
+
+
+def test_dual_raw_state_is_the_dual_coefficients_and_theta_is_B_c():
+    S, data = _setup()
+    o = MS.run_chain("dual_raw", S, data, 3, 0, 200, 100, save_every=50)
+    assert o["c"].shape == (4, S.dual.p) and o["theta"].shape == (4, 64)
+    assert np.abs(o["c"].astype(float) @ S.dual.B.T - o["theta"]).max() < 1e-4
+    assert np.all(np.isfinite(o["relerr"]))

@@ -68,7 +68,9 @@ def pilot_betas(args, nb):
 
 def _init(args):
     S, data, spline, grid = build(args)
-    gbs = ([GB.GibbsBlock(b, args.h_prior_rel, args.h_corr_len) for b in grid.blocks]
+    gbs = ([GB.GibbsBlock(b, args.h_prior_rel, args.h_corr_len, fd=grid.flux_data,
+                          interior=getattr(args, "interior_flux", False), eps_meas=getattr(args, "h_prior_meas_rel", None))
+            for b in grid.blocks]
            if getattr(args, 'h_prior_rel', None) is not None else None)
     _G.update(a=args, S=S, data=data, grid=grid, gbs=gbs, beta=pilot_betas(args, len(grid.blocks)))
 
@@ -122,6 +124,10 @@ def main(argv=None):
                          "(needs --flux-noise-rel); replaces the flux penalty; sides off the flux lines stay Dirichlet")
     ap.add_argument("--h-prior-rel", type=float, default=None,
                     help="plain Gibbs for the Robin flux datum h (needs --robin-alpha): prior sd of h = this x the rms face flux of the block")
+    ap.add_argument("--interior-flux", action="store_true",
+                    help="with --h-prior-rel: measured flux faces strictly inside a block enter as likelihood terms (weight from --flux-sigma-rel)")
+    ap.add_argument("--h-prior-meas-rel", type=float, default=None,
+                    help="with --h-prior-rel: prior sd factor of h on faces that carry a flux measurement (default: same as --h-prior-rel)")
     ap.add_argument("--h-corr-len", type=float, default=4.0, help="correlation length (cells) of the h prior along a side")
     ap.add_argument("--robin-interp", default="cubic", choices=["linear", "cubic"], help="interpolation of the flux along a line")
     ap.add_argument("--workers", type=int, default=None)
