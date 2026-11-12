@@ -12,7 +12,14 @@ from .samplers import StepAdapter
 
 
 class GibbsBlock:
-    def __init__(self, blk, eps=0.03, corr_len=4.0):
+    """Gibbs block.  Optional extras (need the FluxData `fd`):
+      interior=True   the measured flux faces that lie INSIDE the block (both cells in the block) enter as likelihood terms
+                      Phi_q = w_q/2 sum (q_obs - T_ab (p_a - p_b))^2 with w_q = fd.w; they are linear in p, hence in h.
+      eps_meas        prior sd factor of h on the faces that carry a flux measurement (default: eps for all faces);
+                      eps applies to the interpolated faces.
+    """
+
+    def __init__(self, blk, eps=0.03, corr_len=4.0, fd=None, interior=False, eps_meas=None):
         self.b = blk
         sv = blk.solver
         self.N, self.nxl, self.nyl = sv.N, sv.nxl, sv.nyl
@@ -20,6 +27,7 @@ class GibbsBlock:
         side_cells = dict(L=idx[0, :], R=idx[-1, :], B=idx[:, 0], T=idx[:, -1])
         self.entries = []                       # (cell ids, g, ainv, h index slice or None)
         self.h_cells, self.h_ainv, self.h_hat, self.side_of, self.pos = [], [], [], [], []
+        self.h_meas = []
         off = 0
         for side, v in blk.bc.items():
             if v is None:
@@ -34,6 +42,14 @@ class GibbsBlock:
                 sl = slice(off, off + len(ids)); off += len(ids)
                 self.h_cells += list(ids); self.h_ainv += list(ainv); self.h_hat += list(h)
                 self.side_of += [side] * len(ids); self.pos += list(range(len(ids)))
+                if fd is not None:
+                    _, (fia, fja, fib, fjb) = blk.faces[side]
+                    vert = side in ("L", "R")
+                    line = int(fib[0]) if vert else int(fjb[0])
+                    along = fja if vert else fia
+                    self.h_meas += [("v" if vert else "h", line, int(t)) in fd.index for t in along]
+                else:
+                    self.h_meas += [False] * len(ids)
             self.entries.append((ids, g, ainv, sl))
         self.nh = off
         self.h_cells, self.h_ainv, self.h_hat = (np.array(x) for x in (self.h_cells, self.h_ainv, self.h_hat))
@@ -46,9 +62,31 @@ class GibbsBlock:
                     if self.side_of[i] == self.side_of[j]:
                         d = abs(self.pos[i] - self.pos[j])
                         Sg[i, j] = np.exp(-d / corr_len) if corr_len > 0 else float(i == j)
-            self.Sigma0 = (eps * rms) ** 2 * (Sg + 1e-8 * np.eye(self.nh))
+            sd = np.where(np.array(self.h_meas), eps if eps_meas is None else eps_meas, eps) * rms
+            self.Sigma0 = sd[:, None] * (Sg + 1e-8 * np.eye(self.nh)) * sd[None, :]
             self.Sigma0_inv = np.linalg.inv(self.Sigma0)
         self.A_nodiag = None
+        # interior flux faces (local flat cell indices a, b and data)
+        self.fa = self.fb = self.fq = None
+        self.wq = 0.0
+        if interior and fd is not None:
+            ok = ((fd.ia >= blk.ix0) & (fd.ia <= blk.ix1) & (fd.ib >= blk.ix0) & (fd.ib <= blk.ix1) &
+                  (fd.ja >= blk.iy0) & (fd.ja <= blk.iy1) & (fd.jb >= blk.iy0) & (fd.jb <= blk.iy1))
+            sel = np.flatnonzero(ok)
+            self.fa = (fd.ia[sel] - blk.ix0) * self.nyl + (fd.ja[sel] - blk.iy0)
+            self.fb = (fd.ib[sel] - blk.ix0) * self.nyl + (fd.jb[sel] - blk.iy0)
+            self.fq = np.asarray(fd.q[sel], float)
+            self.wq = float(fd.w)
+
+    def n_interior(self):
+        return 0 if self.fa is None else len(self.fa)
+
+    def _T(self, K):
+        Ka, Kb = K[self.fa], K[self.fb]
+        return 2.0 * Ka * Kb / (Ka + Kb)
+
+    def sensor_r2(self, p):
+        return float(np.sum((self.b.d_loc - p[self.b.obs_loc]) ** 2))
 
     def system(self, K):
         """(A^-1, G, base rhs pieces) for permeability K (flattened block)."""
@@ -79,8 +117,11 @@ class GibbsBlock:
     def potential(self, c, h):
         Ainv, Gs = self.system(np.exp(self.b.log_field(c)))
         p = Ainv @ self.rhs(Gs, h)
-        r2 = float(np.sum((self.b.d_loc - p[self.b.obs_loc]) ** 2))
-        return 0.5 * self.b.w * r2, Ainv, Gs, p
+        phi = 0.5 * self.b.w * self.sensor_r2(p)
+        if self.fa is not None:
+            K = np.exp(self.b.log_field(c))
+            phi += 0.5 * self.wq * float(np.sum((self.fq - self._T(K) * (p[self.fa] - p[self.fb])) ** 2))
+        return phi, Ainv, Gs, p
 
     def draw_h(self, c, h, Ainv, Gs, p, rng):
         """Exact draw from p(h | c, data)."""
@@ -95,8 +136,15 @@ class GibbsBlock:
         S = Ainv[np.ix_(obs, self.h_cells)] * Gain                 # (n_obs, nh): d p_obs / d h
         r = self.b.d_loc - p[obs] + S @ h
         P = self.Sigma0_inv + self.b.w * S.T @ S
-        L = np.linalg.cholesky(P)
         rhsv = self.Sigma0_inv @ self.h_hat + self.b.w * S.T @ r
+        if self.fa is not None:                                    # interior flux rows: q = T (p_a - p_b), linear in h
+            T = self._T(np.exp(self.b.log_field(c)))
+            Af = Ainv[np.ix_(self.fa, self.h_cells)] - Ainv[np.ix_(self.fb, self.h_cells)]
+            Sq = T[:, None] * Af * Gain
+            rq = self.fq - T * (p[self.fa] - p[self.fb]) + Sq @ h
+            P = P + self.wq * Sq.T @ Sq
+            rhsv = rhsv + self.wq * Sq.T @ rq
+        L = np.linalg.cholesky(P)
         mean = np.linalg.solve(P, rhsv)
         z = rng.standard_normal(self.nh)
         return mean + np.linalg.solve(L.T, z)
@@ -127,6 +175,9 @@ def run_gibbs_block_chain(gb, seed_key, n_iter, n_adapt, s0=0.2, save_every=50, 
         if gibbs and gb.nh:
             h = gb.draw_h(c, h, Ainv, Gs, p, rng)
             p = Ainv @ gb.rhs(Gs, h)
-            phi = 0.5 * blk.w * float(np.sum((blk.d_loc - p[blk.obs_loc]) ** 2))
-        out["relerr"][it] = np.sqrt(2.0 * phi / blk.w) / blk.dnorm_loc
+            phi = 0.5 * blk.w * gb.sensor_r2(p)
+            if gb.fa is not None:
+                K = np.exp(blk.log_field(c))
+                phi += 0.5 * gb.wq * float(np.sum((gb.fq - gb._T(K) * (p[gb.fa] - p[gb.fb])) ** 2))
+        out["relerr"][it] = np.sqrt(gb.sensor_r2(p)) / blk.dnorm_loc
     return out

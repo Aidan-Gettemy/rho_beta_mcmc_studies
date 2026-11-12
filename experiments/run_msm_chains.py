@@ -25,7 +25,7 @@ _G = {}
 
 
 def _init(args):
-    S = ML.MSMSetup(primal_local_dim=args.primal_dim)
+    S = ML.MSMSetup(primal_local_dim=args.primal_dim, dual_energy=args.dual_energy)
     want_p = 58 if args.primal_dim == 4 else 64
     if S.primal.r_plus != want_p or S.dual.r_plus != 64:
         raise SystemExit(f"GUARD: primal r_+ must be {want_p} (primal_dim {args.primal_dim}) and dual r_+ 64 "
@@ -37,8 +37,8 @@ def _init(args):
     _G["a"] = args
     _G["beta"] = None
     if args.step_from:                                        # frozen step size from a pilot run (global pCN only)
-        if args.kind != "global":
-            raise SystemExit("--step-from is implemented for --kind global only")
+        if args.kind not in ("global", "primal_raw", "dual_raw"):
+            raise SystemExit("--step-from is implemented for --kind global / primal_raw / dual_raw only")
         from brho.msm_dd import pilot_step
         _G["beta"] = pilot_step(np.load(os.path.join(args.step_from, "chains.npz"))["s_hist"])
 
@@ -71,6 +71,7 @@ def main(argv=None):
     ap.add_argument("--burn", type=int, default=None,
                     help="iterations discarded in the post-processing fields (default: --adapt)")
     ap.add_argument("--primal-dim", type=int, default=4, help="local modes per primal block (study: 4)")
+    ap.add_argument("--dual-energy", type=float, default=0.95, help="energy fraction of the dual local KLEs (default 0.95)")
     ap.add_argument("--alt-L", type=int, default=1, help="kind alt: iterations per grid before switching")
     ap.add_argument("--alt-no-offset", action="store_true", help="kind alt: primal move is lift only (no frozen offset)")
     ap.add_argument("--save-every", type=int, default=50)
