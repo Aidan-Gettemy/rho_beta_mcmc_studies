@@ -105,6 +105,9 @@ def main(argv=None):
     ap.add_argument("--mpsrf-step-its", type=int, default=None,
                     help="iterations between MPSRF curve points (default: %d saved samples)" % MPSRF_STEP)
     ap.add_argument("--seed", type=int, default=11)
+    ap.add_argument("--burn", type=int, default=None,
+                    help="discard this many iterations before the fields and the summary (overrides the run's own burn; "
+                         "use it when the chains were still converging after the run's burn)")
     ap.add_argument("--cmap", default=None, help="colormap of the field plots (default jet)")
     ap.add_argument("--cmap-std", default=None, help="colormap of the sd maps (default jet)")
     ap.add_argument("--levels", type=int, default=None, help="contour levels (default 20)")
@@ -119,6 +122,8 @@ def main(argv=None):
     kind, n, M, se, K = st["kind"], st["n_iter"], st["adapt"], st["save_every"], st.get("phase_k")
     if st.get("burn") is not None:                                # frozen-step restart: discard `burn`, not the (zero) adaptation
         M = st["burn"]
+    if a.burn is not None:
+        M = a.burn
     if a.mpsrf_step_its:                                          # curve point every a.mpsrf_step_its iterations
         globals()["MPSRF_STEP"] = max(1, a.mpsrf_step_its // se)
     Z = np.load(os.path.join(a.dir, "chains.npz"))

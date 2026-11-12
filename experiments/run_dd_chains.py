@@ -33,8 +33,9 @@ _G = {}
 
 def build(args):
     """Setup, data, spline and the DDGrid of the chosen decomposition (guards as in the MSM study)."""
-    S = ML.MSMSetup(primal_local_dim=6)
-    if S.primal.r_k != [6] * 16 or S.primal.r_plus != 64 or S.dual.r_plus != 64 or S.dual.p != 114:
+    pdim, den = getattr(args, "primal_local_dim", 6), getattr(args, "dual_energy", 0.95)
+    S = ML.MSMSetup(primal_local_dim=pdim, dual_energy=den)
+    if (pdim, den) == (6, 0.95) and (S.primal.r_k != [6] * 16 or S.primal.r_plus != 64 or S.dual.r_plus != 64 or S.dual.p != 114):
         raise SystemExit(f"GUARD: expected 16 primal blocks of 6 modes (95% rule), r_+ 64 / 64 and dual p 114; got "
                          f"{S.primal.r_k}, {S.primal.r_plus}, {S.dual.r_plus}, {S.dual.p}")
     data = MS.Data(S, args.sigma_rel, args.data_seed, data_relerr=args.data_relerr)
@@ -111,6 +112,9 @@ def main(argv=None):
                     help="flux studies: add interface flux data with this relative noise (default: no flux data)")
     ap.add_argument("--flux-sigma-rel", type=float, default=0.08,
                     help="flux studies: likelihood level sigma_rel of the flux term (accommodates the ~7%% spline flux error)")
+    ap.add_argument("--primal-local-dim", type=int, default=6,
+                    help="local KLE modes per primal block (default 6 = the 95%% rule; the truncation floor of the DD mean error)")
+    ap.add_argument("--dual-energy", type=float, default=0.95, help="local KLE energy fraction of the dual blocks (default 0.95)")
     ap.add_argument("--overlap-halo", type=int, default=0,
                     help="extend every subdomain by this many cells towards each interior interface (likelihood on the core only)")
     ap.add_argument("--robin-alpha", type=float, default=None,
