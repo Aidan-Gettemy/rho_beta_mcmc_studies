@@ -46,7 +46,7 @@ class GibbsBlock:
                     if self.side_of[i] == self.side_of[j]:
                         d = abs(self.pos[i] - self.pos[j])
                         Sg[i, j] = np.exp(-d / corr_len) if corr_len > 0 else float(i == j)
-            self.Sigma0 = (eps * rms) ** 2 * Sg + 1e-12 * np.eye(self.nh)
+            self.Sigma0 = (eps * rms) ** 2 * (Sg + 1e-8 * np.eye(self.nh))
             self.Sigma0_inv = np.linalg.inv(self.Sigma0)
         self.A_nodiag = None
 
@@ -102,16 +102,16 @@ class GibbsBlock:
         return mean + np.linalg.solve(L.T, z)
 
 
-def run_gibbs_block_chain(gb, seed_key, n_iter, n_adapt, s0=0.2, save_every=50, target=0.25, every=100, gibbs=True):
+def run_gibbs_block_chain(gb, seed_key, n_iter, n_adapt, s0=0.2, save_every=50, target=0.25, every=100, gibbs=True, init_scale=1.0):
     blk = gb.b
     rng = np.random.default_rng(np.random.SeedSequence(list(seed_key)))
     ad = StepAdapter([s0], targets=[target], every=every)
-    c = rng.standard_normal(blk.r_k)
+    c = init_scale * rng.standard_normal(blk.r_k)
     h = gb.h_hat0.copy()
     phi, Ainv, Gs, p = gb.potential(c, h)
     n_save = n_iter // save_every
     out = dict(c=np.empty((n_save, blk.r_k), np.float32), s_hist=np.empty(n_save, np.float32), acc=np.zeros(n_iter, np.uint8),
-               h=np.empty((n_save, gb.nh), np.float32))
+               relerr=np.empty(n_iter, np.float32), h=np.empty((n_save, gb.nh), np.float32))
     for it in range(n_iter):
         if it % save_every == 0:
             j = it // save_every
@@ -128,4 +128,5 @@ def run_gibbs_block_chain(gb, seed_key, n_iter, n_adapt, s0=0.2, save_every=50, 
             h = gb.draw_h(c, h, Ainv, Gs, p, rng)
             p = Ainv @ gb.rhs(Gs, h)
             phi = 0.5 * blk.w * float(np.sum((blk.d_loc - p[blk.obs_loc]) ** 2))
+        out["relerr"][it] = np.sqrt(2.0 * phi / blk.w) / blk.dnorm_loc
     return out

@@ -10,6 +10,7 @@ from brho import msm_local as ML                      # noqa: E402
 from brho import msm_sampler as MS                    # noqa: E402
 from brho import msm_dd as DD                         # noqa: E402
 from brho import msm_flux as MF                       # noqa: E402
+from brho import msm_dd_gibbs as GB                   # noqa: E402
 
 
 @functools.lru_cache(maxsize=None)
@@ -198,3 +199,24 @@ def test_overlap_blocks_core_sensors_and_exact_faces():
             assert np.abs(pl - p[b.cells]).max() < 1e-9 * np.abs(p).max()
             phi_sum += 0.5 * data.w * float(np.sum((b.d_loc - pl[b.obs_loc]) ** 2))
         assert abs(phi_sum - phi_glob) < 1e-8 * max(1.0, phi_glob)
+
+
+def test_gibbs_block_potential_matches_the_block_and_tiny_prior_keeps_h():
+    """GibbsBlock re-implements the Robin block solve: at h = h_hat its potential equals Block.potential, and with a
+    vanishing prior width the exact draw of h returns h_hat; with a wide prior the draw moves (it is data-driven)."""
+    S, data = _setup()
+    fd = _flux(S, data)
+    grid = DD.DDGrid(S, S.primal, data, spline=DD.InterfaceSpline(S, data), flux=fd, robin_alpha=0.1)
+    rng = np.random.default_rng(3)
+    b = grid.blocks[5]                                            # an interior block: Robin on every side
+    gb = GB.GibbsBlock(b, eps=1e-9, corr_len=4.0)
+    assert gb.nh > 0
+    c = rng.standard_normal(b.r_k)
+    phi_ref, _ = b.potential(c)
+    phi, Ainv, Gs, p = gb.potential(c, gb.h_hat0)
+    assert abs(phi - phi_ref) < 1e-8 * max(1.0, abs(phi_ref))
+    h = gb.draw_h(c, gb.h_hat0, Ainv, Gs, p, rng)
+    assert np.abs(h - gb.h_hat0).max() < 1e-6 * np.abs(gb.h_hat0).max()
+    gw = GB.GibbsBlock(b, eps=0.5, corr_len=4.0)
+    h2 = gw.draw_h(c, gw.h_hat0, *gw.potential(c, gw.h_hat0)[1:], rng)
+    assert np.abs(h2 - gw.h_hat0).max() > 1e-3 * np.abs(gw.h_hat0).max()
