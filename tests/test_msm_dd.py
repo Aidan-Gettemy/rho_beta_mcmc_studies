@@ -11,6 +11,7 @@ from brho import msm_sampler as MS                    # noqa: E402
 from brho import msm_dd as DD                         # noqa: E402
 from brho import msm_flux as MF                       # noqa: E402
 from brho import msm_dd_gibbs as GB                   # noqa: E402
+from brho import msm_dd_neumann as NB                 # noqa: E402
 
 
 @functools.lru_cache(maxsize=None)
@@ -246,3 +247,71 @@ def test_gibbs_interior_flux_and_per_face_prior():
     d = np.sqrt(np.diag(gm.Sigma0))
     meas = np.array(gm.h_meas)
     assert meas.any() and (~meas).any() and d[meas].max() < d[~meas].min()
+
+
+class _OracleFlux:
+    """Exact flux at every face of the interface lines of a given global solution."""
+
+    def __init__(self, K2, p2):
+        self.K2, self.p2, self.n = K2, p2, K2.shape[0]
+
+    def has_line(self, orient, line):
+        return line in MF.interface_lines(self.n)
+
+    def line_flux(self, orient, line, kind="cubic"):
+        n, t = self.n, np.arange(self.n)
+        if orient == "v":
+            return MF.face_flux(self.K2, self.p2, np.full(n, line - 1), t, np.full(n, line), t)
+        return MF.face_flux(self.K2, self.p2, t, np.full(n, line - 1), t, np.full(n, line))
+
+
+def test_neumann_block_reproduces_global_solution_and_face_pressures_with_exact_flux():
+    """Exact outflow as the Neumann datum reproduces the global pressure on the block (up to the constant for blocks without a
+    Dirichlet side), the predicted face pressure equals the exact face value, and the constant is integrated out correctly."""
+    S, data = _setup()
+    K, p, K2, p2 = _global_solution(S)
+    grid = DD.DDGrid(S, S.primal, data, exact=(K2, p2), robin_alpha=0.1)
+    for b in grid.blocks:
+        b.set_robin(_OracleFlux(K2, p2), 0.1, "cubic")
+    saw_singular = saw_regular = False
+    for b in grid.blocks:
+        nb = NB.NeumannBlock(b, eps=0.03, g_rel=0.0045)
+        Ainv, Gs = nb.system(K[b.cells])
+        h = nb.h_hat0                                         # exact (and, for singular blocks, sum(h) = 0 up to rounding)
+        ps = Ainv @ nb.rhs(Gs, h)
+        pt = p[b.cells]
+        if nb.singular:
+            saw_singular = True
+            assert abs(h.sum()) < 1e-8 * np.abs(h).sum() + 1e-12 and abs(ps.sum()) < 1e-10
+            ps = ps + pt.mean()
+        else:
+            saw_regular = True
+        assert np.abs(ps - pt).max() < 1e-6 * np.abs(pt).max()
+        pf = ps[nb.h_cells] + h / (2.0 * K[b.cells][nb.h_cells])
+        assert np.abs(pf - nb.g_face).max() < 1e-6 * np.abs(nb.g_face).max()
+        r = nb.z - np.concatenate([ps[b.obs_loc] , pf])
+        if nb.singular:
+            w = nb.wv
+            t0 = float(np.sum(w * r) / np.sum(w))
+            prof = min(0.5 * np.sum(w * (r - t) ** 2) for t in t0 + np.linspace(-1e-2, 1e-2, 2001))
+            assert abs(nb._phi_data(r) - prof) < 1e-6 * max(1.0, prof)
+    assert saw_singular and saw_regular
+
+
+def test_neumann_draw_h_keeps_zero_net_flux_and_prior_when_tiny():
+    S, data = _setup()
+    K, p, K2, p2 = _global_solution(S)
+    grid = DD.DDGrid(S, S.primal, data, exact=(K2, p2), robin_alpha=0.1)
+    for b in grid.blocks:
+        b.set_robin(_OracleFlux(K2, p2), 0.1, "cubic")
+    rng = np.random.default_rng(3)
+    for b in grid.blocks:
+        nb = NB.NeumannBlock(b, eps=0.03, g_rel=0.0045)
+        c = rng.standard_normal(b.r_k)
+        phi, Ainv, Gs, pp = nb.potential(c, nb.h_hat0)
+        h = nb.draw_h(c, nb.h_hat0, Ainv, Gs, pp, rng)
+        if nb.singular:
+            assert abs(h.sum()) < 1e-8 * np.abs(h).sum()
+        tiny = NB.NeumannBlock(b, eps=1e-7, g_rel=0.0045)
+        h2 = tiny.draw_h(c, tiny.h_hat0, Ainv, Gs, pp, rng)
+        assert np.abs(h2 - tiny.h_hat0).max() < 1e-5 * np.abs(tiny.h_hat0).max()

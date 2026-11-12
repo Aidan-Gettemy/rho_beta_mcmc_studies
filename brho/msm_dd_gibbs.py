@@ -123,6 +123,13 @@ class GibbsBlock:
             phi += 0.5 * self.wq * float(np.sum((self.fq - self._T(K) * (p[self.fa] - p[self.fb])) ** 2))
         return phi, Ainv, Gs, p
 
+    def phi_from(self, c, p, h):
+        phi = 0.5 * self.b.w * self.sensor_r2(p)
+        if self.fa is not None:
+            K = np.exp(self.b.log_field(c))
+            phi += 0.5 * self.wq * float(np.sum((self.fq - self._T(K) * (p[self.fa] - p[self.fb])) ** 2))
+        return phi
+
     def draw_h(self, c, h, Ainv, Gs, p, rng):
         """Exact draw from p(h | c, data)."""
         if not self.nh:
@@ -175,9 +182,6 @@ def run_gibbs_block_chain(gb, seed_key, n_iter, n_adapt, s0=0.2, save_every=50, 
         if gibbs and gb.nh:
             h = gb.draw_h(c, h, Ainv, Gs, p, rng)
             p = Ainv @ gb.rhs(Gs, h)
-            phi = 0.5 * blk.w * gb.sensor_r2(p)
-            if gb.fa is not None:
-                K = np.exp(blk.log_field(c))
-                phi += 0.5 * gb.wq * float(np.sum((gb.fq - gb._T(K) * (p[gb.fa] - p[gb.fb])) ** 2))
+            phi = gb.phi_from(c, p, h)
         out["relerr"][it] = np.sqrt(gb.sensor_r2(p)) / blk.dnorm_loc
     return out
