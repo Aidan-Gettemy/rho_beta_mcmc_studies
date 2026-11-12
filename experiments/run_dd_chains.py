@@ -25,7 +25,7 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from brho import msm_local as ML, msm_sampler as MS, msm_dd as DD, msm_flux as MF, msm_dd_overlap as OV
+from brho import msm_local as ML, msm_sampler as MS, msm_dd as DD, msm_flux as MF, msm_dd_overlap as OV, msm_dd_gibbs as GB
 
 GRID_TAG = {"primal": 0, "dual": 1}
 _G = {}
@@ -49,6 +49,8 @@ def build(args):
     alpha = getattr(args, "robin_alpha", None)
     if alpha is not None and flux is None:
         raise SystemExit("--robin-alpha needs flux data (--flux-noise-rel)")
+    if getattr(args, "h_prior_rel", None) is not None and alpha is None:
+        raise SystemExit("--h-prior-rel needs --robin-alpha")
     grid = DD.DDGrid(S, ms, data, spline=spline, flux=flux, robin_alpha=alpha,
                      robin_interp=getattr(args, "robin_interp", "cubic"))
     grid.flux_data = flux
@@ -65,7 +67,9 @@ def pilot_betas(args, nb):
 
 def _init(args):
     S, data, spline, grid = build(args)
-    _G.update(a=args, S=S, data=data, grid=grid, beta=pilot_betas(args, len(grid.blocks)))
+    gbs = ([GB.GibbsBlock(b, args.h_prior_rel, args.h_corr_len) for b in grid.blocks]
+           if getattr(args, 'h_prior_rel', None) is not None else None)
+    _G.update(a=args, S=S, data=data, grid=grid, gbs=gbs, beta=pilot_betas(args, len(grid.blocks)))
 
 
 def _one(task):
@@ -74,8 +78,12 @@ def _one(task):
     t = time.time()
     beta = _G.get("beta")                                          # frozen step sizes from a pilot run (or None)
     key = [a.seed0, GRID_TAG[a.grid], k, chain] + ([1] if beta is not None else [])
-    o = DD.run_block_chain(_G["grid"].blocks[k], key, a.n_iter, a.adapt, a.s0 if beta is None else beta[k],
-                           a.save_every, init_scale=a.init_scale)
+    if _G.get("gbs") is not None:                                  # plain Gibbs for the Robin flux h (docs/dd_gibbs_experiment.md)
+        o = GB.run_gibbs_block_chain(_G["gbs"][k], key, a.n_iter, a.adapt, a.s0 if beta is None else beta[k],
+                                     a.save_every, init_scale=a.init_scale)
+    else:
+        o = DD.run_block_chain(_G["grid"].blocks[k], key, a.n_iter, a.adapt, a.s0 if beta is None else beta[k],
+                               a.save_every, init_scale=a.init_scale)
     return k, chain, o, time.time() - t
 
 
@@ -108,6 +116,9 @@ def main(argv=None):
     ap.add_argument("--robin-alpha", type=float, default=None,
                     help="Robin interface condition alpha p + K dp/dn = alpha g + h with g the spline pressure and h the flux data "
                          "(needs --flux-noise-rel); replaces the flux penalty; sides off the flux lines stay Dirichlet")
+    ap.add_argument("--h-prior-rel", type=float, default=None,
+                    help="plain Gibbs for the Robin flux datum h (needs --robin-alpha): prior sd of h = this x the rms face flux of the block")
+    ap.add_argument("--h-corr-len", type=float, default=4.0, help="correlation length (cells) of the h prior along a side")
     ap.add_argument("--robin-interp", default="cubic", choices=["linear", "cubic"], help="interpolation of the flux along a line")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--out", required=True)

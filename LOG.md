@@ -1173,3 +1173,6 @@ Sandbox pilot (16 chains x 20k it., NB sandbox truth for seed 2026 differs from 
 
 ## 2026-11-10 two-stage protocol for the DD and flux studies
 `--step-from <pilot>`, `--init-scale`, `--burn` in `run_dd_chains.py` / `run_msm_chains.py` (global); post scripts discard `burn` when set; `--mpsrf-step-its 100`. All exp7/exp8 sbatch scripts regenerated: pilot 10k with adaptation, then restart (50k per subdomain, 100k global) from fresh prior draws with frozen step (geometric mean of the pilot step sizes over the last 30%), burn 1k. New `msm_exp7_global_ref.sbatch` (no-flux global, same protocol). Smoke test: frozen-step restarts accept 24-33% (DD blocks), 26% (global).
+
+## 2026-11-11 plain Gibbs for the Robin flux datum (exp. 13) and noise-level flux global reference (exp. 14)
+`brho/msm_dd_gibbs.py` (GibbsBlock, exact Gaussian draw of h given c), `--h-prior-rel/--h-corr-len` in `run_dd_chains.py`, test in `tests/test_msm_dd.py`, spec `docs/dd_gibbs_experiment.md`, sbatch `msm_exp13_dd_gibbs{03,10}_{primal,dual}`, `msm_exp14_global_sharp_fluxnoise_10M`. Correction: flux weight 0.08 is a global-norm level, i.e. ~1.2 x rms flux per datum, so exp. 9/11/12 global+flux barely uses the flux data. Exp. 12 (10M, 64 chains) converged: first below MPSRF 1.2 at 2.28M (flux) / 3.39M (no flux), final 1.04 / 1.08, acceptance 25.5%.
