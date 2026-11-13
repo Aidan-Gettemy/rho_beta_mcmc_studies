@@ -1192,3 +1192,7 @@ Error / sd of the posterior mean of log k, 64 chains, 100k iterations, all senso
 halo 2 dual 99% 0.0206 / 0.064 (sup-MPSRF 1.89), halo 2 primal 99% 0.0249 / 0.074 (2.10), halo 4 primal 99% 0.0308 / 0.121 (2.10), halo 4 dual 99% 0.0330 / 0.117 (2.59);
 95% energy: 0.097-0.17 (truncation-limited, converged: MPSRF 1.04-1.09).  References: non-overlapping Robin-Gibbs 0.081-0.105, same-basis global 0.0105, 64-mode global 0.0045.
 The 99% runs are NOT converged (MPSRF about 2); to be extended.  Halo 2 used 192 (primal) / 256 (dual) flux faces on the moved lines, halo 4 the standard 224.
+
+## 2026-11-13 Blended assembly (no gain) and the limits of DD-MCMC; neighbour-conditioning checks
+- Blended (partition-of-unity) vs core assembly, sandbox, halo 2, Robin-Gibbs: primal 95% 0.0915 vs 0.0924; dual 95% 0.1327 vs 0.1336; primal 99% 0.0529 vs 0.0493 (30k iterations, MPSRF 1.4-6, unconverged). Assembly is not what limits the error.
+- Neighbour-conditioned (DDKLE) sampler checks: frozen directions given neighbours, Gaussianity of stage-1 posteriors, prior-data conflict. Not built. Summary and reasoning: `docs/dd_limits_and_open_ideas.md`; script `experiments/dd_frozen_directions_check.py`.
