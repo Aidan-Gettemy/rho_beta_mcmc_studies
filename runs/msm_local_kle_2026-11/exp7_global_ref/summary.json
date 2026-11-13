@@ -1,0 +1,54 @@
+{
+ "settings": {
+  "kind": "global",
+  "chains": 64,
+  "n_iter": 100000,
+  "adapt": 0,
+  "phase_k": null,
+  "s0": 0.2,
+  "step_from": "/scratch/ganymede2/arg210006/rho_beta_mcmc_studies/runs/msm_local_kle_2026-11/exp7_global_ref_pilot",
+  "init_scale": 1.0,
+  "burn": 1000,
+  "primal_dim": 4,
+  "alt_L": 1,
+  "alt_no_offset": false,
+  "save_every": 50,
+  "sigma_rel": 0.003,
+  "data_relerr": null,
+  "data_seed": 2026,
+  "seed0": 1007,
+  "flux_noise_rel": null,
+  "flux_sigma_rel": 0.08,
+  "workers": 64,
+  "out": "/scratch/ganymede2/arg210006/rho_beta_mcmc_studies/runs/msm_local_kle_2026-11/exp7_global_ref"
+ },
+ "data": {
+  "seed": 2026,
+  "sigma_rel": 0.003,
+  "data_relerr": 0.003,
+  "n_obs": 512,
+  "sigma_p": 0.0015598435620706884,
+  "data_norm": 11.765861993011809,
+  "relerr_at_truth": 0.0031934869328821354,
+  "phi_at_truth": 0.5665754883604969,
+  "phi_noise_floor_expected": 0.5
+ },
+ "wall_sec": 112.07066082954407,
+ "s_frozen": 0.04105461165147306,
+ "sec_per_chain": 104.53855304419994,
+ "post_acc_mean": 0.25756107954545454,
+ "post_acc_chain_min": 0.24775757575757576,
+ "post_acc_chain_max": 0.26417171717171717,
+ "post_relerr_median_of_chain_medians": 0.020542260259389877,
+ "post_relerr_chain_median_max": 0.021073244512081146,
+ "post_relerr_last": 0.02080942504107952,
+ "s_final_median": [
+  0.041054610162973404
+ ],
+ "s_final_min": [
+  0.041054610162973404
+ ],
+ "s_final_max": [
+  0.041054610162973404
+ ]
+}
