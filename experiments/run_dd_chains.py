@@ -44,7 +44,8 @@ def build(args):
     halo = getattr(args, "overlap_halo", 0) or 0
     if halo:                                                          # overlapping subdomains (docs/dd_overlap_robin_experiment.md)
         ms = OV.OverlapDecomp(S, ms, halo, local_energy=getattr(args, "overlap_energy", 0.95),
-                              halo_sensors=getattr(args, "overlap_halo_sensors", False))
+                              halo_sensors=getattr(args, "overlap_halo_sensors", False),
+                              blend=getattr(args, "overlap_blend", False))
     flux = None
     if getattr(args, "flux_noise_rel", None) is not None:           # flux studies (docs/dd_flux_experiment.md)
         if getattr(args, "flux_lines", "default") == "boundaries":    # flux lines moved to the (extended) block boundaries
@@ -126,6 +127,8 @@ def main(argv=None):
     ap.add_argument("--overlap-energy", type=float, default=0.95, help="local KLE energy fraction of the extended blocks (default 0.95)")
     ap.add_argument("--overlap-halo-sensors", action="store_true",
                     help="the extended block uses every sensor of its rectangle (default: only its core's sensors)")
+    ap.add_argument("--overlap-blend", action="store_true",
+                    help="assemble the field with a smooth partition of unity over the overlaps (assembly only; the sampling is unchanged)")
     ap.add_argument("--flux-lines", choices=["default", "boundaries"], default="default",
                     help="default: the 14 primal+dual interface lines (224 faces); boundaries: the interior boundaries of the (extended) "
                          "subdomains of this run, likelihood at the data-noise level per datum (needs --overlap-halo)")

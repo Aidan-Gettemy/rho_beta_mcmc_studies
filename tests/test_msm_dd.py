@@ -335,3 +335,20 @@ def test_overlap_flux_lines_moved_to_extended_boundaries():
     base.update(flux_lines="default")
     _, _, _, g0 = R.build(argparse.Namespace(**base))
     assert g0.flux_data.m == 224 and g0.flux_data.lines == MF.interface_lines(32)
+
+
+def test_overlap_blend_is_a_partition_of_unity_and_reduces_to_core_assembly_without_halo():
+    import argparse, sys, os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "experiments"))
+    import run_dd_chains as R
+    base = dict(grid="primal", sigma_rel=0.00013258252, data_seed=2026, data_relerr=0.003, smoothing=1e-3, neighbors=60,
+                flux_noise_rel=0.003, flux_sigma_rel=0.00020045, overlap_halo=2, robin_alpha=0.1, robin_interp="cubic",
+                primal_local_dim=6, dual_energy=0.95, overlap_energy=0.95, overlap_blend=True)
+    ms = R.build(argparse.Namespace(**base))[3].ms
+    W = ms.assembly_weights(32)
+    assert np.allclose(W.sum(0), 1.0) and W.min() >= 0
+    assert W[0][ms.block_core[0]].max() == 1.0                   # cells away from every halo belong to their block alone
+    assert not np.allclose(ms.B, R.build(argparse.Namespace(**dict(base, overlap_blend=False)))[3].ms.B)
+    B_blend0 = R.build(argparse.Namespace(**dict(base, overlap_halo=0, overlap_blend=True)))[3].ms.B
+    B_core0 = R.build(argparse.Namespace(**dict(base, overlap_halo=0, overlap_blend=False)))[3].ms.B
+    assert np.allclose(B_blend0, B_core0)                        # no halo: the cores partition the grid

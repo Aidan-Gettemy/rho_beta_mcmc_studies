@@ -84,6 +84,7 @@ def main(argv=None):
     ap.add_argument("--mpsrf-step-its", type=int, default=None,
                     help="iterations between MPSRF curve points (default: %d saved samples)" % RP.MPSRF_STEP)
     ap.add_argument("--seed", type=int, default=11)
+    ap.add_argument("--overlap-blend", action="store_true", help="overlapping runs: assemble with the smooth partition of unity (re-post of existing chains)")
     ap.add_argument("--ref", default=REF, help="post_summary.json of the global-pCN run (sd ratio), optional")
     ap.add_argument("--cmap", default=None)
     ap.add_argument("--cmap-std", default=None)
@@ -104,6 +105,8 @@ def main(argv=None):
         if a.mpsrf_step_its:
             RP.MPSRF_STEP = max(1, a.mpsrf_step_its // se)
         Z = np.load(os.path.join(d, "chains.npz"))
+        if a.overlap_blend:
+            st = dict(st, overlap_blend=True)
         S, data, spline, grid = build(Namespace(**st))
         nb, m = len(grid.blocks), Z["c_00"].shape[0]
         gres = dict(directory=d, n_blocks=nb, r_k=grid.r_k, chains=int(m),
