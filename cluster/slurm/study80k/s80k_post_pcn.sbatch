@@ -5,7 +5,7 @@
 #SBATCH --mem=48G
 #SBATCH --partition=dev-a30
 #SBATCH --gres=gpu:1
-#SBATCH --time=03:00:00               # EDIT: the forward-model step runs the solver on every strided sample (24 chains x 40000/100 = 9600 solves on 12 ranks); MPSRF is capped by MPSRF max-minutes
+#SBATCH --time=03:00:00               # EDIT: the forward-model step runs the solver on every strided sample (12 chains x 40000/100 = 4800 solves on 12 ranks); MPSRF is capped by MPSRF max-minutes
 #SBATCH -J glam-post-s80k_pcn
 #SBATCH -o logs/glam-post-s80k_pcn-%j.out
 #
@@ -31,6 +31,7 @@ set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
 
 # ------------------------------------------------------------------ which run, which steps
+FINISHED="1 2 3 4 6 11 13 15 16 18 19 23"       # the 12 chains that reached iteration 80000 (the other 12 stalled at 5.5k-27.5k: far fewer iterations/s, Phi 2000-3400)
 GLAM_TAG=s80k_pcn                  # study s80k, arm: pcn  (results/e6_glam_<tag>)
 RUN_DIAGNOSTICS=1                     # 1 = run the step, 0 = skip it
 RUN_TRACES=1
@@ -54,6 +55,7 @@ export EXT_PETSC_OPTIONS="-pc_type jacobi -ksp_max_it 100000"
 # ------------------------------------------------------------------ flags of every step
 # 1 plot_glam_diagnostics.py   (not set here: --chains = all chains, --tail-start = window1 from the manifest, --linear = linear RE axis)
 DIAG_FLAGS=(
+  --chains $FINISHED
   --tail-start 40000                  # fixed-step study: no adaptation window, so the tail is set by hand (second half of the 80000 iterations)
   --ar-window 100                     # iterations per acceptance window (a window counts for a kind with >= 10 moves of it)
   --stride 0                          # 0 = every iteration of the RE traces; k = every k-th
@@ -61,12 +63,13 @@ DIAG_FLAGS=(
 # 2 plot_glam_traces.py        entries are block:index; blocks 0-11 are the subdomain thetas, block 12 is the rho coordinate
 TRACE_FLAGS=(
   --entries 0:0 3:0 6:0 11:0 12:0
-  --chains all
-  --max-chains 24                     # 24 chains
+  --chains $FINISHED
+  --max-chains 12                     # the 12 finished chains
   --stride 0                          # 0 = about 2000 points
 )
 # 3 glam_postprocess.py        (not set here: --tail-start = window1, --float64 = keep the samples in double precision)
 POST_FLAGS=(
+  --chains $FINISHED
   --tail-start 40000                  # samples come from iterations 40000-80000 (window1 is 0 in this study)
   --stride 100                         # iterations between the saved samples; the solver runs once per sample
   --best-scope all                    # all = best state of the whole run | tail = best state after window1
@@ -97,6 +100,7 @@ EXPORT_FLAGS=(
 #     all or a large K needs  chains * (window - 1) > dimension for W to be invertible (points before that are NaN)
 MPSRF_DIMS=(rho first:100 block:0)    # EDIT
 MPSRF_FLAGS=(
+  --chains $FINISHED
   --stride 10                         # iterations between thinned samples
   --start-iteration 40000             # MPSRF window starts at iteration 40000 (same in every arm; no adaptation to skip)
   --skip 1                            # use every skip-th thinned sample inside a window

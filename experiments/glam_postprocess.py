@@ -41,6 +41,7 @@ def main():
     ap.add_argument("--exp-tag", default="")
     ap.add_argument("--stride", type=int, default=50)
     ap.add_argument("--tail-start", type=int, default=None, help="default: window1 from the manifest")
+    ap.add_argument("--chains", type=int, nargs="+", default=None, help="chain (rank) numbers to use; default all (e.g. only the chains that finished)")
     ap.add_argument("--float64", action="store_true")
     ap.add_argument("--best-scope", choices=["all", "tail"], default="all", help="best state over the whole run or the tail")
     ap.add_argument("--fields", action="store_true", help="re-run the forward model on the samples (MPI)")
@@ -64,7 +65,7 @@ def main():
     rank, P = comm.Get_rank(), comm.Get_size()
     pdir = os.path.join(out, "post")
     os.makedirs(pdir, exist_ok=True)
-    nchains = man["ranks"]
+    nchains = man["ranks"] if args.chains is None else args.chains
     if rank == 0:
         s = post.strided_samples(out, nchains, tail, args.stride, cfgd["n_iter"], np.float64 if args.float64 else np.float32)
         beta = BetaPchip.from_fits_json(margs["fits_json"])
@@ -84,7 +85,7 @@ def main():
                  iteration=b["iteration"], rho=b_rho, beta=float(beta.beta(b_rho)), scope=args.best_scope)
         print(f"[glam-post] best state: Phi {b['phi']:.4g} (chain {b['rank']}, iteration {b['iteration']}, rho {b_rho:.4f})",
               flush=True)
-        print(f"[glam-post] {len(s['w'])} strided samples from {nchains} chains (tail {tail}, stride {args.stride})", flush=True)
+        print(f"[glam-post] {len(s['w'])} strided samples from {len(post.rank_list(nchains))} chains (tail {tail}, stride {args.stride})", flush=True)
     comm.Barrier()
     if args.fields:
         z = np.load(os.path.join(pdir, "samples.npz"))
