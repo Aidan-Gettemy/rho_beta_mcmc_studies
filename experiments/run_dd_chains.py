@@ -46,7 +46,8 @@ def build(args):
         flux = MF.FluxData(S, data, args.flux_noise_rel, args.flux_sigma_rel)
     halo = getattr(args, "overlap_halo", 0) or 0
     if halo:                                                          # overlapping subdomains (docs/dd_overlap_robin_experiment.md)
-        ms = OV.OverlapDecomp(S, ms, halo)
+        ms = OV.OverlapDecomp(S, ms, halo, local_energy=getattr(args, "overlap_energy", 0.95),
+                              halo_sensors=getattr(args, "overlap_halo_sensors", False))
     alpha = getattr(args, "robin_alpha", None)
     if alpha is not None and flux is None:
         raise SystemExit("--robin-alpha needs flux data (--flux-noise-rel)")
@@ -119,6 +120,9 @@ def main(argv=None):
     ap.add_argument("--dual-energy", type=float, default=0.95, help="local KLE energy fraction of the dual blocks (default 0.95)")
     ap.add_argument("--overlap-halo", type=int, default=0,
                     help="extend every subdomain by this many cells towards each interior interface (likelihood on the core only)")
+    ap.add_argument("--overlap-energy", type=float, default=0.95, help="local KLE energy fraction of the extended blocks (default 0.95)")
+    ap.add_argument("--overlap-halo-sensors", action="store_true",
+                    help="the extended block uses every sensor of its rectangle (default: only its core's sensors)")
     ap.add_argument("--robin-alpha", type=float, default=None,
                     help="Robin interface condition alpha p + K dp/dn = alpha g + h with g the spline pressure and h the flux data "
                          "(needs --flux-noise-rel); replaces the flux penalty; sides off the flux lines stay Dirichlet")

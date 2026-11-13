@@ -18,11 +18,12 @@ from .multiscale import local_truncation
 
 
 class OverlapDecomp:
-    def __init__(self, S, ms, halo, local_energy=0.95, kernel="sqexp"):
+    def __init__(self, S, ms, halo, local_energy=0.95, kernel="sqexp", halo_sensors=False):
         n = S.n
         kp = dict(ell=S.ell, sigma2=1.0)
         cov = KN.get(kernel)["cov"]
         self.halo = int(halo)
+        self.halo_sensors = bool(halo_sensors)          # True: the block likelihood uses ALL sensors of the extended rectangle
         self.block_cells, self.block_psi, self.block_mu, self.block_core, self.r_k = [], [], [], [], []
         cols = []
         for core in ms.block_cells:

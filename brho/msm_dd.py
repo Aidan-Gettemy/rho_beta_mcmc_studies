@@ -151,7 +151,7 @@ class Block:
         gpos[np.flatnonzero(S.phys.obs_mask)] = np.arange(data.n_obs)
         sens = gpos[cells]
         core = getattr(ms, "block_core", None)                       # overlapping blocks: only the core's sensors count
-        if core is not None:
+        if core is not None and not getattr(ms, "halo_sensors", False):
             sens = np.where(np.isin(cells, core[k]), sens, -1)
         self.obs_loc = np.flatnonzero(sens >= 0)
         self.d_loc = np.asarray(data.d, float)[sens[self.obs_loc]]
