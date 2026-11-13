@@ -105,6 +105,9 @@ def main(argv=None):
     ap.add_argument("--mpsrf-step-its", type=int, default=None,
                     help="iterations between MPSRF curve points (default: %d saved samples)" % MPSRF_STEP)
     ap.add_argument("--seed", type=int, default=11)
+    ap.add_argument("--burn", type=int, default=None,
+                    help="discard this many iterations before the fields and the summary (overrides the run's own burn; "
+                         "use it when the chains were still converging after the run's burn)")
     ap.add_argument("--cmap", default=None, help="colormap of the field plots (default jet)")
     ap.add_argument("--cmap-std", default=None, help="colormap of the sd maps (default jet)")
     ap.add_argument("--levels", type=int, default=None, help="contour levels (default 20)")
@@ -119,12 +122,14 @@ def main(argv=None):
     kind, n, M, se, K = st["kind"], st["n_iter"], st["adapt"], st["save_every"], st.get("phase_k")
     if st.get("burn") is not None:                                # frozen-step restart: discard `burn`, not the (zero) adaptation
         M = st["burn"]
+    if a.burn is not None:
+        M = a.burn
     if a.mpsrf_step_its:                                          # curve point every a.mpsrf_step_its iterations
         globals()["MPSRF_STEP"] = max(1, a.mpsrf_step_its // se)
     Z = np.load(os.path.join(a.dir, "chains.npz"))
     fdir = os.path.join(a.dir, "post"); os.makedirs(fdir, exist_ok=True)
     pdim = st.get("primal_dim", 4)
-    S = ML.MSMSetup(primal_local_dim=pdim); P, D = S.primal, S.dual
+    S = ML.MSMSetup(primal_local_dim=pdim, dual_energy=st.get("dual_energy", 0.95)); P, D = S.primal, S.dual
     if P.r_plus != (58 if pdim == 4 else 64) or D.r_plus != 64:
         raise SystemExit("GUARD: rank outcome changed")
     data = MS.Data(S, st["sigma_rel"], st["data_seed"], data_relerr=st.get("data_relerr"))
@@ -172,7 +177,7 @@ def main(argv=None):
         mpsrf_of(ML.range_coords(P, th) if use_range else th, itm, se, "theta" + tag + ("_range58" if use_range else ""), fdir, mp)
         if not use_range:      # same 58 coordinates for every experiment, so MPSRF is comparable across all six
             mpsrf_of(ML.range_coords(P, th), itm, se, "theta" + tag + "_range58_common", fdir, mp)
-        if kind in ("primal_raw", "primal_pinv", "primal_aug"):
+        if kind in ("primal_raw", "primal_pinv", "primal_aug", "dual_raw"):
             c = Z["c"][:, j0:i1].astype(float)
             if kind == "primal_aug":
                 mpsrf_of(np.concatenate([c, Z["zeta"][:, j0:i1].astype(float)], 2), itm, se, "c_local64_plus_zeta6_joint", fdir, mp)

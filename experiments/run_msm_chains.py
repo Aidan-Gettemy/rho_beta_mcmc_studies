@@ -25,7 +25,7 @@ _G = {}
 
 
 def _init(args):
-    S = ML.MSMSetup(primal_local_dim=args.primal_dim)
+    S = ML.MSMSetup(primal_local_dim=args.primal_dim, dual_energy=args.dual_energy)
     want_p = 58 if args.primal_dim == 4 else 64
     if S.primal.r_plus != want_p or S.dual.r_plus != 64:
         raise SystemExit(f"GUARD: primal r_+ must be {want_p} (primal_dim {args.primal_dim}) and dual r_+ 64 "
@@ -37,8 +37,8 @@ def _init(args):
     _G["a"] = args
     _G["beta"] = None
     if args.step_from:                                        # frozen step size from a pilot run (global pCN only)
-        if args.kind != "global":
-            raise SystemExit("--step-from is implemented for --kind global only")
+        if args.kind not in ("global", "primal_raw", "dual_raw"):
+            raise SystemExit("--step-from is implemented for --kind global / primal_raw / dual_raw only")
         from brho.msm_dd import pilot_step
         _G["beta"] = pilot_step(np.load(os.path.join(args.step_from, "chains.npz"))["s_hist"])
 
@@ -48,7 +48,7 @@ def _one(chain):
     t = time.time()
     o = MS.run_chain(a.kind, _G["S"], _G["data"], a.seed0, chain, a.n_iter, a.adapt,
                      a.phase_k, a.s0 if _G["beta"] is None else _G["beta"], a.save_every, 0.25, a.alt_L,
-                     not a.alt_no_offset, init_scale=a.init_scale)
+                     not a.alt_no_offset, init_scale=a.init_scale, s_min=a.s_min, every=a.adapt_every)
     o["_sec"] = time.time() - t
     return o
 
@@ -64,11 +64,14 @@ def main(argv=None):
     ap.add_argument("--s0", type=float, default=0.2)
     ap.add_argument("--step-from", default=None,
                     help="pilot run folder (kind global): freeze the step size at the pilot value (use --adapt 0)")
+    ap.add_argument("--s-min", type=float, default=1e-3, help="lower clamp of the adapted step size (default 1e-3)")
+    ap.add_argument("--adapt-every", type=int, default=100, help="iterations per step-size adaptation window (default 100)")
     ap.add_argument("--init-scale", type=float, default=1.0,
                     help="kind global: initial theta = init_scale x N(0, I) (default: a prior draw)")
     ap.add_argument("--burn", type=int, default=None,
                     help="iterations discarded in the post-processing fields (default: --adapt)")
     ap.add_argument("--primal-dim", type=int, default=4, help="local modes per primal block (study: 4)")
+    ap.add_argument("--dual-energy", type=float, default=0.95, help="energy fraction of the dual local KLEs (default 0.95)")
     ap.add_argument("--alt-L", type=int, default=1, help="kind alt: iterations per grid before switching")
     ap.add_argument("--alt-no-offset", action="store_true", help="kind alt: primal move is lift only (no frozen offset)")
     ap.add_argument("--save-every", type=int, default=50)

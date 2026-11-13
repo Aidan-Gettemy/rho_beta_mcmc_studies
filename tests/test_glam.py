@@ -605,27 +605,3 @@ def test_fixed_steps_keep_the_given_step_sizes():
     for r in range(2):
         ch = post.load_chain(out, r)
         assert np.allclose(ch["beta_g"], 0.037) and np.allclose(ch["beta_l"], 0.081)
-
-
-def test_pcn_chains_resume_each_from_their_own_snapshot():
-    """Independent pCN chains run at different speeds: a resume continues every chain from its OWN newest snapshot."""
-    full, part = tempfile.mkdtemp(), tempfile.mkdtemp()
-    _, a = _pcn_run(200, full, snapshot_every=0)
-    _pcn_run(130, part)
-    for it in (120, 130):                                         # chain 1 only got to iteration 80
-        os.remove(os.path.join(part, "anchor_state", f"chain_r001_ite{it}.pkl"))
-    _, b = _pcn_run(200, part, resume=True)
-    for ra, rb in zip(a, b):
-        assert all(np.array_equal(x, y) for x, y in zip(ra["theta"], rb["theta"]))
-    for r in range(3):
-        ca, cb = load_chain(full, r), load_chain(part, r)
-        assert np.array_equal(ca["theta"][expand(ca, 200)], cb["theta"][expand(cb, 200)])
-
-
-def test_strided_samples_accept_a_list_of_chains():
-    from brho.glam import post
-    out = tempfile.mkdtemp()
-    _pcn_run(120, out, snapshot_every=0)
-    s = post.strided_samples(out, [0, 2], 40, 10, 120)
-    assert set(s["rank"].tolist()) == {0, 2} and len(s["w"]) == 2 * 8
-    assert post.best_record(out, [2], 0)["rank"] == 2

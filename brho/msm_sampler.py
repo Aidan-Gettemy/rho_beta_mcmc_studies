@@ -4,6 +4,7 @@ One chain per call (`run_chain`); the six samplers are the `kind`s of brho.msm_l
 that carry a likelihood:
     global        state theta                       (experiment 1)
     primal_raw    state c (primal), theta = B c     (2)
+    dual_raw      state c (dual), theta = B c       (2, dual grid; global likelihood, dual local-KLE parametrisation)
     primal_pinv   state c, theta = W_+ B c          (3a)
     primal_aug    state (c, zeta), theta = W_+ B c + V0 zeta   (3b)
     mixture       state theta; w.p. 1/2 each: c = Pi_g theta, pCN, theta' = B_g c'   (4)
@@ -36,7 +37,7 @@ import numpy as np
 from .samplers import StepAdapter
 from . import msm_local as ML
 
-CHAIN_KINDS = ("global", "primal_raw", "primal_pinv", "primal_aug", "mixture", "sequence",
+CHAIN_KINDS = ("global", "primal_raw", "dual_raw", "primal_pinv", "primal_aug", "mixture", "sequence",
                "alt", "mixture_inn", "sequence_exact")
 TWO_GRID = ("mixture", "alt", "mixture_inn")      # kinds with one step size per grid
 SEQ = ("sequence", "sequence_exact")
@@ -79,7 +80,7 @@ def _pcn(x, s, rng):
 
 
 def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2,
-              save_every=100, target=0.25, alt_L=1, alt_offset=True, init_scale=1.0):
+              save_every=100, target=0.25, alt_L=1, alt_offset=True, init_scale=1.0, s_min=1e-3, every=100):
     """One chain.  Returns a dict of arrays (see docstring of the module for the state).
     relerr (n_iter,) state's relative error after every iteration; acc (n_iter,) accepted
     flags; move (n_iter,) grid used (0 primal, 1 dual; all 0 for the single-grid kinds);
@@ -96,15 +97,15 @@ def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2
     n_g = 2 if kind in TWO_GRID else 1
     if kind in ("alt", "mixture_inn", "sequence_exact"):
         Lp, Ld = ML.field_lift(P, S.kle.T), ML.field_lift(D, S.kle.T)
-    ad = StepAdapter([s0] * n_g, targets=[target] * n_g, every=100)
+    ad = StepAdapter([s0] * n_g, targets=[target] * n_g, every=every, s_min=s_min)
     # state and the map state -> theta
     th0 = init_scale * rng.standard_normal(r)    # same first draw for every kind (paired seeds); init_scale 1 = prior draw
     c = z = None
-    ms = P
+    ms = D if kind == "dual_raw" else P
     if kind == "global" or kind in TWO_GRID:
         theta = th0
     else:
-        c = rng.standard_normal(P.p)
+        c = rng.standard_normal(ms.p)
         if kind == "primal_aug":
             z = rng.standard_normal(P.V0.shape[1])
         theta = _theta(kind, ms, c, z)
@@ -113,8 +114,8 @@ def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2
     out = dict(relerr=np.empty(n_iter, np.float32), acc=np.zeros(n_iter, np.uint8),
                move=np.zeros(n_iter, np.uint8), theta=np.empty((n_save, r), np.float32),
                s_hist=np.empty((n_save, n_g), np.float32), phi=np.empty(n_iter, np.float32))
-    if kind in ("primal_raw", "primal_pinv", "primal_aug"):
-        out["c"] = np.empty((n_save, P.p), np.float32)
+    if kind in ("primal_raw", "primal_pinv", "primal_aug", "dual_raw"):
+        out["c"] = np.empty((n_save, ms.p), np.float32)
     if kind == "primal_aug":
         out["zeta"] = np.empty((n_save, z.size), np.float32)
     if kind in TWO_GRID:
@@ -135,13 +136,13 @@ def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2
                 theta = D.B @ c
             phi, rel = data.potential(theta)       # (sequence) the lossy projection changes the field
             out["phi1"], out["rel1"] = phi, rel
-            ad = StepAdapter([s0], targets=[target], every=100)
+            ad = StepAdapter([s0], targets=[target], every=every, s_min=s_min)
         k_it = it - K if (kind in SEQ and it >= K) else it
         if it % save_every == 0:
             j = it // save_every
             out["theta"][j] = theta
             out["s_hist"][j] = ad.s
-            if kind in ("primal_raw", "primal_pinv", "primal_aug"):
+            if kind in ("primal_raw", "primal_pinv", "primal_aug", "dual_raw"):
                 out["c"][j] = c
             if kind == "primal_aug":
                 out["zeta"][j] = z
@@ -187,7 +188,7 @@ def run_chain(kind, S, data, seed0, chain, n_iter, n_adapt, k_phase=None, s0=0.2
 
 
 def _theta(kind, ms, c, z):
-    if kind in ("primal_raw",) + SEQ:
+    if kind in ("primal_raw", "dual_raw") + SEQ:
         return ML.theta_from_c(ms, c)
     if kind == "primal_pinv":
         return ML.theta_from_c(ms, c, True, pinv=True)

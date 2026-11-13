@@ -1,15 +1,13 @@
 # Bayesian Inversion of a Hierarchical Log-Permeability Model
 
-This repository solves a **Bayesian inverse problem for permeability** distributions using measurements resulting from a
-flow experiment (pressures, or tracer concentrations over time). The code builds the model, runs the Markov chain
-Monte Carlo (MCMC) samplers, and produces every figure and table of the accompanying study.
+This repository investigates Bayesian inverse problems for the permeability input to Darcy flow problems. The output of the MCMC algorithm is a posterior distribution on permeability informed from the provided measurements. The current studies use synthetic data from
+flow experiment (pressures, or tracer concentrations over time). This repository contains code for building models, running and managing Markov chain
+Monte Carlo (MCMC) samplers, and producing various accompanying post-processing figures.
 
-The main contribution is a way to make **hierarchical** permeability models usable. These are models where
-the overall permeability level and the strength of its heterogeneity are unknown. Such models are
-physically natural but partly unidentifiable from pressure data, which stalls standard
-samplers. One extra measurement, the sample's **effective permeability**, removes the problem.
+The main contribution in this package is the study of a hierarchical permeability model. These models extend the common KLE model with two parameters. These are the overall permeability level, and the strength of the heterogeneity. These models are
+physically natural but partly unidentifiable from pressure data, which leads to poor sampling from classic pCN MCMC chains. We include the measurement of a sample's effective permeability, which along with a curve-based sampler we derive, solves this identifiability issue.
 
-This is working research code.
+This code is very much in research stage, use with caution. 
 
 **Authors.** Aidan Gettemy, with
 Felipe Pereira (University of Texas at Dallas),
@@ -122,7 +120,7 @@ the data pin log κ. They differ in two ways:
 | ![MPSRF at equal cost](runs/cluster_kle_sig2e3/figures/e1_vs_e4_ab/fig_e1_vs_e4_mpsrf.png) | ![joint posterior of rho and beta](runs/cluster_kle_sig2e3/figures/e1_vs_e4_ab/fig_rho_beta_joint.png) |
 | Convergence of θ at equal cost (MPSRF against forward solves). | Joint posterior of (ρ, β): naive sampler (left), curve sampler with the level split (middle), both overlaid. |
 
-## Experiments and where their results live
+## Experiments
 
 Each experiment has a **runner** in `experiments/` that only computes, and a **report** in `reports/` that only
 reads results and writes figures and tables. Committed results live under `runs/<study>/`, with
