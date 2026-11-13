@@ -30,7 +30,7 @@ def tail_moments(out, nranks, start, stride, n_sub):
     s1 = s2 = None
     n = 0
     chain_means = []
-    for r in range(nranks):
+    for r in ([int(x) for x in nranks] if not np.isscalar(nranks) else range(int(nranks))):
         ch = load_chain(out, r)
         N = n_iterations(ch)
         # iteration -> record index, as in expand(): record j holds iterations start[j] .. start[j] + count[j] - 1
@@ -102,7 +102,8 @@ def main():
     ap.add_argument("--root", default=None, help="BRHO_ROOT (default: $BRHO_ROOT, else runs/cluster if it exists)")
     ap.add_argument("--out-dir", default=None, help="folder with chains/ (default results/e6_glam[_tag])")
     ap.add_argument("--n-sub", type=int, default=12)
-    ap.add_argument("--chains", type=int, default=24)
+    ap.add_argument("--chains", type=int, default=24, help="use chains 0..N-1")
+    ap.add_argument("--ranks", type=int, nargs="+", default=None, help="explicit chain numbers (overrides --chains), e.g. only the chains that finished")
     ap.add_argument("--start-iteration", type=int, default=14000)
     ap.add_argument("--stride", type=int, default=10)
     ap.add_argument("--thr", type=float, default=0.8)
@@ -115,7 +116,7 @@ def main():
         os.environ["BRHO_ROOT"] = os.path.join(io.REPO, "runs", "cluster")
     exp = io.EXP_GLAM + (f"_{args.exp_tag}" if args.exp_tag else "")
     out = args.out_dir or io.results_dir(exp)
-    mean, var, between = tail_moments(out, args.chains, args.start_iteration, args.stride, args.n_sub)
+    mean, var, between = tail_moments(out, args.ranks if args.ranks else args.chains, args.start_iteration, args.stride, args.n_sub)
     m = (len(var) - 1) // args.n_sub
     masks, cuts = propose_mask(var, args.n_sub, m, args.thr, args.smooth, args.margin)
     tables, figures = io.tables_dir(exp), io.figures_dir(exp)

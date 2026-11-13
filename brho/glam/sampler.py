@@ -210,11 +210,11 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print, keep_mask=None,
         mine = {int(m.group(1)) for fn in os.listdir(snap_dir)
                 if (m := re.fullmatch(rf"chain_r{rank:03d}_ite(\d+)\.pkl", fn))}
         common = set.intersection(*comm.allgather(mine))
-        if common and snapshot_every:                        # no manager state to restore: chains only
-            it_s = max(common)
+        if snapshot_every:                                   # independent pCN chains: each resumes from ITS OWN newest snapshot
+            it_s = max(mine) if mine else None               # (chains run at different speeds; a finished chain just stays finished)
         elif common:
             it_s = mgr.load_anchor_state(snap_dir, max_iteration=max(common), rank=rank, comm=comm)
-        if it_s is not None and int(it_s) not in common:
+        if it_s is not None and not snapshot_every and int(it_s) not in common:
             raise RuntimeError(f"rank {rank}: anchor state of iteration {it_s} has no chain snapshot on every rank")
     if it_s is not None:
         with open(os.path.join(snap_dir, f"chain_r{rank:03d}_ite{it_s}.pkl"), "rb") as f:
