@@ -33,3 +33,19 @@ no flux 0.923 / 0.502; penalty (0.08) 0.740 / 0.369; penalty at the noise level 
 flux misfit 0.052, sup-MPSRF below 1.2 from 6,300 iterations**; halo 4 variants 0.25-0.44, not converged (sup-MPSRF 8-10
 after 10,000 iterations, 11-17 local modes). Global pCN at this likelihood does not converge in 20,000 iterations
 (12 chains, acceptance 2-4%, MPSRF 12-47), so there is no valid global reference yet.
+
+## Exp. 17: overlapping subdomains with plain Gibbs Robin (sharp likelihood)
+Why: with the sharp pressure likelihood a halo-2 block (extended boundary off every flux line) has a hard Dirichlet interface
+with the spline pressure (0.45-0.57% error against 0.013% sensor noise).  Sandbox run (8 chains, 20k iterations, 95%/99%
+energy, core or extended sensors): step size collapsed to the floor, acceptance 2-6%, sensor misfit 0.005-0.010 against
+noise 0.003: not usable.  Fix: move the flux data to the extended boundaries (`--flux-lines boundaries`) so Robin-Gibbs
+applies at halo 2.
+- `--overlap-energy` (local KLE energy of the extended blocks), `--overlap-halo-sensors` (the block likelihood uses every
+  sensor of its extended rectangle; default: the core's sensors only), `--flux-lines boundaries` (flux lines = interior
+  boundaries of the extended blocks, per-datum noise-level weight sigma_rel = noise / sqrt(m)).
+- Halo 2 flux data: primal 6 lines (192 faces), dual 8 lines (256 faces); halo 4 keeps the standard 14 lines (224 faces),
+  which contain the extended boundaries.  Note the number of data differs from the 224 of the benchmark.
+- Cluster: `cluster/gen_overlap_sbatch.py` writes `cluster/slurm/msm_exp17_ov_h{2,4}_{primal,dual}_e{95,99}.sbatch`
+  (pilot 10k + restart 100k, 64 chains, frozen step, post-processing against the exp. 14 global reference).
+- Linearised information (global prior, extended-region sensors + flux, boundary pressure at its actual noise) predicts the
+  sd of the core cells: halo 0 0.021 / 0.030 (primal / dual), halo 1 0.014 / 0.019, halo 2 0.012 / 0.015, halo 4 0.008 / 0.010.

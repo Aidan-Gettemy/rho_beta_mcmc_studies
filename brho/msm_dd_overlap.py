@@ -48,4 +48,13 @@ class OverlapDecomp:
             E[cells[in_core]] = psi[in_core, :nk] * np.sqrt(mu[:nk])         # restriction to the core, zero elsewhere
             cols.append(S.kle.project(E))
         self.B = np.hstack(cols)
+        lines = set()                                   # faces (cell b-1 | b) on the extended interior boundaries
+        for cells in self.block_cells:
+            ix, iy = cells // n, cells % n
+            for lo, hi in ((ix.min(), ix.max()), (iy.min(), iy.max())):
+                if lo > 0:
+                    lines.add(int(lo))
+                if hi < n - 1:
+                    lines.add(int(hi) + 1)
+        self.boundary_lines = sorted(lines)
         self.p = self.B.shape[1]

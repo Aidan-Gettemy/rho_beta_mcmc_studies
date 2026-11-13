@@ -315,3 +315,23 @@ def test_neumann_draw_h_keeps_zero_net_flux_and_prior_when_tiny():
         tiny = NB.NeumannBlock(b, eps=1e-7, g_rel=0.0045)
         h2 = tiny.draw_h(c, tiny.h_hat0, Ainv, Gs, pp, rng)
         assert np.abs(h2 - tiny.h_hat0).max() < 1e-5 * np.abs(tiny.h_hat0).max()
+
+
+def test_overlap_flux_lines_moved_to_extended_boundaries():
+    import argparse, sys, os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "experiments"))
+    import run_dd_chains as R
+    base = dict(grid="primal", sigma_rel=0.00013258252, data_seed=2026, data_relerr=0.003, smoothing=1e-3, neighbors=60,
+                flux_noise_rel=0.003, flux_sigma_rel=0.00020045, overlap_halo=2, robin_alpha=0.1, robin_interp="cubic",
+                primal_local_dim=6, dual_energy=0.95, overlap_energy=0.95, flux_lines="boundaries")
+    S, data, sp, g = R.build(argparse.Namespace(**base))
+    fd = g.flux_data
+    assert fd.lines == [6, 10, 14, 18, 22, 26] and fd.m == 2 * 6 * 16
+    assert abs(fd.sigma_rel - 0.003 / np.sqrt(fd.m)) < 1e-12                  # noise-level weight per datum
+    # every interface side of every extended block lies on a measured line and is Robin
+    sides = [(b, s) for b in g.blocks for s, v in b.bc.items() if isinstance(v, dict)]
+    assert len(sides) == 48
+    # default lines are unchanged when the option is off
+    base.update(flux_lines="default")
+    _, _, _, g0 = R.build(argparse.Namespace(**base))
+    assert g0.flux_data.m == 224 and g0.flux_data.lines == MF.interface_lines(32)

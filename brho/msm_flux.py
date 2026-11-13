@@ -35,14 +35,17 @@ def face_flux(K2, p2, ia, ja, ib, jb):
 
 
 class FluxData:
-    def __init__(self, S, data, noise_rel=0.003, sigma_rel=0.08, stride=2, offset=0):
+    def __init__(self, S, data, noise_rel=0.003, sigma_rel=0.08, stride=2, offset=0, lines=None):
+        """lines: face indices of the measured interface lines (default: the primal + dual lines).  sigma_rel=None: the
+        likelihood level of the data noise, sigma_rel = noise_rel / sqrt(m) (the same per-datum weight whatever the number m)."""
         self.S, self.n = S, S.n
+        self.lines = list(interface_lines(S.n) if lines is None else lines)
         self.noise_rel, self.sigma_rel, self.stride, self.offset = noise_rel, sigma_rel, stride, offset
         n = self.n
         along = np.arange(offset, n, stride)
         ia, ja, ib, jb, orient, line, pos = [], [], [], [], [], [], []
         for o in ("v", "h"):
-            for b in interface_lines(n):
+            for b in self.lines:
                 for t in along:
                     if o == "v":
                         ia.append(b - 1); ja.append(t); ib.append(b); jb.append(t)
@@ -56,6 +59,9 @@ class FluxData:
         K2 = np.exp(S.kle.field(data.theta_true)).reshape(n, n)
         p2 = S.phys.solve(K2.ravel()).reshape(n, n)
         self.q_true = face_flux(K2, p2, self.ia, self.ja, self.ib, self.jb)
+        if sigma_rel is None:
+            sigma_rel = noise_rel / np.sqrt(self.m)
+            self.sigma_rel = sigma_rel
         self.sigma_q = noise_rel * np.linalg.norm(self.q_true) / np.sqrt(self.m)
         rng = np.random.default_rng(np.random.SeedSequence([int(data.seed), 99]))
         self.q = self.q_true + self.sigma_q * rng.standard_normal(self.m)
@@ -77,7 +83,7 @@ class FluxData:
         return np.interp(np.arange(self.n), t, q)
 
     def summary(self):
-        return dict(n_flux=self.m, lines=interface_lines(self.n), stride=self.stride, offset=self.offset,
+        return dict(n_flux=self.m, lines=list(self.lines), stride=self.stride, offset=self.offset,
                     noise_rel=self.noise_rel, sigma_rel=self.sigma_rel, sigma_q=float(self.sigma_q),
                     flux_norm=self.qnorm, relerr_at_truth=self.relerr_truth, phi_at_truth=self.phi_truth)
 
