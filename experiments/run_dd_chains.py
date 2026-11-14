@@ -41,12 +41,17 @@ def build(args):
     data = MS.Data(S, args.sigma_rel, args.data_seed, data_relerr=args.data_relerr)
     spline = DD.InterfaceSpline(S, data, args.smoothing, args.neighbors)
     ms = S.primal if args.grid == "primal" else S.dual
-    flux = None
-    if getattr(args, "flux_noise_rel", None) is not None:           # flux studies (docs/dd_flux_experiment.md)
-        flux = MF.FluxData(S, data, args.flux_noise_rel, args.flux_sigma_rel)
     halo = getattr(args, "overlap_halo", 0) or 0
     if halo:                                                          # overlapping subdomains (docs/dd_overlap_robin_experiment.md)
-        ms = OV.OverlapDecomp(S, ms, halo)
+        ms = OV.OverlapDecomp(S, ms, halo, local_energy=getattr(args, "overlap_energy", 0.95),
+                              halo_sensors=getattr(args, "overlap_halo_sensors", False),
+                              blend=getattr(args, "overlap_blend", False))
+    flux = None
+    if getattr(args, "flux_noise_rel", None) is not None:           # flux studies (docs/dd_flux_experiment.md)
+        if getattr(args, "flux_lines", "default") == "boundaries":    # flux lines moved to the (extended) block boundaries
+            flux = MF.FluxData(S, data, args.flux_noise_rel, None, lines=ms.boundary_lines)
+        else:
+            flux = MF.FluxData(S, data, args.flux_noise_rel, args.flux_sigma_rel)
     alpha = getattr(args, "robin_alpha", None)
     if alpha is not None and flux is None:
         raise SystemExit("--robin-alpha needs flux data (--flux-noise-rel)")
@@ -83,10 +88,10 @@ def _one(task):
     key = [a.seed0, GRID_TAG[a.grid], k, chain] + ([1] if beta is not None else [])
     if _G.get("gbs") is not None:                                  # plain Gibbs for the Robin flux h (docs/dd_gibbs_experiment.md)
         o = GB.run_gibbs_block_chain(_G["gbs"][k], key, a.n_iter, a.adapt, a.s0 if beta is None else beta[k],
-                                     a.save_every, init_scale=a.init_scale)
+                                     a.save_every, init_scale=a.init_scale, every=a.adapt_every, s_min=a.s_min)
     else:
         o = DD.run_block_chain(_G["grid"].blocks[k], key, a.n_iter, a.adapt, a.s0 if beta is None else beta[k],
-                               a.save_every, init_scale=a.init_scale)
+                               a.save_every, init_scale=a.init_scale, every=a.adapt_every, s_min=a.s_min)
     return k, chain, o, time.time() - t
 
 
@@ -104,6 +109,8 @@ def main(argv=None):
     ap.add_argument("--burn", type=int, default=None,
                     help="iterations discarded in the summary and in the post-processing fields (default: --adapt)")
     ap.add_argument("--save-every", type=int, default=50)
+    ap.add_argument("--s-min", type=float, default=1e-3, help="floor of the pCN step size during adaptation (default 1e-3)")
+    ap.add_argument("--adapt-every", type=int, default=100, help="iterations per step-size adaptation window (default 100)")
     ap.add_argument("--smoothing", type=float, default=DD.SPLINE_SMOOTHING, help="thin-plate spline smoothing")
     ap.add_argument("--neighbors", type=int, default=DD.SPLINE_NEIGHBORS)
     ap.add_argument("--sigma-rel", type=float, default=0.003)
@@ -119,6 +126,14 @@ def main(argv=None):
     ap.add_argument("--dual-energy", type=float, default=0.95, help="local KLE energy fraction of the dual blocks (default 0.95)")
     ap.add_argument("--overlap-halo", type=int, default=0,
                     help="extend every subdomain by this many cells towards each interior interface (likelihood on the core only)")
+    ap.add_argument("--overlap-energy", type=float, default=0.95, help="local KLE energy fraction of the extended blocks (default 0.95)")
+    ap.add_argument("--overlap-halo-sensors", action="store_true",
+                    help="the extended block uses every sensor of its rectangle (default: only its core's sensors)")
+    ap.add_argument("--overlap-blend", action="store_true",
+                    help="assemble the field with a smooth partition of unity over the overlaps (assembly only; the sampling is unchanged)")
+    ap.add_argument("--flux-lines", choices=["default", "boundaries"], default="default",
+                    help="default: the 14 primal+dual interface lines (224 faces); boundaries: the interior boundaries of the (extended) "
+                         "subdomains of this run, likelihood at the data-noise level per datum (needs --overlap-halo)")
     ap.add_argument("--robin-alpha", type=float, default=None,
                     help="Robin interface condition alpha p + K dp/dn = alpha g + h with g the spline pressure and h the flux data "
                          "(needs --flux-noise-rel); replaces the flux penalty; sides off the flux lines stay Dirichlet")
