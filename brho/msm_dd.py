@@ -290,14 +290,14 @@ def pilot_step(s_hist, frac=0.3):
     return float(np.exp(np.log(s[:, int(s.shape[1] * (1 - frac)):]).mean()))
 
 
-def run_block_chain(blk, seed_key, n_iter, n_adapt, s0=0.2, save_every=50, target=0.25, every=100, init_scale=1.0):
+def run_block_chain(blk, seed_key, n_iter, n_adapt, s0=0.2, save_every=50, target=0.25, every=100, init_scale=1.0, s_min=1e-3):
     """One pCN chain of one block (one forward solve per iteration).  seed_key: a sequence of ints,
     e.g. [seed0, grid_tag, block, chain].  Returns
         c (n_iter // save_every, r_k)  state at iterations 0, save_every, ... (before the step)
         s_hist (n_save,)               step size at those iterations
         acc (n_iter,) uint8, phi (n_iter,) float32, relerr (n_iter,) float32   (state after each iteration)"""
     rng = np.random.default_rng(np.random.SeedSequence(list(seed_key)))
-    ad = StepAdapter([s0], targets=[target], every=every)
+    ad = StepAdapter([s0], targets=[target], every=every, s_min=s_min)
     c = init_scale * rng.standard_normal(blk.r_k)                 # dispersed start (prior draw, optionally widened)
     phi, rel = blk.potential(c)
     n_save = n_iter // save_every

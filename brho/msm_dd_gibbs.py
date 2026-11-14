@@ -157,10 +157,10 @@ class GibbsBlock:
         return mean + np.linalg.solve(L.T, z)
 
 
-def run_gibbs_block_chain(gb, seed_key, n_iter, n_adapt, s0=0.2, save_every=50, target=0.25, every=100, gibbs=True, init_scale=1.0):
+def run_gibbs_block_chain(gb, seed_key, n_iter, n_adapt, s0=0.2, save_every=50, target=0.25, every=100, gibbs=True, init_scale=1.0, s_min=1e-3):
     blk = gb.b
     rng = np.random.default_rng(np.random.SeedSequence(list(seed_key)))
-    ad = StepAdapter([s0], targets=[target], every=every)
+    ad = StepAdapter([s0], targets=[target], every=every, s_min=s_min)
     c = init_scale * rng.standard_normal(blk.r_k)
     h = gb.h_hat0.copy()
     phi, Ainv, Gs, p = gb.potential(c, h)

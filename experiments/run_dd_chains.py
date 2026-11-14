@@ -88,10 +88,10 @@ def _one(task):
     key = [a.seed0, GRID_TAG[a.grid], k, chain] + ([1] if beta is not None else [])
     if _G.get("gbs") is not None:                                  # plain Gibbs for the Robin flux h (docs/dd_gibbs_experiment.md)
         o = GB.run_gibbs_block_chain(_G["gbs"][k], key, a.n_iter, a.adapt, a.s0 if beta is None else beta[k],
-                                     a.save_every, init_scale=a.init_scale)
+                                     a.save_every, init_scale=a.init_scale, every=a.adapt_every, s_min=a.s_min)
     else:
         o = DD.run_block_chain(_G["grid"].blocks[k], key, a.n_iter, a.adapt, a.s0 if beta is None else beta[k],
-                               a.save_every, init_scale=a.init_scale)
+                               a.save_every, init_scale=a.init_scale, every=a.adapt_every, s_min=a.s_min)
     return k, chain, o, time.time() - t
 
 
@@ -109,6 +109,8 @@ def main(argv=None):
     ap.add_argument("--burn", type=int, default=None,
                     help="iterations discarded in the summary and in the post-processing fields (default: --adapt)")
     ap.add_argument("--save-every", type=int, default=50)
+    ap.add_argument("--s-min", type=float, default=1e-3, help="floor of the pCN step size during adaptation (default 1e-3)")
+    ap.add_argument("--adapt-every", type=int, default=100, help="iterations per step-size adaptation window (default 100)")
     ap.add_argument("--smoothing", type=float, default=DD.SPLINE_SMOOTHING, help="thin-plate spline smoothing")
     ap.add_argument("--neighbors", type=int, default=DD.SPLINE_NEIGHBORS)
     ap.add_argument("--sigma-rel", type=float, default=0.003)

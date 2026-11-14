@@ -1196,3 +1196,6 @@ The 99% runs are NOT converged (MPSRF about 2); to be extended.  Halo 2 used 192
 ## 2026-11-13 Blended assembly (no gain) and the limits of DD-MCMC; neighbour-conditioning checks
 - Blended (partition-of-unity) vs core assembly, sandbox, halo 2, Robin-Gibbs: primal 95% 0.0915 vs 0.0924; dual 95% 0.1327 vs 0.1336; primal 99% 0.0529 vs 0.0493 (30k iterations, MPSRF 1.4-6, unconverged). Assembly is not what limits the error.
 - Neighbour-conditioned (DDKLE) sampler checks: frozen directions given neighbours, Gaussianity of stage-1 posteriors, prior-data conflict. Not built. Summary and reasoning: `docs/dd_limits_and_open_ideas.md`; script `experiments/dd_frozen_directions_check.py`.
+
+## 2026-11-13 Exp. 18 prepared: noise scaling of the non-overlapping DD
+Tests whether the DD with f = 1, 3, 6.5 x more precise data approaches the global sampler (exp. 14). New flags `--s-min`, `--adapt-every` in `run_dd_chains.py` (defaults unchanged, tests pass), generator `cluster/gen_noise_sbatch.py`, six sbatch scripts, `cluster/submit_noise_scaling.sh`, spec `docs/dd_noise_scaling_experiment.md`. Not yet run on the cluster.
