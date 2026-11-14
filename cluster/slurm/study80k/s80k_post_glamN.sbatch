@@ -3,9 +3,9 @@
 #SBATCH --ntasks=12                   # r24m ran 24 chains; 12 ranks are enough here (the strided samples are dealt round-robin) and fit on one A30.  Only the forward-model step uses them (MPI); about 1.5 GiB of GPU memory each
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=48G
-#SBATCH --partition=dev-a30
+#SBATCH --partition=h200              # dev-a30 allows only 2 h; 24 chains x 400 samples = 9600 solves on 12 ranks need longer
 #SBATCH --gres=gpu:1
-#SBATCH --time=03:00:00               # EDIT: the forward-model step runs the solver on every strided sample (24 chains x 40000/100 = 9600 solves on 12 ranks); MPSRF is capped by MPSRF max-minutes
+#SBATCH --time=04:00:00               # EDIT: forward-model step on every strided sample (24 chains x 40000/100 = 9600 solves on 12 ranks); MPSRF is capped by --max-minutes
 #SBATCH -J glam-post-s80k_glamN
 #SBATCH -o logs/glam-post-s80k_glamN-%j.out
 #
