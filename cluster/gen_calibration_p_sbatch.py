@@ -48,9 +48,9 @@ python experiments/run_msm_chains.py $COMMON --save-every 50 --n-iter {restart} 
 python experiments/run_msm_post.py --dir "$OUT" --n-fields 2000 --mpsrf-start 1000 --mpsrf-step-its 5000 --seed 11
 """
 os.makedirs("cluster/slurm", exist_ok=True)
-CASES = {0.2: dict(grid=16, nobs=128, energy=0.966, eps0=0.0124, pilot=20000, restart=400000, time="02:00:00"),
-         0.1: dict(grid=32, nobs=512, energy=0.966, eps0=0.033, pilot=30000, restart=600000, time="04:00:00"),
-         0.05: dict(grid=64, nobs=2048, energy=0.95, eps0=0.032, pilot=50000, restart=1000000, time="06:00:00")}
+CASES = {0.2: dict(grid=16, nobs=128, energy=0.966, eps0=0.0124, pilot=20000, restart=200000, time="01:00:00"),
+         0.1: dict(grid=32, nobs=512, energy=0.966, eps0=0.033, pilot=20000, restart=200000, time="01:00:00"),
+         0.05: dict(grid=64, nobs=2048, energy=0.95, eps0=0.032, pilot=30000, restart=300000, time="02:00:00")}
 names = []
 for ell, c in CASES.items():
     for f in (0.75, 1.0, 1.3):

@@ -4,13 +4,13 @@
 #SBATCH --cpus-per-task=64
 #SBATCH --mem=64G
 #SBATCH --partition=g1mig
-#SBATCH --time=02:00:00
+#SBATCH --time=01:00:00
 #SBATCH -J msm-cal_l0.2_p_e0.0124
 #SBATCH -o logs/msm-cal_l0.2_p_e0.0124-%j.out
 #
 # PRESSURE-ONLY noise calibration, global pCN: ell 0.2, grid 16x16, 128 checkerboard sensors, eps = 0.0124.
 # likelihood sigma_rel = eps/sqrt(128) = 0.00109602.  Target: mean posterior sd of log k of about 0.5 (the pressure+flux cells target 0.25).
-# 64 chains, pilot 20000 adapted iterations (floor 1e-4, window 500), restart 400000 with the step frozen, saved every 50; MPSRF window from 1000.
+# 64 chains, pilot 20000 adapted iterations (floor 1e-4, window 500), restart 200000 with the step frozen, saved every 50; MPSRF window from 1000.
 # Submit from the repo root:   sbatch cluster/slurm/cal_l0.2_p_e0.0124.sbatch
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
@@ -37,5 +37,5 @@ PILOT=${OUT}_pilot
 COMMON="--kind global --chains 64 --workers 64 --ell 0.2 --grid 16 --kle-energy 0.966 --sigma-rel 0.0010960155 --data-relerr 0.0124 --data-seed 2026"
 
 python experiments/run_msm_chains.py $COMMON --save-every 50 --n-iter 20000 --adapt 20000 --burn 10000 --s0 0.2 --s-min 0.0001 --adapt-every 500 --seed0 7 --out "$PILOT"
-python experiments/run_msm_chains.py $COMMON --save-every 50 --n-iter 400000 --adapt 0 --burn 1000 --step-from "$PILOT" --init-scale 1.0 --seed0 1007 --out "$OUT"
+python experiments/run_msm_chains.py $COMMON --save-every 50 --n-iter 200000 --adapt 0 --burn 1000 --step-from "$PILOT" --init-scale 1.0 --seed0 1007 --out "$OUT"
 python experiments/run_msm_post.py --dir "$OUT" --n-fields 2000 --mpsrf-start 1000 --mpsrf-step-its 5000 --seed 11
