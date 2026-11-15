@@ -72,6 +72,8 @@ def build_parser(doc=None):
                     "anchor only in the other coordinates (subspace transplant); empty = ordinary restarts")
     ap.add_argument("--snapshot-every", type=int, default=0, help="plain-pCN runs only (burnin_length >= n_iter): write a resumable state of every "
                     "chain every K iterations and at the end (resume with --resume; extend a finished run with --resume and a larger --n-iter); 0 = off")
+    ap.add_argument("--resume-reseed", type=int, default=0, help="with --resume: resumed chains draw from a NEW random stream (seeded by this number, "
+                    "the rank and the snapshot iteration) instead of replaying the saved one; 0 = replay (bit-exact resume)")
     ap.add_argument("--fixed-steps", action="store_true", help="no step-size adaptation: --beta-g0 / --beta-l0 are used for the whole run "
                     "(take them from adaptation.json of an earlier run); window1 then only marks the start of the post-processing tail")
     ap.add_argument("--selection-constrained-only", action="store_true", help="archive selection (distance, log-det) on the transplanted coordinates only")
@@ -120,7 +122,8 @@ def main():
         io.save_json(os.path.join(out, "block_dims.json"), dict(block_dims=[int(d) for d in model.block_dims]))
     keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
     run_glam(model, cfg, comm, out, resume=args.resume, keep_mask=keep, selection_constrained_only=args.selection_constrained_only,
-             snapshot_every=args.snapshot_every, fixed_steps=args.fixed_steps)
+             snapshot_every=args.snapshot_every, fixed_steps=args.fixed_steps,
+             resume_reseed=args.resume_reseed)
     if rank == 0:
         print("[glam] done:", out, flush=True)
 

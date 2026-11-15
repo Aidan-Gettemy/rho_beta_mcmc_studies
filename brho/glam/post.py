@@ -38,9 +38,14 @@ def n_iterations(ch):
     return int(ch["start"][-1] + ch["count"][-1])
 
 
+def rank_list(nranks):
+    """An int N means ranks 0..N-1; a sequence is taken as the list of ranks to use (e.g. only the chains that finished)."""
+    return list(range(int(nranks))) if np.isscalar(nranks) else [int(r) for r in nranks]
+
+
 def strided_samples(out, nranks, tail_start, stride, n_iter=None, dtype=np.float64):
     th, w, rk, its, phi = [], [], [], [], []
-    for r in range(nranks):
+    for r in rank_list(nranks):
         ch = load_chain(out, r)
         n = n_iterations(ch) if n_iter is None else int(n_iter)
         if n_iterations(ch) < n:
@@ -59,7 +64,7 @@ def best_record(out, nranks, tail_start=0):
     """Lowest-Phi record over all ranks.  Only records that cover an iteration >= tail_start count (default: the whole
     run).  Returns theta (float64), w, phi, rank, iteration (first iteration of the record)."""
     best = None
-    for r in range(nranks):
+    for r in rank_list(nranks):
         ch = load_chain(out, r)
         ok = (ch["start"] + ch["count"]) > int(tail_start)
         if not np.any(ok):

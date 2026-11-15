@@ -172,11 +172,14 @@ def _write_chain_snapshot(snap_dir, rank, it, theta, phi_cur, re_cur, rng, adapt
 
 
 def run_glam(model, cfg, comm, out_dir, resume=False, log=print, keep_mask=None, selection_constrained_only=False,
-             snapshot_every=0, fixed_steps=False):
+             snapshot_every=0, fixed_steps=False, resume_reseed=0):
     """snapshot_every K > 0 (plain-pCN runs only, i.e. no exchange ever happens): every K iterations, and at the end, each rank
     writes its state (theta, phi, rng, adapter) to anchor_state/chain_r*_ite*.pkl, so an interrupted run resumes from the newest
     complete generation, and a finished run can be extended with a larger n_iter.  GLAM runs resume at their exchanges.
-    fixed_steps: no step-size adaptation; beta_g0 / beta_l0 are used throughout (set them to the values adapted in an earlier run)."""
+    fixed_steps: no step-size adaptation; beta_g0 / beta_l0 are used throughout (set them to the values adapted in an earlier run).
+    resume_reseed N > 0 (with resume): every resumed chain continues from its saved state but draws from a NEW random stream seeded by
+    (seed0, rank, snapshot iteration, N), instead of replaying the saved one.  The chain stays a valid Markov chain; only bit-exact
+    reproducibility is lost.  Use it when a resume repeats a stall: a replayed stream re-proposes the very same moves."""
     rank, P = comm.Get_rank(), comm.Get_size()
     if snapshot_every and cfg.burnin_length < cfg.n_iter:
         raise ValueError("snapshot_every is for runs without exchanges (burnin_length >= n_iter): a GLAM run is resumed from its exchange snapshots")
@@ -210,11 +213,11 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print, keep_mask=None,
         mine = {int(m.group(1)) for fn in os.listdir(snap_dir)
                 if (m := re.fullmatch(rf"chain_r{rank:03d}_ite(\d+)\.pkl", fn))}
         common = set.intersection(*comm.allgather(mine))
-        if common and snapshot_every:                        # no manager state to restore: chains only
-            it_s = max(common)
+        if snapshot_every:                                   # independent pCN chains: each resumes from ITS OWN newest snapshot
+            it_s = max(mine) if mine else None               # (chains run at different speeds; a finished chain just stays finished)
         elif common:
             it_s = mgr.load_anchor_state(snap_dir, max_iteration=max(common), rank=rank, comm=comm)
-        if it_s is not None and int(it_s) not in common:
+        if it_s is not None and not snapshot_every and int(it_s) not in common:
             raise RuntimeError(f"rank {rank}: anchor state of iteration {it_s} has no chain snapshot on every rank")
     if it_s is not None:
         with open(os.path.join(snap_dir, f"chain_r{rank:03d}_ite{it_s}.pkl"), "rb") as f:
@@ -225,10 +228,12 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print, keep_mask=None,
             _, rc, rd = model.eval_state(theta, rank)
             re_cur = (rc, rd)
         rng.bit_generator.state = cs["rng"]
+        if resume_reseed:                                    # fresh random stream instead of replaying the saved one (see docstring)
+            rng.bit_generator.state = np.random.default_rng([cfg.seed0, rank, int(cs["next_it"]), int(resume_reseed)]).bit_generator.state
         adapter.set_state(cs["adapter"])
         it0, writer_part, cur_start = cs["next_it"], cs["part"], cs["cur_start"]
         if rank == 0:
-            log(f"[glam] resumed at iteration {it0} from snapshot {it_s}")
+            log(f"[glam] resumed at iteration {it0} from snapshot {it_s}" + (f", fresh random stream (reseed {resume_reseed})" if resume_reseed else ""))
     else:
         theta, phi_cur, re_cur = _init_state(model, rng, rank)
         cur_start = 0

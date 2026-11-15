@@ -16,6 +16,8 @@
 # new experiment (e.g. cp glam_run_template.sbatch glam_r24m.sbatch), edit the lines marked EDIT, and submit from the repo root:
 #       sbatch cluster/slurm/<your copy>.sbatch
 # Resume after a time-out:  sbatch --export=ALL,GLAM_RESUME=1 cluster/slurm/study80k/s80k_1_pcn.sbatch
+# Resume with a FRESH random stream (a plain resume replays the saved stream, so a chain that stalled on one proposal stalls again):
+#   sbatch --export=ALL,GLAM_RESUME=1,GLAM_ARGS="--resume-reseed 1" cluster/slurm/study80k/s80k_1_pcn.sbatch   (use 2, 3, ... for later resumes)
 # Post-process:             GLAM_TAG=s80k_pcn sbatch cluster/slurm/node_glam_post.sbatch
 #
 # STUDY s80k, ARM 1 of 5: plain pCN (baseline and goal).  Same model, data, 24 chains, random initialization (seed0 2026) and step-size
