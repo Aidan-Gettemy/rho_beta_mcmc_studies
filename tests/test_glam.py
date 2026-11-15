@@ -595,6 +595,31 @@ def test_pcn_snapshots_resume_and_extend_exactly():
         ThreadWorld(1).run(lambda comm: run_glam(model, gl, comm, tempfile.mkdtemp(), log=lambda *_: None, snapshot_every=10))
 
 
+def test_resume_reseed_continues_from_the_saved_state_with_new_randomness():
+    base = tempfile.mkdtemp()
+    _pcn_run(130, base)                                           # snapshots at 40, 80, 120, final 130
+    for r in range(3):
+        os.remove(os.path.join(base, "anchor_state", f"chain_r{r:03d}_ite130.pkl"))
+    import shutil
+    outs = {}
+    for name, seed in (("replay", 0), ("a", 1), ("b", 2)):
+        d = tempfile.mkdtemp(); shutil.copytree(base, d, dirs_exist_ok=True)
+        model = ToyModel(_beta(), n_sub=4, m=6, n_cells=60, n_times=3, seed=5, sigma_conc=0.05, sigma_dp=0.05)
+        cfg = C.GlamConfig(n_iter=200, window1=50, window2=0, burnin_length=10 ** 8, global_stage_length=10 ** 8, local_stage_length=10 ** 8,
+                           min_global_stage_length=10 ** 8, min_local_stage_length=10 ** 8, adapt_interval=10, beta_g0=0.1, save_every=25, log_every=0)
+        res = ThreadWorld(3).run(lambda comm: run_glam(model, cfg, comm, d, resume=True, log=lambda *_: None, snapshot_every=40, resume_reseed=seed))
+        outs[name] = (d, res)
+    ref = tempfile.mkdtemp(); _pcn_run(200, ref, snapshot_every=0)
+    for r in range(3):
+        c_ref, c_re, c_a, c_b = (load_chain(d, r) for d in (ref, outs["replay"][0], outs["a"][0], outs["b"][0]))
+        x_ref, x_re, x_a, x_b = (c["theta"][expand(c, 200)] for c in (c_ref, c_re, c_a, c_b))
+        assert np.array_equal(x_ref, x_re)                        # reseed 0: exact replay, as before
+        assert np.array_equal(x_ref[:120], x_a[:120]) and np.array_equal(x_ref[:120], x_b[:120])      # same state at the snapshot (iteration 120)
+        assert not np.array_equal(x_ref[120:], x_a[120:])         # new randomness after it
+        assert not np.array_equal(x_a[120:], x_b[120:])           # and a different one per reseed value
+        assert np.isfinite(c_a["phi"]).all()
+
+
 def test_fixed_steps_keep_the_given_step_sizes():
     out = tempfile.mkdtemp()
     model = ToyModel(_beta(), n_sub=4, m=6, n_cells=60, n_times=3, seed=5, sigma_conc=0.05, sigma_dp=0.05)
