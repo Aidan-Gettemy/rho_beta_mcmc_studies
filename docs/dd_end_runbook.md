@@ -16,6 +16,7 @@ interface-flux prior: measured faces sd eps, unmeasured sqrt(eps^2 + 0.03^2)).  
    `git add --sparse -f runs/msm_local_kle_2026-11/dd_end/manifest.csv runs/msm_local_kle_2026-11/dd_end/l*/*/*/summary.json runs/msm_local_kle_2026-11/dd_end/l*/*/*/post runs/msm_local_kle_2026-11/dd_end/l*/*/*/post_pooled`;
    check `git status --short | grep chains.npz` prints nothing; commit and push; merge the pull request into main.
 5. Collect: `python experiments/dd_end_collect.py` writes `dd_end/master_table.csv` (sd, error, error/sd, 90% coverage, sup-MPSRF, ratios to the
+   Box plots of the relative data error of the posterior fields (pressure for every cell, flux on the flux cells only): `python experiments/dd_end_plots.py` (one PNG per ell; add `--truth` / `--eps-factor` for the other truths and the noise sweep). The per-sample errors are stored in each run's `post/fields.npz` (`<label>_relerr_p`, `<label>_relerr_q`).
    global reference, timing).
 
 Check the pilot and restart logs of the first job before submitting the rest of a stage.
