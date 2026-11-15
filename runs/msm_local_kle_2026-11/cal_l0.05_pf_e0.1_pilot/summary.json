@@ -1,0 +1,80 @@
+{
+ "settings": {
+  "kind": "global",
+  "chains": 16,
+  "n_iter": 50000,
+  "adapt": 50000,
+  "phase_k": null,
+  "s0": 0.2,
+  "step_from": null,
+  "s_min": 0.0001,
+  "adapt_every": 500,
+  "init_scale": 1.0,
+  "burn": 25000,
+  "primal_dim": 4,
+  "dual_energy": 0.95,
+  "alt_L": 1,
+  "alt_no_offset": false,
+  "save_every": 50,
+  "sigma_rel": 0.0022097087,
+  "data_relerr": 0.1,
+  "data_seed": 2026,
+  "seed0": 7,
+  "flux_noise_rel": 0.1,
+  "flux_sigma_rel": 0.0047245559,
+  "workers": 16,
+  "ell": 0.05,
+  "grid": 64,
+  "kle_energy": 0.95,
+  "out": "/scratch/ganymede2/arg210006/rho_beta_mcmc_studies/runs/msm_local_kle_2026-11/cal_l0.05_pf_e0.1_pilot"
+ },
+ "data": {
+  "seed": 2026,
+  "sigma_rel": 0.0022097087,
+  "data_relerr": 0.1,
+  "n_obs": 2048,
+  "sigma_p": 0.06212736614691679,
+  "data_norm": 28.187688934290907,
+  "relerr_at_truth": 0.10011363315213904,
+  "phi_at_truth": 1026.3285210279596,
+  "phi_noise_floor_expected": 1023.9999918513714,
+  "flux": {
+   "n_flux": 448,
+   "lines": [
+    8,
+    16,
+    24,
+    32,
+    40,
+    48,
+    56
+   ],
+   "stride": 2,
+   "offset": 0,
+   "noise_rel": 0.1,
+   "sigma_rel": 0.0047245559,
+   "sigma_q": 0.0011412928873719785,
+   "flux_norm": 0.24409276306439748,
+   "relerr_at_truth": 0.1017999786662927,
+   "phi_at_truth": 232.1364799443364
+  }
+ },
+ "wall_sec": 221.89865636825562,
+ "s_frozen": null,
+ "sec_per_chain": 195.82859107851982,
+ "post_acc_mean": 0.2511525,
+ "post_acc_chain_min": 0.24436,
+ "post_acc_chain_max": 0.2574,
+ "post_relerr_median_of_chain_medians": 0.10032293200492859,
+ "post_relerr_chain_median_max": 0.1005532518029213,
+ "post_relerr_last": 0.10026051849126816,
+ "s_final_median": [
+  0.014757591299712658
+ ],
+ "s_final_min": [
+  0.014757591299712658
+ ],
+ "s_final_max": [
+  0.018511923030018806
+ ]
+}

@@ -25,9 +25,11 @@ _G = {}
 
 
 def _init(args):
-    S = ML.MSMSetup(primal_local_dim=args.primal_dim, dual_energy=args.dual_energy)
+    std = (args.ell == 0.1 and args.grid == 32)                 # study problem: guards apply; else new problems (ell/grid study)
+    S = ML.MSMSetup(n=args.grid, ell=args.ell, kle_energy=args.kle_energy, r_expected=64 if std else None,
+                    primal_local_dim=args.primal_dim, dual_energy=args.dual_energy)
     want_p = 58 if args.primal_dim == 4 else 64
-    if S.primal.r_plus != want_p or S.dual.r_plus != 64:
+    if std and (S.primal.r_plus != want_p or S.dual.r_plus != 64):
         raise SystemExit(f"GUARD: primal r_+ must be {want_p} (primal_dim {args.primal_dim}) and dual r_+ 64 "
                          f"(decision of 2026-11-02); got {S.primal.r_plus} / {S.dual.r_plus}")
     _G["S"] = S
@@ -83,6 +85,9 @@ def main(argv=None):
                     help="flux studies (kind global only): add interface flux data with this relative noise")
     ap.add_argument("--flux-sigma-rel", type=float, default=0.08, help="likelihood level of the flux term")
     ap.add_argument("--workers", type=int, default=None)
+    ap.add_argument("--ell", type=float, default=0.1, help="correlation length (default 0.1, the study problem)")
+    ap.add_argument("--grid", type=int, default=32, help="grid cells per side (default 32)")
+    ap.add_argument("--kle-energy", type=float, default=ML.KLE_ENERGY_R64, help="global KLE energy fraction (default 0.966: r = 64 at ell 0.1)")
     ap.add_argument("--out", required=True)
     a = ap.parse_args(argv)
     os.makedirs(a.out, exist_ok=True)
