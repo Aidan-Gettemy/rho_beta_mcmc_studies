@@ -616,6 +616,22 @@ def test_resume_makes_every_rank_solve_once_before_the_loop_even_finished_chains
     assert set(calls) == {0, 1, 2} and all(v >= 1 for v in calls.values())     # nothing left to run, yet every rank solved once
 
 
+def test_a_window_without_accepted_moves_does_not_crash_and_stays_loadable():
+    """Fixed steps of 0.999 (near-independent proposals) -> almost no accepted move: a snapshot flush then has trace entries but no record (reshape(0, -1) failed)."""
+    out = tempfile.mkdtemp()
+    model = ToyModel(_beta(), n_sub=4, m=6, n_cells=60, n_times=3, seed=5, sigma_conc=0.05, sigma_dp=0.05)
+    def run(n_iter, resume):
+        cfg = C.GlamConfig(n_iter=n_iter, window1=0, window2=n_iter, burnin_length=10 ** 8, global_stage_length=10 ** 8, local_stage_length=10 ** 8,
+                           min_global_stage_length=10 ** 8, min_local_stage_length=10 ** 8, beta_g0=0.999, beta_l0=0.999, save_every=25, log_every=0)
+        ThreadWorld(2).run(lambda comm: run_glam(model, cfg, comm, out, resume=resume, log=lambda *_: None, snapshot_every=40, fixed_steps=True))
+    run(130, False)
+    run(200, True)
+    from brho.glam import post
+    for r in range(2):
+        ch = post.load_chain(out, r)
+        assert post.n_iterations(ch) == 200 and ch["theta"].shape[0] == len(ch["start"])
+
+
 def test_resume_reseed_continues_from_the_saved_state_with_new_randomness():
     base = tempfile.mkdtemp()
     _pcn_run(130, base)                                           # snapshots at 40, 80, 120, final 130

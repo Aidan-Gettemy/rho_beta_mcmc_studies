@@ -41,6 +41,7 @@ class ChainWriter:
         self.rec = dict(start=[], count=[], theta=[], w=[], phi=[])
         self.tr = dict(phi=[], acc=[], kind=[], bg=[], bl=[], rc=[], rd=[])
         self.tr_first = None
+        self.dim = 0                                          # length of one flattened theta (set by run_glam; keeps empty parts concatenable)
 
     def trace(self, it, phi, acc, kind, bg, bl, rc=np.nan, rd=np.nan):
         if self.tr_first is None:
@@ -54,6 +55,7 @@ class ChainWriter:
         self.rec["start"].append(start); self.rec["count"].append(count)
         self.rec["theta"].append(np.concatenate([np.asarray(b, float).ravel() for b in state[:self.n_sub]]))
         self.rec["w"].append(float(state[self.n_sub][0])); self.rec["phi"].append(float(phi))
+        self.dim = self.rec["theta"][-1].size
         if len(self.rec["start"]) >= self.save_every:
             self.flush()
 
@@ -61,9 +63,12 @@ class ChainWriter:
         if not self.rec["start"] and not self.tr["phi"]:
             return
         n = len(self.rec["start"])
+        # a window without a single accepted move leaves no record, only trace entries: reshape(0, -1) is an error in NumPy,
+        # and this crashed ranks stuck at a high-Phi state (the rank then hung in MPI_Finalize until the job's time limit)
+        theta = np.asarray(self.rec["theta"], float).reshape(n, -1) if n else np.empty((0, self.dim))
         np.savez(os.path.join(self.dir, f"rank{self.rank:03d}_part{self.part:04d}.npz"),
                  start=np.asarray(self.rec["start"], np.int64), count=np.asarray(self.rec["count"], np.int64),
-                 theta=np.asarray(self.rec["theta"], float).reshape(n, -1), w=np.asarray(self.rec["w"], float),
+                 theta=theta, w=np.asarray(self.rec["w"], float),
                  phi=np.asarray(self.rec["phi"], float),
                  trace_it0=-1 if self.tr_first is None else self.tr_first,
                  trace_phi=np.asarray(self.tr["phi"], float), trace_acc=np.asarray(self.tr["acc"], np.int8),
@@ -244,6 +249,7 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print, keep_mask=None,
         cur_start = 0
     comm.Barrier()                                            # every rank has made its first forward solve (see above)
     writer = ChainWriter(out_dir, rank, n_sub, cfg.save_every, part=writer_part)
+    writer.dim = int(sum(np.asarray(b).size for b in theta[:n_sub]))
     if resume:                                 # drop parts written after the snapshot (they will be rewritten);
         for fn in os.listdir(writer.dir):      # with no snapshot at all, that is every part of an earlier attempt
             if fn.startswith(f"rank{rank:03d}_part") and int(fn[-8:-4]) >= writer_part:

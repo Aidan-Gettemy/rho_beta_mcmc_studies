@@ -121,9 +121,17 @@ def main():
     if rank == 0:
         io.save_json(os.path.join(out, "block_dims.json"), dict(block_dims=[int(d) for d in model.block_dims]))
     keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
-    run_glam(model, cfg, comm, out, resume=args.resume, keep_mask=keep, selection_constrained_only=args.selection_constrained_only,
-             snapshot_every=args.snapshot_every, fixed_steps=args.fixed_steps,
-             resume_reseed=args.resume_reseed)
+    try:
+        run_glam(model, cfg, comm, out, resume=args.resume, keep_mask=keep, selection_constrained_only=args.selection_constrained_only,
+                 snapshot_every=args.snapshot_every, fixed_steps=args.fixed_steps,
+                 resume_reseed=args.resume_reseed)
+    except Exception:
+        # fail fast: a rank that raises would otherwise sit in MPI_Finalize (100 % CPU) while the others run on or wait, until the time limit
+        import traceback
+        traceback.print_exc()
+        sys.stdout.flush(); sys.stderr.flush()
+        comm.Abort(1)
+        raise
     if rank == 0:
         print("[glam] done:", out, flush=True)
 
