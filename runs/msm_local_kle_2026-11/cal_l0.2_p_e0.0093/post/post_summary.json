@@ -1,0 +1,40 @@
+{
+ "kind": "global",
+ "chains": 64,
+ "acceptance": {
+  "run": {
+   "mean": 0.24961078831658295,
+   "sd": 0.022271784896061797,
+   "min": 0.166,
+   "max": 0.506
+  }
+ },
+ "relerr_post_M_median": 0.01021474041044712,
+ "mpsrf": {
+  "theta": {
+   "dim": 19,
+   "n_samples": 3980,
+   "window_start_iteration": 1000,
+   "mpsrf_final": 1.3806727745139575,
+   "psrf_max_final": 1.3298899764777714,
+   "convergence_iteration": null
+  },
+  "theta_range58_common": {
+   "dim": 19,
+   "n_samples": 3980,
+   "window_start_iteration": 1000,
+   "mpsrf_final": 1.3806727745139562,
+   "psrf_max_final": 1.3356884065174208,
+   "convergence_iteration": null
+  }
+ },
+ "mpsrf_method": "MPSRF/PSRF follow the group's MATLAB convention (brho/mpsrf.py, getMSPRF / computeMPSRFcurve). Samples: the chain state saved every 50 iterations. The window STARTS at iteration 1000 of the run (of the phase, for the second phase of experiment 5), i.e. the adaptation period is NOT discarded, and GROWS to the end of the run: at curve point u it holds the saved samples from the start iteration to the current iteration, every 2-th sample (skip 2), with a curve point every 100 saved samples (5000 iterations). For each window, with m chains and n samples per chain: W = mean over chains of the within-chain covariance (divisor n-1), B/n = covariance of the m chain means (divisor m-1), MPSRF = sqrt((n-1)/n + (m+1)/m * lambda_max(W^-1 B/n)); the per-component PSRF_i = sqrt(V_ii / W_ii) with V = (n-1)/n W + (m+1)/m B/n, and the reported PSRF is max_i PSRF_i. 'convergence_iteration' = first curve point (ignoring the first 10 points) with MPSRF < 1.2, linearly interpolated. The x axis is the iteration of the last sample in the window. Not split-chain, no extra burn-in. Dimension: theta (64), or the 58 range coordinates V_+^T theta for runs whose theta lives in the rank-58 range; local coefficients as stated per entry.",
+ "fields": {
+  "run": {
+   "n": 2000,
+   "logk_sd_mean": 0.4963330828878351,
+   "p_sd_mean": 0.002180845359604652,
+   "logk_mean_error_rms": 0.16015022618322913
+  }
+ }
+}
