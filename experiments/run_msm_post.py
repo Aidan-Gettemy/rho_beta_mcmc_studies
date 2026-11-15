@@ -27,7 +27,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-from brho import msm_local as ML, msm_sampler as MS  # noqa: E402
+from brho import msm_local as ML, msm_sampler as MS, msm_flux as MF  # noqa: E402
 from brho.mpsrf import mpsrf_curve, convergence_iteration  # noqa: E402
 import msm_fieldplots as FP  # noqa: E402
 
@@ -198,6 +198,9 @@ def main(argv=None):
     res["mpsrf_method"] = mpsrf_method(a.mpsrf_start, se)
     print(res["mpsrf_method"])
     # ---- 4. posterior fields
+    flux_fd = None
+    if st.get("flux_noise_rel") is not None:                    # flux studies: the same flux data as the sampler
+        flux_fd = MF.FluxData(S, data, st["flux_noise_rel"], st["flux_sigma_rel"])
     rng = np.random.default_rng(a.seed)
     groups = [(i0, i1) for _, i0, i1, _, _ in ph]
     per = a.n_fields // len(groups)
@@ -212,6 +215,13 @@ def main(argv=None):
         for j in range(len(th_s)):
             pr[j] = S.phys.solve(np.exp(lk[j]))
         out_f[label] = dict(logk_mean=lk.mean(0), logk_sd=lk.std(0), p_mean=pr.mean(0), p_sd=pr.std(0), n=len(th_s))
+        # relative data misfit of every posterior field (box plots): pressure at the sensors and, if present, flux at the measured faces
+        out_f[label]["relerr_p"] = np.linalg.norm(pr[:, S.phys.obs_mask] - data.d[None], axis=1) / data.dnorm
+        if flux_fd is not None:
+            nn = S.n
+            qm = np.stack([MF.face_flux(np.exp(lk[j]).reshape(nn, nn), pr[j].reshape(nn, nn), flux_fd.ia, flux_fd.ja, flux_fd.ib, flux_fd.jb)
+                           for j in range(len(lk))])
+            out_f[label]["relerr_q"] = np.linalg.norm(qm - flux_fd.q[None], axis=1) / flux_fd.qnorm
     lk_true = S.kle.field(data.theta_true); p_true = S.phys.solve(np.exp(lk_true))
     n_ = S.n
     # ---- 4b. selected (log kappa, pressure) pairs: truth and the last saved state of a few chains
@@ -228,6 +238,8 @@ def main(argv=None):
     np.savez_compressed(os.path.join(fdir, "fields.npz"), grid_n=n_, logk_true=lk_true, p_true=p_true,
                         pair_labels=np.array([r[0] for r in rows]), pair_logk=pair_lk, pair_p=pair_p,
                         pair_relerr=pair_e, phases=np.array(list(out_f)),
+                        data_noise_relerr_p=float(data.relerr_truth),
+                        data_noise_relerr_q=float(flux_fd.relerr_truth) if flux_fd is not None else np.nan,
                         **{f"{l}_{q}": v for l, d in out_f.items() for q, v in d.items()})
     replot(fdir, a.cmap, a.cmap_std, a.levels)
     res["fields"] = {l: dict(n=d["n"], logk_sd_mean=float(d["logk_sd"].mean()), p_sd_mean=float(d["p_sd"].mean()),

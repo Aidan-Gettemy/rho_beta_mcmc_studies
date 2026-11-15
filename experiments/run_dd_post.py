@@ -93,7 +93,7 @@ def main(argv=None):
     os.makedirs(a.out, exist_ok=True)
     res = dict(kind="dd_mcmc", grids={}, fields={})
     S = data = None
-    fields_lk, fields_pr, out_f = {}, {}, {}
+    fields_lk, fields_pr, out_f, relerrs = {}, {}, {}, {}
     fig_sup, ax_sup = plt.subplots(figsize=(6.4, 3.8))
     fig_ar, axs_ar = plt.subplots(1, len(a.dirs), figsize=(5 * len(a.dirs), 3.4), squeeze=False)
     for gi, d in enumerate(a.dirs):
@@ -171,6 +171,8 @@ def main(argv=None):
                                                phi_median=float(np.median(0.5 * data.w * r2)),
                                                noise_level=float(data.relerr_truth))
         fields_lk[grid_name], fields_pr[grid_name] = lk, pr
+        relerrs[grid_name] = (rel, e_q if fl is not None else None)
+        noise_q = float(fl.relerr_truth) if fl is not None else np.nan
         res["grids"][grid_name] = gres
         print(f"{grid_name}: sup MPSRF final {sup_mp[-1]:.3f}, convergence iteration "
               f"{gres['mpsrf']['sup']['convergence_iteration']}, assembled relerr median {np.median(rel):.4f}", flush=True)
@@ -189,6 +191,10 @@ def main(argv=None):
     p_true = S.phys.solve(np.exp(lk_true))
     for label, (lk, pr) in sets.items():
         out_f[label] = dict(logk_mean=lk.mean(0), logk_sd=lk.std(0), p_mean=pr.mean(0), p_sd=pr.std(0), n=len(lk))
+        parts = [relerrs[l] for l in (labels if label == "pooled" else [label])]     # per-sample relative data misfit (box plots)
+        out_f[label]["relerr_p"] = np.concatenate([x[0] for x in parts])
+        if parts[0][1] is not None:
+            out_f[label]["relerr_q"] = np.concatenate([x[1] for x in parts])
     ref = None
     if os.path.exists(a.ref):
         ref = json.load(open(a.ref))["fields"]["run"]["logk_sd_mean"]
@@ -206,6 +212,7 @@ def main(argv=None):
     np.savez_compressed(os.path.join(a.out, "fields.npz"), grid_n=S.n, logk_true=lk_true, p_true=p_true,
                         pair_labels=np.array([r[0] for r in rows]), pair_logk=pair_lk, pair_p=pair_p,
                         pair_relerr=pair_e, phases=np.array(list(out_f)),
+                        data_noise_relerr_p=float(data.relerr_truth), data_noise_relerr_q=noise_q,
                         **{f"{l}_{q}": v for l, d in out_f.items() for q, v in d.items()})
     RP.replot(a.out, a.cmap, a.cmap_std, a.levels)
     json.dump(res, open(os.path.join(a.out, "post_summary.json"), "w"), indent=1)
