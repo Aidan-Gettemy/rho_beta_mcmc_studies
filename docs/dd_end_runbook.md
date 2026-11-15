@@ -20,3 +20,14 @@ interface-flux prior: measured faces sd eps, unmeasured sqrt(eps^2 + 0.03^2)).  
    global reference, timing).
 
 Check the pilot and restart logs of the first job before submitting the rest of a stage.
+
+## Per-problem burn-in, thinning and the convergence report (added after the stage-2 review)
+
+- Pressure-only cells have their own eps (sd ~ 0.5: 0.0102, 0.0286, 0.0267 at ell 0.2, 0.1, 0.05); pressure + flux cells keep 0.235, 0.2, 0.09.
+  The stage-2 pressure-only references at the shared eps were moved to `dd_end/sameeps/` (the same-eps comparison; not in the manifest).
+- Thinning (`SAVE_MIN` in `cluster/gen_dd_end_sbatch.py`): one state in 5 / 10 / 50 at ell 0.2 / 0.1 / 0.05, coarser when a run would keep more than
+  about 40000 states.  Burn-in: 500 / 5000 / 50000 iterations for pressure + flux; 30% of the restart for pressure only.  All provisional.
+- MPSRF: `--mpsrf-start 0 --mpsrf-log` (window from iteration 0, log-spaced curve points, no ignored points).  `post_summary.json` and the
+  master table give `conv_it` (first point below 1.2) and `stays_below_it` (from where it stays below); `burn_ok` says the burn-in is at or beyond it.
+  A growing window from iteration 0 includes the transient, so both are upper bounds on the time to stationarity.  If `burn_ok` is False,
+  re-run the post step with `--burn <stays_below_it>` (the chains are still on the cluster).

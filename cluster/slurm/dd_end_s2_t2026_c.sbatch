@@ -4,14 +4,14 @@
 #SBATCH --cpus-per-task=64            # one worker process per (subdomain, chain) task, 64 at a time
 #SBATCH --mem=64G
 #SBATCH --partition=g1mig
-#SBATCH --time=04:00:00
+#SBATCH --time=02:00:00
 #SBATCH -J dd_end_s2_t2026_c
 #SBATCH -o logs/dd_end_s2_t2026_c-%j.out
 #
 # dd_end study, stage 2: global pCN references
 # Cells (labels of the sheet): c.  Truth seed 2026.  eps frozen per ell (experiments/dd_end_cells.py).
 # 64 chains per sampler; pilot with the step adapted, then a restart with the step frozen; PROVISIONAL iteration counts
-# (pilot 30000, restart 500000 global / 300000 DD): extend any run with sup-MPSRF above 1.2 before reading it.
+# (pilot 50000, restart 1500000 global / 800000 DD): extend any run with sup-MPSRF above 1.2 before reading it.
 # Submit from the repo root:   sbatch cluster/slurm/dd_end_s2_t2026_c.sbatch
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
@@ -37,10 +37,10 @@ python tests/run_tests.py test_msm_dd
 
 # ---- c: global pCN reference
 OUT=runs/msm_local_kle_2026-11/dd_end/l0.1/p/c_t2026
-python experiments/run_msm_chains.py --kind global --ell 0.1 --grid 32 --kle-energy 0.966 --sigma-rel 0.0088388348 --data-relerr 0.2 --data-seed 2026 \
-    --chains 64 --workers 64 --save-every 50 --n-iter 30000 --adapt 30000 --burn 15000 --s0 0.2 --s-min 0.0001 --adapt-every 500 --seed0 7 \
+python experiments/run_msm_chains.py --kind global --ell 0.1 --grid 32 --kle-energy 0.966 --sigma-rel 0.0012639534 --data-relerr 0.0286 --data-seed 2026 \
+    --chains 64 --workers 64 --save-every 38 --n-iter 50000 --adapt 50000 --burn 25000 --s0 0.2 --s-min 0.0001 --adapt-every 500 --seed0 7 \
     --out "${OUT}_pilot"
-python experiments/run_msm_chains.py --kind global --ell 0.1 --grid 32 --kle-energy 0.966 --sigma-rel 0.0088388348 --data-relerr 0.2 --data-seed 2026 \
-    --chains 64 --workers 64 --save-every 50 --n-iter 500000 --adapt 0 --burn 1000 --step-from "${OUT}_pilot" --init-scale 1.0 --seed0 1007 \
+python experiments/run_msm_chains.py --kind global --ell 0.1 --grid 32 --kle-energy 0.966 --sigma-rel 0.0012639534 --data-relerr 0.0286 --data-seed 2026 \
+    --chains 64 --workers 64 --save-every 38 --n-iter 1500000 --adapt 0 --burn 450000 --step-from "${OUT}_pilot" --init-scale 1.0 --seed0 1007 \
     --out "$OUT"
-python experiments/run_msm_post.py --dir "$OUT" --n-fields 2000 --mpsrf-start 1000 --mpsrf-step-its 5000 --seed 11
+python experiments/run_msm_post.py --dir "$OUT" --n-fields 2000 --mpsrf-start 0 --mpsrf-log --seed 11

@@ -28,7 +28,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 from brho import msm_local as ML, msm_sampler as MS, msm_flux as MF  # noqa: E402
-from brho.mpsrf import mpsrf_curve, convergence_iteration  # noqa: E402
+from brho.mpsrf import mpsrf_curve, convergence_iteration, log_ks  # noqa: E402
 import msm_fieldplots as FP  # noqa: E402
 
 RANGE_KINDS = ("primal_raw", "primal_pinv")
@@ -47,6 +47,25 @@ def ar_blocks(acc, move, lo, hi, g=None, block=500):
 
 
 MPSRF_SKIP, MPSRF_STEP, MPSRF_LEVEL = 2, 15, 1.2
+LOG_CURVE = False        # --mpsrf-log: window from the start of the run, curve points log-spaced, no points ignored (resolves early convergence)
+IGNORE_FIRST = 10
+
+
+def curve(x):
+    """MPSRF curve of x (m, n, dim): uniform points (the group's convention) or log-spaced points."""
+    if LOG_CURVE:
+        return mpsrf_curve(x, skip=MPSRF_SKIP, step=MPSRF_STEP, iter_burn=1, ks=log_ks(x.shape[1]))
+    return mpsrf_curve(x, skip=MPSRF_SKIP, step=MPSRF_STEP, iter_burn=1)
+
+
+def stays_below(its, c, level=MPSRF_LEVEL):
+    """First curve point after the LAST point at or above `level`: the iteration from which the curve stays below the level to
+    the end of the run; None if the final point is not below it."""
+    c = np.asarray(c, float)
+    if not np.isfinite(c[-1]) or c[-1] >= level:
+        return None
+    bad = np.flatnonzero(~(c < level))
+    return float(its[bad[-1] + 1]) if len(bad) else float(its[0])
 
 
 def mpsrf_method(start, save_every):
@@ -61,7 +80,7 @@ def mpsrf_method(start, save_every):
             f"(divisor m-1), MPSRF = sqrt((n-1)/n + (m+1)/m * lambda_max(W^-1 B/n)); the per-component PSRF_i = "
             f"sqrt(V_ii / W_ii) with V = (n-1)/n W + (m+1)/m B/n, and the reported PSRF is max_i PSRF_i. "
             f"'convergence_iteration' = first curve point (ignoring the first 10 points) with MPSRF < {MPSRF_LEVEL}, linearly "
-            f"interpolated. The x axis is the iteration of the last sample in the window. Not split-chain, no extra burn-in. "
+            f"interpolated (with --mpsrf-log: curve points log-spaced, no points ignored, and 'stays_below_from_iteration' = first point after the last one at or above {MPSRF_LEVEL}). The x axis is the iteration of the last sample in the window. Not split-chain, no extra burn-in. "
             f"Dimension: theta (64), or the 58 range coordinates V_+^T theta for runs whose theta lives in the rank-58 range; "
             f"local coefficients as stated per entry.")
 
@@ -69,19 +88,21 @@ def mpsrf_method(start, save_every):
 def mpsrf_of(x, x0_iter, save_every, name, fdir, res, level=MPSRF_LEVEL):
     """x (m, n, dim) saved samples, the first one at iteration x0_iter (the window start)."""
     try:
-        cur = mpsrf_curve(x, skip=MPSRF_SKIP, step=MPSRF_STEP, iter_burn=1)
+        cur = curve(x)
     except Exception as e:                       # pragma: no cover
         res[name] = dict(error=str(e)); return
     if len(cur["k"]) == 0 or np.all(np.isnan(cur["mpsrf"])):
         res[name] = dict(dim=int(x.shape[2]), n_samples=int(x.shape[1]), note="too few samples"); return
     its = x0_iter + (cur["k"] - 1) * save_every       # iteration of the last sample in the window
-    conv = convergence_iteration(its.astype(float), cur["mpsrf"], level)
+    conv = convergence_iteration(its.astype(float), cur["mpsrf"], level, ignore_first=IGNORE_FIRST)
+    sb = stays_below(its.astype(float), cur["mpsrf"], level)
     res[name] = dict(dim=int(x.shape[2]), n_samples=int(x.shape[1]), window_start_iteration=int(x0_iter),
                      mpsrf_final=float(cur["mpsrf"][-1]), psrf_max_final=float(cur["psrf"][-1]),
-                     convergence_iteration=conv)
+                     convergence_iteration=conv, stays_below_from_iteration=sb)
     fig, ax = plt.subplots(figsize=(6, 3.6))
     ax.plot(its, cur["mpsrf"], label="MPSRF"); ax.plot(its, cur["psrf"], label="max PSRF", alpha=.7)
     ax.axhline(level, color="0.5", ls=":"); ax.set_ylim(1, min(3, max(1.3, np.nanmax(cur["mpsrf"][10:]) * 1.05)) if len(cur["mpsrf"]) > 10 else 3)
+    if LOG_CURVE: ax.set_xscale("log")
     ax.set_xlabel("iteration"); ax.set_title(f"{name} (dim {x.shape[2]}, {x.shape[0]} chains)")
     ax.legend(); fig.tight_layout(); fig.savefig(os.path.join(fdir, f"mpsrf_{name}.png"), dpi=130); plt.close(fig)
 
@@ -104,6 +125,8 @@ def main(argv=None):
                     help="MPSRF window starts this many iterations after the start of the run (of the phase for 5)")
     ap.add_argument("--mpsrf-step-its", type=int, default=None,
                     help="iterations between MPSRF curve points (default: %d saved samples)" % MPSRF_STEP)
+    ap.add_argument("--mpsrf-log", action="store_true",
+                    help="MPSRF curve with log-spaced points and no ignored points (use with --mpsrf-start 0): resolves convergence within tens of iterations")
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument("--burn", type=int, default=None,
                     help="discard this many iterations before the fields and the summary (overrides the run's own burn; "
@@ -124,6 +147,8 @@ def main(argv=None):
         M = st["burn"]
     if a.burn is not None:
         M = a.burn
+    if a.mpsrf_log:
+        globals()["LOG_CURVE"], globals()["IGNORE_FIRST"] = True, 0
     if a.mpsrf_step_its:                                          # curve point every a.mpsrf_step_its iterations
         globals()["MPSRF_STEP"] = max(1, a.mpsrf_step_its // se)
     Z = np.load(os.path.join(a.dir, "chains.npz"))

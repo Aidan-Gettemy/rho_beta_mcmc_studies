@@ -33,7 +33,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 from brho import msm_dd as DD, msm_flux as MF  # noqa: E402
-from brho.mpsrf import mpsrf_curve, convergence_iteration  # noqa: E402
+from brho.mpsrf import mpsrf_curve, convergence_iteration, log_ks  # noqa: E402
 import run_msm_post as RP  # noqa: E402
 from run_dd_chains import build, GRID_TAG  # noqa: E402
 
@@ -55,7 +55,7 @@ def mpsrf_blocks(Z, nb, start, se, level=RP.MPSRF_LEVEL):
     mp, ps, dims = [], [], []
     for k in range(nb):
         x = Z[f"c_{k:02d}"][:, j0:].astype(float)
-        cur = mpsrf_curve(x, skip=RP.MPSRF_SKIP, step=RP.MPSRF_STEP, iter_burn=1)
+        cur = RP.curve(x)
         mp.append(cur["mpsrf"]); ps.append(cur["psrf"]); dims.append(int(x.shape[2]))
         its = its0 + (cur["k"] - 1) * se
     return its.astype(float), np.array(mp), np.array(ps), dims
@@ -72,7 +72,7 @@ def stays_below(its, curve, level=RP.MPSRF_LEVEL):
 
 
 def curve_stats(its, curve, level=RP.MPSRF_LEVEL):
-    return dict(final=float(curve[-1]), convergence_iteration=convergence_iteration(its, curve, level))
+    return dict(final=float(curve[-1]), convergence_iteration=convergence_iteration(its, curve, level, ignore_first=RP.IGNORE_FIRST))
 
 
 def main(argv=None):
@@ -83,6 +83,7 @@ def main(argv=None):
     ap.add_argument("--mpsrf-start", type=int, default=1000)
     ap.add_argument("--mpsrf-step-its", type=int, default=None,
                     help="iterations between MPSRF curve points (default: %d saved samples)" % RP.MPSRF_STEP)
+    ap.add_argument("--mpsrf-log", action="store_true", help="log-spaced MPSRF curve points, no ignored points (use with --mpsrf-start 0)")
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument("--overlap-blend", action="store_true", help="overlapping runs: assemble with the smooth partition of unity (re-post of existing chains)")
     ap.add_argument("--ref", default=REF, help="post_summary.json of the global-pCN run (sd ratio), optional")
@@ -90,6 +91,8 @@ def main(argv=None):
     ap.add_argument("--cmap-std", default=None)
     ap.add_argument("--levels", type=int, default=None)
     a = ap.parse_args(argv)
+    if a.mpsrf_log:
+        RP.LOG_CURVE, RP.IGNORE_FIRST = True, 0
     os.makedirs(a.out, exist_ok=True)
     res = dict(kind="dd_mcmc", grids={}, fields={})
     S = data = None
@@ -117,12 +120,12 @@ def main(argv=None):
         gres["mpsrf"] = dict(window_start_iteration=int(a.mpsrf_start // se * se),
                              n_samples=int(Z["c_00"].shape[1] - a.mpsrf_start // se),
                              sup=dict(mpsrf_final=float(sup_mp[-1]), psrf_max_final=float(sup_ps[-1]),
-                                      convergence_iteration=convergence_iteration(its, sup_mp, RP.MPSRF_LEVEL),
+                                      convergence_iteration=convergence_iteration(its, sup_mp, RP.MPSRF_LEVEL, ignore_first=RP.IGNORE_FIRST),
                                       stays_below_from_iteration=stays_below(its, sup_mp),
-                                      psrf_convergence_iteration=convergence_iteration(its, sup_ps, RP.MPSRF_LEVEL)),
+                                      psrf_convergence_iteration=convergence_iteration(its, sup_ps, RP.MPSRF_LEVEL, ignore_first=RP.IGNORE_FIRST)),
                              blocks=[dict(block=k, dim=dims[k], mpsrf_final=float(mp[k][-1]),
                                           psrf_max_final=float(ps[k][-1]),
-                                          convergence_iteration=convergence_iteration(its, mp[k], RP.MPSRF_LEVEL))
+                                          convergence_iteration=convergence_iteration(its, mp[k], RP.MPSRF_LEVEL, ignore_first=RP.IGNORE_FIRST))
                                      for k in range(nb)],
                              worst_block_final=int(np.argmax(mp[:, -1])))
         fig, ax = plt.subplots(figsize=(6.4, 3.8))
@@ -133,6 +136,7 @@ def main(argv=None):
         ax.axhline(RP.MPSRF_LEVEL, color="0.4", ls=":")
         top = np.nanmax(sup_mp[10:]) if len(sup_mp) > 10 else 3
         ax.set_ylim(1, min(3, max(1.3, top * 1.05)))
+        if RP.LOG_CURVE: ax.set_xscale("log")
         ax.set_xlabel("iteration"); ax.set_title(f"{grid_name}: {nb} subdomains, {m} chains each"); ax.legend()
         fig.tight_layout(); fig.savefig(os.path.join(a.out, f"mpsrf_{grid_name}.png"), dpi=130); plt.close(fig)
         ax_sup.plot(its, sup_mp, label=f"{grid_name} (sup MPSRF)")
