@@ -1,0 +1,61 @@
+{
+ "settings": {
+  "kind": "global",
+  "chains": 64,
+  "n_iter": 20000,
+  "adapt": 20000,
+  "phase_k": null,
+  "s0": 0.2,
+  "step_from": null,
+  "s_min": 0.0001,
+  "adapt_every": 500,
+  "init_scale": 1.0,
+  "burn": 10000,
+  "primal_dim": 4,
+  "dual_energy": 0.95,
+  "alt_L": 1,
+  "alt_no_offset": false,
+  "save_every": 50,
+  "sigma_rel": 0.0018959301,
+  "data_relerr": 0.0429,
+  "data_seed": 2026,
+  "seed0": 7,
+  "flux_noise_rel": null,
+  "flux_sigma_rel": 0.08,
+  "workers": 64,
+  "ell": 0.1,
+  "grid": 32,
+  "blocks": 4,
+  "kle_energy": 0.966,
+  "out": "/scratch/ganymede2/arg210006/rho_beta_mcmc_studies/runs/msm_local_kle_2026-11/cal_l0.1_p_e0.0429_pilot"
+ },
+ "data": {
+  "seed": 2026,
+  "sigma_rel": 0.0018959301,
+  "data_relerr": 0.0429,
+  "n_obs": 512,
+  "sigma_p": 0.022305762937610846,
+  "data_norm": 11.78769367679569,
+  "relerr_at_truth": 0.04558228471946362,
+  "phi_at_truth": 289.0131079745424,
+  "phi_noise_floor_expected": 255.9999884029969
+ },
+ "wall_sec": 23.151509761810303,
+ "s_frozen": null,
+ "sec_per_chain": 20.457115028053522,
+ "post_acc_mean": 0.25189375,
+ "post_acc_chain_min": 0.2379,
+ "post_acc_chain_max": 0.2647,
+ "post_relerr_median_of_chain_medians": 0.04553661122918129,
+ "post_relerr_chain_median_max": 0.046057336032390594,
+ "post_relerr_last": 0.045420899987220764,
+ "s_final_median": [
+  0.029128868132829666
+ ],
+ "s_final_min": [
+  0.02322135493159294
+ ],
+ "s_final_max": [
+  0.029128868132829666
+ ]
+}
