@@ -129,9 +129,9 @@ def main(argv=None):
     Z = np.load(os.path.join(a.dir, "chains.npz"))
     fdir = os.path.join(a.dir, "post"); os.makedirs(fdir, exist_ok=True)
     pdim = st.get("primal_dim", 4)
-    ell, grid = st.get("ell", 0.1), st.get("grid", 32); std = (ell == 0.1 and grid == 32)
+    ell, grid = st.get("ell", 0.1), st.get("grid", 32); nbk = st.get("blocks", 4); std = (ell == 0.1 and grid == 32 and nbk == 4)
     S = ML.MSMSetup(n=grid, ell=ell, kle_energy=st.get("kle_energy", ML.KLE_ENERGY_R64), r_expected=64 if std else None,
-                    primal_local_dim=pdim, dual_energy=st.get("dual_energy", 0.95)); P, D = S.primal, S.dual
+                    blocks=nbk, primal_local_dim=(pdim or None), dual_energy=st.get("dual_energy", 0.95)); P, D = S.primal, S.dual
     if std and (P.r_plus != (58 if pdim == 4 else 64) or D.r_plus != 64):
         raise SystemExit("GUARD: rank outcome changed")
     data = MS.Data(S, st["sigma_rel"], st["data_seed"], data_relerr=st.get("data_relerr"))

@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""Collect the dd_end results into one master table (committed summaries only: post/post_summary.json, post/fields.npz, summary.json).
+
+    python experiments/dd_end_collect.py                      # reads runs/msm_local_kle_2026-11/dd_end/manifest.csv
+    python experiments/dd_end_collect.py --root DIR --out master_table.csv
+
+One row per run (a DD+ cell gives two rows: the dual grid alone, and the pooled primal + dual estimate).  Every metric is computed from the
+stored posterior mean / sd fields of log k and the truth, so global, MSM-basis and DD runs are measured the same way:
+  sd_mean       mean over the grid of the posterior sd of log k
+  err_rms       RMS over the grid of (posterior mean - truth)
+  err_over_sd   err_rms / sd_mean
+  cover90       fraction of cells whose truth lies within mean +- 1.645 sd (pointwise, Gaussian marginals; nominal 0.90)
+  sup_mpsrf     sup over blocks of the MPSRF at the end of the run (window from iteration 1000; formula in the post-processing)
+  sd_ratio, err_ratio   to the global pCN reference of the same ell, data type, truth and eps factor
+  wall_sec, sec_per_chain   from the sampler's summary.json (a DD run's tasks are blocks x chains)."""
+import argparse
+import csv
+import json
+import os
+
+import numpy as np
+
+ROOT = "runs/msm_local_kle_2026-11/dd_end"
+
+
+def _field_metrics(npz, prefix):
+    z = np.load(npz)
+    truth, mean, sd = z["logk_true"], z[f"{prefix}_logk_mean"], z[f"{prefix}_logk_sd"]
+    err = mean - truth
+    e, s = float(np.sqrt(np.mean(err ** 2))), float(np.mean(sd))
+    return dict(sd_mean=s, err_rms=e, err_over_sd=e / s, cover90=float(np.mean(np.abs(err) <= 1.645 * sd)),
+                n_fields=int(z[f"{prefix}_n"]))
+
+
+def _mpsrf(post_summary, method, variant):
+    d = json.load(open(post_summary))
+    if method in ("pcn", "msm"):
+        m = d["mpsrf"]["theta"]
+        return float(m["mpsrf_final"]), float(m["psrf_max_final"])
+    g = d["grids"]
+    vals = [(v["mpsrf"]["sup"]["mpsrf_final"], v["mpsrf"]["sup"]["psrf_max_final"]) for v in g.values()]
+    return float(max(x[0] for x in vals)), float(max(x[1] for x in vals))
+
+
+def collect_run(d, method):
+    """Rows (list of dicts) of one run folder `d`."""
+    rows = []
+    summ = json.load(open(os.path.join(d, "summary.json"))) if os.path.exists(os.path.join(d, "summary.json")) else {}
+    st = summ.get("settings", {})
+    timing = dict(wall_sec=summ.get("wall_sec"), sec_per_chain=summ.get("sec_per_chain"), n_iter=st.get("n_iter"), chains=st.get("chains"))
+    if method in ("pcn", "msm"):
+        variants = [("global" if method == "pcn" else "msm", "post", "run")]
+    elif method == "ddplus":
+        variants = [("dual", "post", "dual"), ("pooled", "post_pooled", "pooled")]
+    else:
+        variants = [("primal", "post", "primal")]
+    for name, sub, prefix in variants:
+        ps, fn = os.path.join(d, sub, "post_summary.json"), os.path.join(d, sub, "fields.npz")
+        if not (os.path.exists(ps) and os.path.exists(fn)):
+            rows.append(dict(variant=name, status="missing"))
+            continue
+        r = dict(variant=name, status="done", **_field_metrics(fn, prefix), **timing)
+        r["sup_mpsrf"], r["psrf_max"] = _mpsrf(ps, method, name)
+        rows.append(r)
+    return rows
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--root", default=ROOT)
+    ap.add_argument("--out", default=None)
+    a = ap.parse_args()
+    man = list(csv.DictReader(open(os.path.join(a.root, "manifest.csv"))))
+    table = []
+    for m in man:
+        for r in collect_run(m["dir"], m["method"]):
+            table.append(dict(label=m["label"], ell=m["ell"], flux=m["flux"], method=m["method"], blocks=m["blocks"], truth=m["truth"],
+                              eps_factor=m["eps_factor"], dir=m["dir"], **r))
+    ref = {(t["ell"], t["flux"], t["truth"], t["eps_factor"]): t for t in table if t["method"] == "pcn" and t["status"] == "done"}
+    for t in table:
+        g = ref.get((t["ell"], t["flux"], t["truth"], t["eps_factor"]))
+        if t["status"] == "done" and g:
+            t["sd_ratio"], t["err_ratio"] = t["sd_mean"] / g["sd_mean"], t["err_rms"] / g["err_rms"]
+    cols = ["label", "variant", "ell", "flux", "method", "blocks", "truth", "eps_factor", "status", "sd_mean", "err_rms", "err_over_sd", "cover90",
+            "sup_mpsrf", "psrf_max", "sd_ratio", "err_ratio", "n_iter", "chains", "wall_sec", "sec_per_chain", "n_fields", "dir"]
+    out = a.out or os.path.join(a.root, "master_table.csv")
+    with open(out, "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(table)
+    done = sum(t["status"] == "done" for t in table)
+    bad = [t["label"] for t in table if t["status"] == "done" and t["sup_mpsrf"] > 1.2]
+    print(f"{done} of {len(table)} rows done; sup-MPSRF above 1.2: {sorted(set(bad)) or 'none'}; table: {out}")
+
+
+if __name__ == "__main__":
+    main()

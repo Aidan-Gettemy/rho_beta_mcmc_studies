@@ -34,8 +34,12 @@ _G = {}
 def build(args):
     """Setup, data, spline and the DDGrid of the chosen decomposition (guards as in the MSM study)."""
     pdim, den = getattr(args, "primal_local_dim", 6), getattr(args, "dual_energy", 0.95)
-    S = ML.MSMSetup(primal_local_dim=pdim, dual_energy=den)
-    if (pdim, den) == (6, 0.95) and (S.primal.r_k != [6] * 16 or S.primal.r_plus != 64 or S.dual.r_plus != 64 or S.dual.p != 114):
+    n, ell, nb = getattr(args, "n", 32), getattr(args, "ell", 0.1), getattr(args, "blocks", 4)
+    kle_energy = getattr(args, "kle_energy", ML.KLE_ENERGY_R64)
+    std = (n, ell, nb) == (32, 0.1, 4)                                # the original study problem: guards apply, else dd_end problems
+    S = ML.MSMSetup(n=n, ell=ell, kle_energy=kle_energy, r_expected=64 if std else None, blocks=nb,
+                    primal_local_dim=(pdim or None), dual_energy=den)   # --primal-local-dim 0: local energy rule (95%) on the primal blocks
+    if std and (pdim, den) == (6, 0.95) and (S.primal.r_k != [6] * 16 or S.primal.r_plus != 64 or S.dual.r_plus != 64 or S.dual.p != 114):
         raise SystemExit(f"GUARD: expected 16 primal blocks of 6 modes (95% rule), r_+ 64 / 64 and dual p 114; got "
                          f"{S.primal.r_k}, {S.primal.r_plus}, {S.dual.r_plus}, {S.dual.p}")
     data = MS.Data(S, args.sigma_rel, args.data_seed, data_relerr=args.data_relerr)
@@ -145,6 +149,10 @@ def main(argv=None):
                     help="with --h-prior-rel: prior sd factor of h on faces that carry a flux measurement (default: same as --h-prior-rel)")
     ap.add_argument("--h-corr-len", type=float, default=4.0, help="correlation length (cells) of the h prior along a side")
     ap.add_argument("--robin-interp", default="cubic", choices=["linear", "cubic"], help="interpolation of the flux along a line")
+    ap.add_argument("--n", type=int, default=32, help="grid cells per side (default 32)")
+    ap.add_argument("--ell", type=float, default=0.1, help="correlation length (default 0.1)")
+    ap.add_argument("--blocks", type=int, default=4, help="primal blocks per side (dual: blocks+1); default 4")
+    ap.add_argument("--kle-energy", type=float, default=ML.KLE_ENERGY_R64, help="global KLE energy fraction (default 0.966: r = 64 at ell 0.1)")
     ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--out", required=True)
     a = ap.parse_args(argv)

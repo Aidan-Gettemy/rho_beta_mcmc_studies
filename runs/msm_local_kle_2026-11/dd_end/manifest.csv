@@ -1,0 +1,7 @@
+label,ell,flux,method,blocks,truth,eps_factor,dir,job,status
+a,0.2,False,pcn,,2026,1.0,runs/msm_local_kle_2026-11/dd_end/l0.2/p/a_t2026,dd_end_s2_t2026_a,planned
+b,0.2,True,pcn,,2026,1.0,runs/msm_local_kle_2026-11/dd_end/l0.2/pf/b_t2026,dd_end_s2_t2026_b,planned
+c,0.1,False,pcn,,2026,1.0,runs/msm_local_kle_2026-11/dd_end/l0.1/p/c_t2026,dd_end_s2_t2026_c,planned
+d,0.1,True,pcn,,2026,1.0,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/d_t2026,dd_end_s2_t2026_d,planned
+e,0.05,False,pcn,,2026,1.0,runs/msm_local_kle_2026-11/dd_end/l0.05/p/e_t2026,dd_end_s2_t2026_e,planned
+f,0.05,True,pcn,,2026,1.0,runs/msm_local_kle_2026-11/dd_end/l0.05/pf/f_t2026,dd_end_s2_t2026_f,planned
