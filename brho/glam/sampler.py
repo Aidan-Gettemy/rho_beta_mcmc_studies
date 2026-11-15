@@ -224,9 +224,14 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print, keep_mask=None,
             cs = pickle.load(f)
         theta, phi_cur = cs["theta"], cs["phi"]
         re_cur = cs.get("re")
-        if re_cur is None:                                   # snapshot of an older run: one extra solve
-            _, rc, rd = model.eval_state(theta, rank)
+        # ONE forward solve of the saved state on EVERY rank, finished chains included.  The tracer imports petsc4py lazily at its
+        # first call and PETSc's initialisation is collective over MPI_COMM_WORLD: a resume in which some chains have nothing left
+        # to run (they never call the tracer) deadlocked the others inside `import petsc4py.PETSc` (seen on Juno, s80k_pcn).
+        phi_chk, rc, rd = model.eval_state(theta, rank)
+        if re_cur is None:                                   # snapshot of an older run
             re_cur = (rc, rd)
+        if not np.isclose(phi_chk, phi_cur, rtol=1e-3, atol=1e-3):
+            log(f"[glam] WARNING rank {rank}: snapshot Phi {phi_cur:.6g}, re-evaluated {phi_chk:.6g}")
         rng.bit_generator.state = cs["rng"]
         if resume_reseed:                                    # fresh random stream instead of replaying the saved one (see docstring)
             rng.bit_generator.state = np.random.default_rng([cfg.seed0, rank, int(cs["next_it"]), int(resume_reseed)]).bit_generator.state
@@ -237,6 +242,7 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print, keep_mask=None,
     else:
         theta, phi_cur, re_cur = _init_state(model, rng, rank)
         cur_start = 0
+    comm.Barrier()                                            # every rank has made its first forward solve (see above)
     writer = ChainWriter(out_dir, rank, n_sub, cfg.save_every, part=writer_part)
     if resume:                                 # drop parts written after the snapshot (they will be rewritten);
         for fn in os.listdir(writer.dir):      # with no snapshot at all, that is every part of an earlier attempt

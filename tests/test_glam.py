@@ -595,6 +595,27 @@ def test_pcn_snapshots_resume_and_extend_exactly():
         ThreadWorld(1).run(lambda comm: run_glam(model, gl, comm, tempfile.mkdtemp(), log=lambda *_: None, snapshot_every=10))
 
 
+def test_resume_makes_every_rank_solve_once_before_the_loop_even_finished_chains():
+    """The tracer's lazy petsc4py import is collective: a resume where some chains are already finished must still make ALL ranks
+    call the forward model before the loop, or the unfinished ones deadlock in the import (seen on Juno)."""
+    import threading
+    base = tempfile.mkdtemp()
+    _pcn_run(80, base)                                            # all three chains finished (snapshots 40, 80)
+    calls, lock = {}, threading.Lock()
+
+    class Counting(ToyModel):
+        def eval_state(self, state, rank=0):
+            with lock:
+                calls[rank] = calls.get(rank, 0) + 1
+            return super().eval_state(state, rank)
+
+    model = Counting(_beta(), n_sub=4, m=6, n_cells=60, n_times=3, seed=5, sigma_conc=0.05, sigma_dp=0.05)
+    cfg = C.GlamConfig(n_iter=80, window1=50, window2=0, burnin_length=10 ** 8, global_stage_length=10 ** 8, local_stage_length=10 ** 8,
+                       min_global_stage_length=10 ** 8, min_local_stage_length=10 ** 8, adapt_interval=10, beta_g0=0.1, save_every=25, log_every=0)
+    ThreadWorld(3).run(lambda comm: run_glam(model, cfg, comm, base, resume=True, log=lambda *_: None, snapshot_every=40))
+    assert set(calls) == {0, 1, 2} and all(v >= 1 for v in calls.values())     # nothing left to run, yet every rank solved once
+
+
 def test_resume_reseed_continues_from_the_saved_state_with_new_randomness():
     base = tempfile.mkdtemp()
     _pcn_run(130, base)                                           # snapshots at 40, 80, 120, final 130
