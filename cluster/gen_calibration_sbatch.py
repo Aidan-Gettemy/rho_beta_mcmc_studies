@@ -48,7 +48,7 @@ python experiments/run_msm_chains.py $COMMON --save-every 50 --n-iter {restart} 
 python experiments/run_msm_post.py --dir "$OUT" --n-fields 2000 --mpsrf-start 1000 --mpsrf-step-its 5000 --seed 11
 """
 os.makedirs("cluster/slurm", exist_ok=True)
-jobs = [dict(ell=0.05, grid=64, nobs=2048, nflux=448, energy=0.95, eps=e, chains=16, pilot=50000, restart=300000, time="03:00:00") for e in (0.1, 0.2, 0.4)]
+jobs = [dict(ell=0.05, grid=64, nobs=2048, nflux=448, energy=0.95, eps=e, chains=16, pilot=50000, restart=500000, time="05:00:00") for e in (0.09,)]   # eps 0.1/0.2/0.4 were run first; 0.09 is the interpolated sd 0.25
 names = []
 for j in jobs:
     j["sigma"] = j["eps"] / j["nobs"] ** 0.5; j["half"] = j["pilot"] // 2; j["fsig"] = j["eps"] / j["nflux"] ** 0.5
