@@ -48,9 +48,9 @@ GLAM_FLAGS=(
   --snapshot-every 500                # pCN run: every chain writes a resumable state every 500 iterations and at the end (anchor_state/chain_r*_ite*.pkl)
   # --- Length and windows  (window 1: step sizes adapt; window 2: steps frozen, local stages still run; the tail for post-processing starts at window1)
   --fixed-steps                       # no step-size adaptation: beta-g0 / beta-l0 are used for the whole run
-  --n-iter 80000
+  --n-iter ${N_ITER:-80000}          # 80000 as run; the 20k extension submits with N_ITER=100000 (s80k_extend.sh)
   --window1 0                         # no adaptation window (fixed step sizes below); post-process with an explicit --start-iteration
-  --window2 80000                     # local stages (GLAM arms) run until window1 + window2 = 80000
+  --window2 ${N_ITER:-80000}                     # local stages (GLAM arms) run until window1 + window2 = n-iter
 
   # --- Stage schedule (exchanges happen at the end of every stage)
   --burnin-length 100000000        # r24m3: 500.  Burn-in never ends: pure global pCN, no exchange
