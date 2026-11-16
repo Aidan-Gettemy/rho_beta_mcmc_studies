@@ -16,11 +16,12 @@ import math
 
 # ---- frozen settings (calibration: docs / experiment summary; eps = per-datum noise relative to the rms pressure and flux).
 # eps: pressure + flux cells (global posterior sd of log k ~ 0.25).  eps_p: pressure-only cells (sd ~ 0.5; interpolated from three 64-chain
-# pCN runs per ell at sd 0.489-0.551, 0.493-0.532, 0.496-0.537; pressure alone is far less informative at the same eps).
+# pCN runs per ell, then raised ~25-45% after the converged ell 0.2 run (eps 0.0102) gave sd 0.458, not 0.5: the short calibration
+# chains had not converged and read high.  Only ell 0.2 has a converged check; the official runs show where the others land).
 PROBLEMS = {
-    0.2:  dict(n=16, kle_energy=0.966, eps=0.235, eps_p=0.0102, n_obs=128,  n_flux=112, blocks=(2, 4),    letters=("a", "b", "g", "h")),
-    0.1:  dict(n=32, kle_energy=0.966, eps=0.2,   eps_p=0.0286, n_obs=512,  n_flux=224, blocks=(2, 4, 8), letters=("c", "d", "i", "j")),
-    0.05: dict(n=64, kle_energy=0.95,  eps=0.09,  eps_p=0.0267, n_obs=2048, n_flux=448, blocks=(2, 4, 8), letters=("e", "f", "k", "l")),
+    0.2:  dict(n=16, kle_energy=0.966, eps=0.235, eps_p=0.0148, n_obs=128,  n_flux=112, blocks=(2, 4),    letters=("a", "b", "g", "h")),
+    0.1:  dict(n=32, kle_energy=0.966, eps=0.2,   eps_p=0.0364, n_obs=512,  n_flux=224, blocks=(2, 4, 8), letters=("c", "d", "i", "j")),
+    0.05: dict(n=64, kle_energy=0.95,  eps=0.09,  eps_p=0.034, n_obs=2048, n_flux=448, blocks=(2, 4, 8), letters=("e", "f", "k", "l")),
 }
 DATA_SEED = 2026
 ROBIN_ALPHA = 0.1
