@@ -37,7 +37,7 @@ ITERS = {(0.2, True): (20000, 300000, 200000, 1), (0.1, True): (30000, 500000, 3
 # pressure-only cells (slow pCN).  The MPSRF window starts at iteration 0 on log-spaced points, so the convergence iteration is visible; the
 # post reports whether the burn-in is at or beyond the iteration from which the curve stays below 1.2 and can be re-run with --burn.
 SAVE_MIN = {0.2: 5, 0.1: 10, 0.05: 50}
-BURN_FLUX = {0.2: 500, 0.1: 5000, 0.05: 50000}
+BURN_FLUX = {0.2: 7000, 0.1: 25000, 0.05: 360000}      # measured in stage 2: stays-below-1.2 iterations 6.3k, 23k, 356k (global pCN, pressure + flux)
 
 
 def save_every(cell, restart=None):
@@ -102,8 +102,8 @@ python experiments/{script} {flags} \\
     --chains {chains} --workers 64 --save-every {save} --n-iter {restart} --adapt 0 --burn {burn} --step-from "${{OUT}}_pilot" --init-scale 1.0 --seed0 1007 \\
     --out "$OUT"
 """
-POST_MSM = "python experiments/run_msm_post.py --dir \"$OUT\" --n-fields 2000 --mpsrf-start 0 --mpsrf-log --seed 11\n"
-POST_DD = ("python experiments/run_dd_post.py --dirs {dirs} --out \"{outpost}\" --n-fields 2000 --mpsrf-start 0 --mpsrf-log "
+POST_MSM = "python experiments/run_msm_post.py --dir \"$OUT\" --n-fields 2000 --mpsrf-start 0 --mpsrf-log --auto-burn --seed 11\n"
+POST_DD = ("python experiments/run_dd_post.py --dirs {dirs} --out \"{outpost}\" --n-fields 2000 --mpsrf-start 0 --mpsrf-log --auto-burn "
            "--seed 11 --ref {ref}\n")
 
 

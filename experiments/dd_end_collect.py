@@ -69,8 +69,9 @@ def collect_run(d, method):
             continue
         r = dict(variant=name, status="done", **_field_metrics(fn, prefix), **timing)
         r["sup_mpsrf"], r["psrf_max"], r["conv_it"], r["stays_below_it"] = _mpsrf(ps, method, name)
-        r["burn"] = st.get("burn")
-        r["burn_ok"] = (r["stays_below_it"] is not None and st.get("burn") is not None and st["burn"] >= r["stays_below_it"])
+        burn = json.load(open(ps)).get("burn_used", st.get("burn"))      # the burn the post actually used (a re-post may override the run's own)
+        r["burn"] = burn
+        r["burn_ok"] = (r["stays_below_it"] is not None and burn is not None and burn >= r["stays_below_it"])
         rows.append(r)
     return rows
 

@@ -41,6 +41,6 @@ python experiments/run_msm_chains.py --kind global --ell 0.2 --grid 16 --kle-ene
     --chains 64 --workers 64 --save-every 8 --n-iter 20000 --adapt 20000 --burn 10000 --s0 0.2 --s-min 0.0001 --adapt-every 500 --seed0 7 \
     --out "${OUT}_pilot"
 python experiments/run_msm_chains.py --kind global --ell 0.2 --grid 16 --kle-energy 0.966 --sigma-rel 0.020771262 --data-relerr 0.235 --data-seed 2026 --flux-noise-rel 0.235 --flux-sigma-rel 0.022205413 \
-    --chains 64 --workers 64 --save-every 8 --n-iter 300000 --adapt 0 --burn 500 --step-from "${OUT}_pilot" --init-scale 1.0 --seed0 1007 \
+    --chains 64 --workers 64 --save-every 8 --n-iter 300000 --adapt 0 --burn 7000 --step-from "${OUT}_pilot" --init-scale 1.0 --seed0 1007 \
     --out "$OUT"
 python experiments/run_msm_post.py --dir "$OUT" --n-fields 2000 --mpsrf-start 0 --mpsrf-log --seed 11

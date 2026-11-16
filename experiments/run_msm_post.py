@@ -127,6 +127,8 @@ def main(argv=None):
                     help="iterations between MPSRF curve points (default: %d saved samples)" % MPSRF_STEP)
     ap.add_argument("--mpsrf-log", action="store_true",
                     help="MPSRF curve with log-spaced points and no ignored points (use with --mpsrf-start 0): resolves convergence within tens of iterations")
+    ap.add_argument("--auto-burn", action="store_true",
+                    help="use at least the iteration from which the MPSRF stays below the level as the burn-in (if within the first half of the run)")
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument("--burn", type=int, default=None,
                     help="discard this many iterations before the fields and the summary (overrides the run's own burn; "
@@ -163,6 +165,18 @@ def main(argv=None):
     m = Z["theta"].shape[0]
     res = dict(kind=kind, chains=int(m))
     theta = Z["theta"].astype(float)                              # (m, n/se, r)
+    res["burn_configured"] = int(M)
+    if a.auto_burn and kind in ("global", "primal_raw", "dual_raw"):
+        # automatic burn-in: at least the iteration from which the MPSRF (window from iteration 0) stays below the level, if that is within the
+        # first half of the run; the MPSRF does not depend on the burn-in, so it is computed first on the same coordinates as section 3
+        x = theta if kind == "global" else Z["c"].astype(float)
+        cur0 = curve(x)
+        sb = stays_below((cur0["k"] - 1) * se, cur0["mpsrf"])
+        res["burn_auto"] = dict(stays_below_it=sb, applied=False)
+        if sb is not None:
+            Ma = int(-(-sb // se) * se)
+            if Ma <= n // 2:
+                M = max(M, Ma); res["burn_auto"]["applied"] = M == Ma
     # ---- phases: (name, first saved index, last+1, first iteration, acceptance window)
     if kind in ("sequence", "sequence_exact"):
         ph = [("phase1", M // se, K // se, M, (M, K)), ("phase2", K // se + M // se, n // se, K + M, (K + M, n))]
@@ -191,6 +205,7 @@ def main(argv=None):
     if kind in ("sequence", "sequence_exact"): ax.axvline(K, color="k", ls="-.")
     ax.set_xlabel("iteration"); ax.set_ylabel("relative error"); ax.legend(); fig.tight_layout()
     fig.savefig(os.path.join(fdir, "relerr_traces.png"), dpi=130); plt.close(fig)
+    res["burn_used"] = int(M)                                   # iterations discarded before the fields and statistics
     res["relerr_post_M_median"] = float(np.median(rel[:, M:]))
     # ---- 3. MPSRF
     mp = {}
