@@ -60,9 +60,9 @@
    "phi_at_truth": 232.83315650146062
   }
  },
- "wall_sec": 221.3819613456726,
+ "wall_sec": 220.49466633796692,
  "s_frozen": null,
- "sec_per_chain": 194.4768063388765,
+ "sec_per_chain": 194.94093122333288,
  "post_acc_mean": 0.252656875,
  "post_acc_chain_min": 0.24492,
  "post_acc_chain_max": 0.26248,

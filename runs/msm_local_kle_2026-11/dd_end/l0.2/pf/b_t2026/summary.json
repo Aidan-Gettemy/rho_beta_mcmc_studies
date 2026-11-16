@@ -10,12 +10,12 @@
   "s_min": 0.001,
   "adapt_every": 100,
   "init_scale": 1.0,
-  "burn": 1000,
+  "burn": 500,
   "primal_dim": 4,
   "dual_energy": 0.95,
   "alt_L": 1,
   "alt_no_offset": false,
-  "save_every": 50,
+  "save_every": 8,
   "sigma_rel": 0.020771262,
   "data_relerr": 0.235,
   "data_seed": 2026,
@@ -60,22 +60,22 @@
    "phi_at_truth": 44.56555054516055
   }
  },
- "wall_sec": 89.20472645759583,
- "s_frozen": 0.0790083384024198,
- "sec_per_chain": 78.03483114019036,
- "post_acc_mean": 0.2511540551839465,
- "post_acc_chain_min": 0.24918060200668896,
- "post_acc_chain_max": 0.2526387959866221,
- "post_relerr_median_of_chain_medians": 0.2496732473373413,
- "post_relerr_chain_median_max": 0.24998138844966888,
- "post_relerr_last": 0.25018930435180664,
+ "wall_sec": 95.08417534828186,
+ "s_frozen": 0.07901673313454606,
+ "sec_per_chain": 79.20512019097805,
+ "post_acc_mean": 0.25106302170283806,
+ "post_acc_chain_min": 0.24889148580968282,
+ "post_acc_chain_max": 0.25364273789649416,
+ "post_relerr_median_of_chain_medians": 0.24967816472053528,
+ "post_relerr_chain_median_max": 0.24993722140789032,
+ "post_relerr_last": 0.24929466843605042,
  "s_final_median": [
-  0.07900834083557129
+  0.07901673018932343
  ],
  "s_final_min": [
-  0.07900834083557129
+  0.07901673018932343
  ],
  "s_final_max": [
-  0.07900834083557129
+  0.07901673018932343
  ]
 }

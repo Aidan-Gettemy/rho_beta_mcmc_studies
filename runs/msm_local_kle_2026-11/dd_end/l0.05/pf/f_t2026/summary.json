@@ -10,7 +10,7 @@
   "s_min": 0.001,
   "adapt_every": 100,
   "init_scale": 1.0,
-  "burn": 1000,
+  "burn": 50000,
   "primal_dim": 4,
   "dual_energy": 0.95,
   "alt_L": 1,
@@ -60,14 +60,14 @@
    "phi_at_truth": 232.83315650146062
   }
  },
- "wall_sec": 5972.742558717728,
+ "wall_sec": 6027.875182628632,
  "s_frozen": 0.014232328638647294,
- "sec_per_chain": 5837.982281904668,
- "post_acc_mean": 0.2514220938959306,
- "post_acc_chain_min": 0.2504082721814543,
- "post_acc_chain_max": 0.2525503669112742,
- "post_relerr_median_of_chain_medians": 0.09028451889753342,
- "post_relerr_chain_median_max": 0.0903329998254776,
+ "sec_per_chain": 5870.948052950203,
+ "post_acc_mean": 0.2509168965517241,
+ "post_acc_chain_min": 0.2499248275862069,
+ "post_acc_chain_max": 0.25208275862068963,
+ "post_relerr_median_of_chain_medians": 0.09027883410453796,
+ "post_relerr_chain_median_max": 0.09033161401748657,
  "post_relerr_last": 0.09021596610546112,
  "s_final_median": [
   0.014232329092919827
