@@ -30,8 +30,8 @@ CHAINS = 64
 # PROVISIONAL, per (ell, data type): (pilot, restart for the global samplers, restart for the DD samplers, hours per run).  Pressure-only
 # cells use the small calibrated eps (sd 0.5), where pCN mixes much more slowly, so they get longer chains.  Timings of the stage-2
 # references (64 chains): 80 s / 540 s / 100 min for 300k / 500k / 1.5M iterations at ell 0.2 / 0.1 / 0.05.
-ITERS = {(0.2, True): (20000, 300000, 200000, 1), (0.1, True): (30000, 500000, 300000, 2), (0.05, True): (50000, 1500000, 500000, 4),
-         (0.2, False): (30000, 1000000, 600000, 1), (0.1, False): (50000, 1500000, 800000, 2), (0.05, False): (80000, 3000000, 1000000, 6)}
+ITERS = {(0.2, True): (20000, 300000, 200000, 1), (0.1, True): (30000, 500000, 300000, 2), (0.05, True): (50000, 1500000, 150000, 3),
+         (0.2, False): (30000, 1000000, 600000, 1), (0.1, False): (50000, 1500000, 800000, 2), (0.05, False): (80000, 3000000, 200000, 4)}
 # per-problem thinning and burn-in.  Saved states: one in SAVE iterations, at least SAVE_MIN[ell] and few enough that a run keeps about
 # 40000 states.  Burn-in (iterations discarded before the posterior fields): a short one for the pressure + flux cells, 30% of the restart for the
 # pressure-only cells (slow pCN).  The MPSRF window starts at iteration 0 on log-spaced points, so the convergence iteration is visible; the
@@ -51,6 +51,8 @@ def save_every(cell, restart=None):
 
 
 def burn_in(cell, restart):
+    if cell["method"] in ("dd", "ddplus", "ddH"):   # DD converges in 10^2 - 10^4 iterations: never longer than 20% of its (short) restart; --auto-burn extends it if needed
+        return min(BURN_FLUX[cell["ell"]], int(0.2 * restart)) if cell["flux"] else int(0.2 * restart)
     return BURN_FLUX[cell["ell"]] if cell["flux"] else int(0.3 * restart)
 
 
@@ -161,8 +163,10 @@ def groups(stage, cells):
     """One job per (ell, data, blocks) family; ell 0.05 and the pCN references get one job per run (long runs)."""
     out = {}
     for c in cells:
-        if c["ell"] == 0.05 or c["method"] == "pcn":
+        if c["method"] == "pcn" or (c["ell"] == 0.05 and c["method"] == "msm"):
             key = (c["label"],)
+        elif c["ell"] == 0.05:                       # DD primal + dual + pooled of one (data, blocks) family in one job (no duplicate primal run)
+            key = (c["ell"], c["flux"], c["nb"], "dd")
         else:
             key = (c["ell"], c["flux"], c["nb"])
         out.setdefault(key, []).append(c)
@@ -194,8 +198,8 @@ def main():
                      if c["method"] == "ddplus" and C.label(c["ell"], c["flux"], "dd", c["nb"]) not in have]
             order = {"pcn": 0, "msm": 1, "dd": 2, "ddplus": 3, "ddH": 4}
             run_cells = sorted(g + extra, key=lambda c: order[c["method"]])
-            time = hours * len(run_cells)
-            time = f"{min(time, 48):02d}:00:00"
+            time = hours * len(run_cells) * (2 if (ell == 0.05 and g[0]['method'] != 'msm' and g[0]['nb'] == 2) else 1.5 if (ell == 0.05 and g[0]['method'] == 'msm') else 1)   # 2 x 2 blocks of 32 x 32 cells: slowest per iteration
+            time = f"{min(int(round(time)), 48):02d}:00:00"
             txt = HEADER.format(time=time, tag=tag, stage=a.stage, truth=a.truth, chains=CHAINS, pilot=pilot, restart_g=rg, restart_d=rd,
                                 desc=("noise sweep, eps x " + f"{f:g}") if f != 1.0 else {2: "global pCN references", 3: "MSM-basis global, DD primal, DD dual + pooled (ell 0.2, 0.1)",
                                                                                         4: "MSM-basis global, DD primal, DD dual + pooled (ell 0.05)", 6: "extra truth on the 4 x 4 column",
