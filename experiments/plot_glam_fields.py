@@ -57,12 +57,14 @@ def compare_fields(ref, best, mean, std, mask, grid, layers, odir, dom, exp, dat
     for n, v in (("best", best), ("mean", mean)):
         if v is not None:
             out["reference"][f"level_{n}"] = float(np.asarray(v, float)[mask].mean())
-    # relative error of the simulated concentration to the data, ||c - data|| / ||data|| over all cells and output times
+    # misfit of the simulated concentration to the data over all cells and output times: relative error ||c - data|| / ||data|| and RMSE sqrt(mean((c - data)^2))
     if data is not None:
         d = np.asarray(data, float)
         for n, c in (("best", best_conc), ("mean", mean_conc)):
             if c is not None and np.shape(c) == d.shape:
-                out.setdefault("data_re", {})[n] = float(np.linalg.norm(np.asarray(c, float) - d) / np.linalg.norm(d))
+                e = np.asarray(c, float) - d
+                out.setdefault("data_re", {})[n] = float(np.linalg.norm(e) / np.linalg.norm(d))
+                out.setdefault("data_rmse", {})[n] = float(np.sqrt(np.mean(e ** 2)))     # same units as the concentration
     path = os.path.join(io.tables_dir(exp), "field_comparison.json")
     io.save_json(path, out)
     made.append(path)

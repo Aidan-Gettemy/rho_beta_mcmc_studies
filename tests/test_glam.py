@@ -678,3 +678,27 @@ def test_fixed_steps_keep_the_given_step_sizes():
     for r in range(2):
         ch = post.load_chain(out, r)
         assert np.allclose(ch["beta_g"], 0.037) and np.allclose(ch["beta_l"], 0.081)
+
+
+def test_a_finished_glam_run_can_be_extended_with_a_longer_n_iter_and_window2():
+    """What the 20k extension of the s80k GLAM arms does: window1 = 0, window2 = n_iter (local stages run to the end), fixed steps;
+    resume from the last exchange snapshot with a larger n_iter and window2.  The result equals one uninterrupted longer run."""
+    from brho.glam import post
+    kw = dict(window1=0, burnin_length=20, global_stage_length=20, local_stage_length=15)
+    full, part = tempfile.mkdtemp(), tempfile.mkdtemp()
+    model = ToyModel(_beta(), n_sub=4, m=6, n_cells=60, n_times=3, seed=5, sigma_conc=0.05, sigma_dp=0.05)
+
+    def go(n, out, resume):
+        cfg = C.GlamConfig(n_iter=n, window2=n, min_global_stage_length=10, min_local_stage_length=10, adapt_interval=10, beta_g0=0.1,
+                           beta_l0=0.2, quality_tolerance=50.0, minimum_anchor_distance=0.5, restart_scale=0.2, save_every=25,
+                           log_every=0, **kw)
+        return ThreadWorld(4).run(lambda comm: run_glam(model, cfg, comm, out, resume=resume, fixed_steps=True, log=lambda *_: None))
+    a = go(200, full, False)
+    go(130, part, False)
+    b = go(200, part, True)
+    for ra, rb in zip(a, b):
+        assert all(np.array_equal(x, y) for x, y in zip(ra["theta"], rb["theta"])) and ra["phi"] == rb["phi"]
+    for r in range(4):
+        pa, pb = post.load_chain(full, r), post.load_chain(part, r)
+        assert np.array_equal(pa["start"], pb["start"]) and np.array_equal(pa["theta"], pb["theta"])
+    assert max(e["iteration"] for e in b[0]["exchanges"]) > 130
