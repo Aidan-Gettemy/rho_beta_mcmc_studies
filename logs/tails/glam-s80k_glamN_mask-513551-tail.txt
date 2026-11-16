@@ -1,0 +1,300 @@
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+    z = np.load(path)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    main()
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+Traceback (most recent call last):
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+    main()
+    main()
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    z = np.load(path)
+Traceback (most recent call last):
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    main()
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+    main()
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    z = np.load(path)
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 129, in <module>
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 121, in main
+    keep = load_keep_mask(args.restart_keep_mask, args.n_sub) if args.restart_keep_mask else None
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 122, in load_keep_mask
+    z = np.load(path)
+        ^^^^^^^^^^^^^
+  File "/home/arg210006/.conda/envs/darcyMCMC/lib/python3.11/site-packages/numpy/lib/npyio.py", line 427, in load
+    fid = stack.enter_context(open(os_fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz'
