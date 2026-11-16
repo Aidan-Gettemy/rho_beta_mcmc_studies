@@ -1,0 +1,57 @@
+{
+ "kind": "primal_raw",
+ "chains": 64,
+ "burn_configured": 300000,
+ "burn_auto": {
+  "stays_below_it": 177125.0,
+  "applied": false
+ },
+ "acceptance": {
+  "run": {
+   "mean": 0.25034334821428567,
+   "sd": 0.02238282914591396,
+   "min": 0.162,
+   "max": 0.354
+  }
+ },
+ "burn_used": 300000,
+ "relerr_post_M_median": 0.01623779535293579,
+ "mpsrf": {
+  "theta": {
+   "dim": 19,
+   "n_samples": 40000,
+   "window_start_iteration": 0,
+   "mpsrf_final": 1.0201275287802454,
+   "psrf_max_final": 1.015621345018455,
+   "convergence_iteration": 99286.0,
+   "stays_below_from_iteration": 101525.0
+  },
+  "theta_range58_common": {
+   "dim": 19,
+   "n_samples": 40000,
+   "window_start_iteration": 0,
+   "mpsrf_final": 1.0201275287802454,
+   "psrf_max_final": 1.0163091075160104,
+   "convergence_iteration": 99286.0,
+   "stays_below_from_iteration": 101525.0
+  },
+  "c_local24": {
+   "dim": 24,
+   "n_samples": 40000,
+   "window_start_iteration": 0,
+   "mpsrf_final": 1.031829306855424,
+   "psrf_max_final": 1.0220775951861962,
+   "convergence_iteration": 167504.0,
+   "stays_below_from_iteration": 177125.0
+  }
+ },
+ "mpsrf_method": "MPSRF/PSRF follow the group's MATLAB convention (brho/mpsrf.py, getMSPRF / computeMPSRFcurve). Samples: the chain state saved every 25 iterations. The window STARTS at iteration 0 of the run (of the phase, for the second phase of experiment 5), i.e. the adaptation period is NOT discarded, and GROWS to the end of the run: at curve point u it holds the saved samples from the start iteration to the current iteration, every 2-th sample (skip 2), with a curve point every 15 saved samples (375 iterations). For each window, with m chains and n samples per chain: W = mean over chains of the within-chain covariance (divisor n-1), B/n = covariance of the m chain means (divisor m-1), MPSRF = sqrt((n-1)/n + (m+1)/m * lambda_max(W^-1 B/n)); the per-component PSRF_i = sqrt(V_ii / W_ii) with V = (n-1)/n W + (m+1)/m B/n, and the reported PSRF is max_i PSRF_i. 'convergence_iteration' = first curve point (ignoring the first 10 points) with MPSRF < 1.2, linearly interpolated (with --mpsrf-log: curve points log-spaced, no points ignored, and 'stays_below_from_iteration' = first point after the last one at or above 1.2). The x axis is the iteration of the last sample in the window. Not split-chain, no extra burn-in. Dimension: theta (64), or the 58 range coordinates V_+^T theta for runs whose theta lives in the rank-58 range; local coefficients as stated per entry.",
+ "fields": {
+  "run": {
+   "n": 2000,
+   "logk_sd_mean": 0.4460961955963142,
+   "p_sd_mean": 0.0032361318340849566,
+   "logk_mean_error_rms": 0.4226839645260435
+  }
+ }
+}

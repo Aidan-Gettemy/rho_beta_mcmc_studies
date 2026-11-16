@@ -1,0 +1,219 @@
+{
+ "settings": {
+  "grid": "primal",
+  "chains": 64,
+  "n_iter": 20000,
+  "adapt": 20000,
+  "s0": 0.2,
+  "step_from": null,
+  "init_scale": 1.0,
+  "burn": 10000,
+  "save_every": 8,
+  "s_min": 0.0001,
+  "adapt_every": 500,
+  "smoothing": 0.001,
+  "neighbors": 60,
+  "sigma_rel": 0.020771262,
+  "data_relerr": 0.235,
+  "data_seed": 2026,
+  "seed0": 7,
+  "flux_noise_rel": 0.235,
+  "flux_sigma_rel": 0.022205413,
+  "primal_local_dim": 0,
+  "dual_energy": 0.95,
+  "overlap_halo": 0,
+  "overlap_energy": 0.95,
+  "overlap_halo_sensors": false,
+  "overlap_blend": false,
+  "flux_lines": "default",
+  "robin_alpha": 0.1,
+  "h_prior_rel": 0.23690715,
+  "interior_flux": true,
+  "h_prior_meas_rel": 0.235,
+  "h_corr_len": 4.0,
+  "robin_interp": "cubic",
+  "n": 16,
+  "ell": 0.2,
+  "blocks": 2,
+  "kle_energy": 0.966,
+  "workers": 64,
+  "out": "runs/msm_local_kle_2026-11/dd_end/l0.2/pf/h-4-DD_t2026_pilot"
+ },
+ "data": {
+  "seed": 2026,
+  "sigma_rel": 0.020771262,
+  "data_relerr": 0.235,
+  "n_obs": 128,
+  "sigma_p": 0.15169318698712117,
+  "data_norm": 7.677189394523958,
+  "relerr_at_truth": 0.24917354386674762,
+  "phi_at_truth": 71.95286558344343,
+  "phi_noise_floor_expected": 63.999998134991465
+ },
+ "flux": {
+  "n_flux": 112,
+  "lines": [
+   2,
+   4,
+   6,
+   8,
+   10,
+   12,
+   14
+  ],
+  "stride": 2,
+  "offset": 0,
+  "noise_rel": 0.235,
+  "sigma_rel": 0.022205413,
+  "sigma_q": 0.018683565227994973,
+  "flux_norm": 0.875302100998464,
+  "relerr_at_truth": 0.20963968133970912,
+  "phi_at_truth": 44.56555054516055
+ },
+ "spline": {
+  "kernel": "thin_plate_spline",
+  "smoothing": 0.001,
+  "neighbors": 60,
+  "n_sensors": 128
+ },
+ "grid": {
+  "name": "primal",
+  "n_blocks": 4,
+  "r_k": [
+   6,
+   6,
+   6,
+   6
+  ],
+  "p": 24,
+  "halo": 0,
+  "robin_alpha": 0.1,
+  "robin_sides": 4
+ },
+ "interface": {
+  "segments": [
+   {
+    "block": 0,
+    "neighbour": 2,
+    "orientation": "vertical",
+    "n_faces": 8,
+    "eps_int": 0.13144019055163358
+   },
+   {
+    "block": 0,
+    "neighbour": 1,
+    "orientation": "horizontal",
+    "n_faces": 8,
+    "eps_int": 0.15149117132146875
+   },
+   {
+    "block": 1,
+    "neighbour": 3,
+    "orientation": "vertical",
+    "n_faces": 8,
+    "eps_int": 0.09656304081788132
+   },
+   {
+    "block": 2,
+    "neighbour": 3,
+    "orientation": "horizontal",
+    "n_faces": 8,
+    "eps_int": 0.2543992126929866
+   }
+  ],
+  "eps_int_mean": 0.15847340384599257,
+  "eps_int_max": 0.2543992126929866
+ },
+ "blocks": [
+  {
+   "block": 0,
+   "cells": "8x8",
+   "r_k": 6,
+   "n_sensors": 32,
+   "acc_post_M_mean": 0.2522515625,
+   "acc_post_M_chain_min": 0.2389,
+   "acc_post_M_chain_max": 0.2693,
+   "s_used": null,
+   "s_pilot_or_final_geomean": 0.4184428985051355,
+   "s_final_median": 0.442136287689209,
+   "s_final_min": 0.352468341588974,
+   "s_final_max": 0.442136287689209,
+   "relerr_post_M_median": 0.16969537734985352,
+   "n_flux_faces": 0,
+   "kinds": {
+    "L": "ext",
+    "R": "iface",
+    "B": "noflow",
+    "T": "iface"
+   }
+  },
+  {
+   "block": 1,
+   "cells": "8x8",
+   "r_k": 6,
+   "n_sensors": 32,
+   "acc_post_M_mean": 0.2515734375,
+   "acc_post_M_chain_min": 0.2353,
+   "acc_post_M_chain_max": 0.2631,
+   "s_used": null,
+   "s_pilot_or_final_geomean": 0.25088237145131964,
+   "s_final_median": 0.2240000069141388,
+   "s_final_min": 0.2240000069141388,
+   "s_final_max": 0.28098559379577637,
+   "relerr_post_M_median": 0.208163321018219,
+   "n_flux_faces": 0,
+   "kinds": {
+    "L": "ext",
+    "R": "iface",
+    "B": "iface",
+    "T": "noflow"
+   }
+  },
+  {
+   "block": 2,
+   "cells": "8x8",
+   "r_k": 6,
+   "n_sensors": 32,
+   "acc_post_M_mean": 0.2516578125,
+   "acc_post_M_chain_min": 0.2409,
+   "acc_post_M_chain_max": 0.2648,
+   "s_used": null,
+   "s_pilot_or_final_geomean": 0.48799436031816446,
+   "s_final_median": 0.442136287689209,
+   "s_final_min": 0.442136287689209,
+   "s_final_max": 0.5546157360076904,
+   "relerr_post_M_median": 0.37938445806503296,
+   "n_flux_faces": 0,
+   "kinds": {
+    "L": "iface",
+    "R": "ext",
+    "B": "noflow",
+    "T": "iface"
+   }
+  },
+  {
+   "block": 3,
+   "cells": "8x8",
+   "r_k": 6,
+   "n_sensors": 32,
+   "acc_post_M_mean": 0.2513828125,
+   "acc_post_M_chain_min": 0.2369,
+   "acc_post_M_chain_max": 0.264,
+   "s_used": null,
+   "s_pilot_or_final_geomean": 0.17386612743710975,
+   "s_final_median": 0.1785714328289032,
+   "s_final_min": 0.1423560529947281,
+   "s_final_max": 0.1785714328289032,
+   "relerr_post_M_median": 0.41063234210014343,
+   "n_flux_faces": 0,
+   "kinds": {
+    "L": "iface",
+    "R": "ext",
+    "B": "iface",
+    "T": "noflow"
+   }
+  }
+ ],
+ "wall_sec": 14.795931100845337,
+ "sec_per_chain": 2.9529796382412314
+}
