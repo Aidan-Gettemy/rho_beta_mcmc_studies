@@ -5,7 +5,7 @@
 
 One figure per correlation length (relerr_ell<ell>.png), two rows: pressure relative error (every cell) and flux relative error
 (flux cells only).  Each box is the distribution over the saved posterior fields of ||d - model|| / ||d|| (pressure at the sensors;
-flux at the measured interface faces); the dashed line is the noise level of the data (error of the truth against the data).
+flux at the measured interface faces); each box is divided by the noise level of its own data (the truth's relative misfit), so cells with different eps are comparable and 1 (dashed) means the posterior fields fit the data to the noise.
 Reads post/fields.npz of every run in the manifest (DD+ cells: the dual grid and the pooled estimate)."""
 import argparse
 import csv
@@ -37,7 +37,6 @@ def main():
            if m["truth"] == a.truth and float(m["eps_factor"]) == float(a.eps_factor)]
     for ell in sorted({m["ell"] for m in man}, key=float):
         items = {"p": [], "q": []}
-        noise = {}
         for m in (x for x in man if x["ell"] == ell):
             for tag, sub, prefix in _variants(m["method"]):
                 fn = os.path.join(m["dir"], sub, "fields.npz")
@@ -46,11 +45,9 @@ def main():
                 z = np.load(fn)
                 if f"{prefix}_relerr_p" not in z.files:
                     continue
-                items["p"].append((m["label"] + tag, z[f"{prefix}_relerr_p"]))
-                noise["p"] = float(z["data_noise_relerr_p"])
+                items["p"].append((m["label"] + tag, z[f"{prefix}_relerr_p"] / float(z["data_noise_relerr_p"])))
                 if f"{prefix}_relerr_q" in z.files:
-                    items["q"].append((m["label"] + tag, z[f"{prefix}_relerr_q"]))
-                    noise["q"] = float(z["data_noise_relerr_q"])
+                    items["q"].append((m["label"] + tag, z[f"{prefix}_relerr_q"] / float(z["data_noise_relerr_q"])))
         if not items["p"]:
             continue
         rows = [k for k in ("p", "q") if items[k]]
@@ -58,8 +55,8 @@ def main():
         for ax, k in zip(axs[:, 0], rows):
             labs, vals = zip(*items[k])
             ax.boxplot(vals, tick_labels=labs, showfliers=False)
-            ax.axhline(noise[k], color="k", ls="--", lw=1, label="noise level of the data")
-            ax.set_ylabel("relative error, " + ("pressure" if k == "p" else "flux")); ax.legend(loc="upper left")
+            ax.axhline(1.0, color="k", ls="--", lw=1, label="noise level of the data (the truth's own misfit)")
+            ax.set_ylabel(("pressure" if k == "p" else "flux") + " relative error / noise level"); ax.legend(loc="upper left")
             ax.tick_params(axis="x", rotation=70)
         axs[0, 0].set_title(f"posterior-field data misfit, ell = {ell}, truth {a.truth}, eps factor {a.eps_factor}")
         fig.tight_layout()
