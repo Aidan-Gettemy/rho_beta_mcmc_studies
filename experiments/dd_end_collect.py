@@ -39,8 +39,16 @@ def _mpsrf(post_summary, method, variant):
     """(sup-MPSRF at the end, max PSRF at the end, first iteration with MPSRF < 1.2, iteration from which it stays below 1.2)."""
     d = json.load(open(post_summary))
     if method in ("pcn", "msm"):
-        m = d["mpsrf"]["theta"]
-        return (float(m["mpsrf_final"]), float(m["psrf_max_final"]), m.get("convergence_iteration"), m.get("stays_below_from_iteration"))
+        mm = d["mpsrf"]
+        if "theta" in mm:                                  # global pCN: the theta MPSRF
+            m = mm["theta"]
+            return (float(m["mpsrf_final"]), float(m["psrf_max_final"]), m.get("convergence_iteration"), m.get("stays_below_from_iteration"))
+        ms = list(mm.values())                             # MSM basis: theta_range58 and c_local68; report the worse
+        def worst_m(key):
+            x = [v.get(key) for v in ms]
+            return None if any(t is None for t in x) else max(x)
+        return (float(max(v["mpsrf_final"] for v in ms)), float(max(v["psrf_max_final"] for v in ms)),
+                worst_m("convergence_iteration"), worst_m("stays_below_from_iteration"))
     g = d["grids"]
     vals = [(v["mpsrf"]["sup"]["mpsrf_final"], v["mpsrf"]["sup"]["psrf_max_final"], v["mpsrf"]["sup"].get("convergence_iteration"),
              v["mpsrf"]["sup"].get("stays_below_from_iteration")) for v in g.values()]
