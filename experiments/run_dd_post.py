@@ -84,6 +84,7 @@ def main(argv=None):
     ap.add_argument("--mpsrf-step-its", type=int, default=None,
                     help="iterations between MPSRF curve points (default: %d saved samples)" % RP.MPSRF_STEP)
     ap.add_argument("--mpsrf-log", action="store_true", help="log-spaced MPSRF curve points, no ignored points (use with --mpsrf-start 0)")
+    ap.add_argument("--burn", type=int, default=None, help="discard this many iterations before the fields and statistics (overrides the run's own burn)")
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument("--overlap-blend", action="store_true", help="overlapping runs: assemble with the smooth partition of unity (re-post of existing chains)")
     ap.add_argument("--ref", default=REF, help="post_summary.json of the global-pCN run (sd ratio), optional")
@@ -105,6 +106,9 @@ def main(argv=None):
         grid_name, n, M, se = st["grid"], st["n_iter"], st["adapt"], st["save_every"]
         if st.get("burn") is not None:                            # frozen-step restart: discard `burn`, not the (zero) adaptation
             M = st["burn"]
+        if a.burn is not None:                                    # override (the chains were still converging after the run's burn)
+            M = a.burn
+        res["burn_used"] = int(M)
         if a.mpsrf_step_its:
             RP.MPSRF_STEP = max(1, a.mpsrf_step_its // se)
         Z = np.load(os.path.join(d, "chains.npz"))

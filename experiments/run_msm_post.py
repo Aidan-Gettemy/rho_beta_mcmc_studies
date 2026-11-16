@@ -191,6 +191,7 @@ def main(argv=None):
     if kind in ("sequence", "sequence_exact"): ax.axvline(K, color="k", ls="-.")
     ax.set_xlabel("iteration"); ax.set_ylabel("relative error"); ax.legend(); fig.tight_layout()
     fig.savefig(os.path.join(fdir, "relerr_traces.png"), dpi=130); plt.close(fig)
+    res["burn_used"] = int(M)                                   # iterations discarded before the fields and statistics
     res["relerr_post_M_median"] = float(np.median(rel[:, M:]))
     # ---- 3. MPSRF
     mp = {}
