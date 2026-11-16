@@ -632,6 +632,17 @@ def test_a_window_without_accepted_moves_does_not_crash_and_stays_loadable():
         assert post.n_iterations(ch) == 200 and ch["theta"].shape[0] == len(ch["start"])
 
 
+def test_load_chain_can_skip_the_coefficient_array():
+    out = tempfile.mkdtemp()
+    _pcn_run(80, out)
+    from brho.glam import post
+    full, light = post.load_chain(out, 0), post.load_chain(out, 0, theta=False)
+    assert light["theta"] is None and full["theta"].shape[0] == len(full["start"])
+    for k in ("start", "count", "phi", "acc", "phi_trace"):
+        assert np.array_equal(full[k], light[k])
+    assert post.n_iterations(light) == 80
+
+
 def test_resume_reseed_continues_from_the_saved_state_with_new_randomness():
     base = tempfile.mkdtemp()
     _pcn_run(130, base)                                           # snapshots at 40, 80, 120, final 130

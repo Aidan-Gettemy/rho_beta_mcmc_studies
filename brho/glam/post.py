@@ -21,14 +21,15 @@ import os
 import numpy as np
 
 
-def load_chain(out, rank):
+def load_chain(out, rank, theta=True):
+    """theta=False skips the (records x dim) coefficient array, by far the largest part (GBs per chain): for scripts that only need the traces."""
     parts = sorted(glob.glob(os.path.join(out, "chains", f"rank{rank:03d}_part*.npz")))
     if not parts:
         raise FileNotFoundError(f"no chain parts for rank {rank} in {out}/chains")
     z = [np.load(p) for p in parts]
     cat = lambda k: np.concatenate([a[k] for a in z])  # noqa: E731
     has_re = all("trace_re_conc" in a.files for a in z)       # runs before the RE trace was added lack it
-    return dict(start=cat("start"), count=cat("count"), theta=np.concatenate([a["theta"] for a in z]),
+    return dict(start=cat("start"), count=cat("count"), theta=np.concatenate([a["theta"] for a in z]) if theta else None,
                 w=cat("w"), phi=cat("phi"), kind=cat("trace_kind"), acc=cat("trace_acc"),
                 beta_g=cat("trace_beta_g"), beta_l=cat("trace_beta_l"), phi_trace=cat("trace_phi"),
                 re_conc=cat("trace_re_conc") if has_re else None, re_dp=cat("trace_re_dp") if has_re else None)

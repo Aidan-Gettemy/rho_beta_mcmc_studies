@@ -76,7 +76,7 @@ def main():
         ax.axvline(cfg["window1"] + cfg["window2"], color="k", ls="--", lw=0.8)
         ax.set_xlim(0, n_iter)
 
-    data = {r: post.load_chain(res, r) for r in chains}
+    data = {r: post.load_chain(res, r, theta=False) for r in chains}      # traces only: the coefficient arrays are GBs per chain
     n_it = min(min(post.n_iterations(c) for c in data.values()), n_iter)
 
     # ------------------------------------------------------------------------------ relative error
