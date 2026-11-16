@@ -15,7 +15,7 @@
   "dual_energy": 0.95,
   "alt_L": 1,
   "alt_no_offset": false,
-  "save_every": 50,
+  "save_every": 8,
   "sigma_rel": 0.020771262,
   "data_relerr": 0.235,
   "data_seed": 2026,
@@ -60,9 +60,9 @@
    "phi_at_truth": 44.56555054516055
   }
  },
- "wall_sec": 6.575881004333496,
+ "wall_sec": 7.252589225769043,
  "s_frozen": null,
- "sec_per_chain": 4.824783280491829,
+ "sec_per_chain": 5.18268233910203,
  "post_acc_mean": 0.25075,
  "post_acc_chain_min": 0.2359,
  "post_acc_chain_max": 0.2685,

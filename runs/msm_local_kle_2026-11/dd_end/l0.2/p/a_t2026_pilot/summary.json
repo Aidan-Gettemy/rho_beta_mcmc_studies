@@ -2,22 +2,22 @@
  "settings": {
   "kind": "global",
   "chains": 64,
-  "n_iter": 20000,
-  "adapt": 20000,
+  "n_iter": 30000,
+  "adapt": 30000,
   "phase_k": null,
   "s0": 0.2,
   "step_from": null,
   "s_min": 0.0001,
   "adapt_every": 500,
   "init_scale": 1.0,
-  "burn": 10000,
+  "burn": 15000,
   "primal_dim": 4,
   "dual_energy": 0.95,
   "alt_L": 1,
   "alt_no_offset": false,
-  "save_every": 50,
-  "sigma_rel": 0.020771262,
-  "data_relerr": 0.235,
+  "save_every": 25,
+  "sigma_rel": 0.00090156115,
+  "data_relerr": 0.0102,
   "data_seed": 2026,
   "seed0": 7,
   "flux_noise_rel": null,
@@ -31,31 +31,31 @@
  },
  "data": {
   "seed": 2026,
-  "sigma_rel": 0.020771262,
-  "data_relerr": 0.235,
+  "sigma_rel": 0.00090156115,
+  "data_relerr": 0.0102,
   "n_obs": 128,
-  "sigma_p": 0.15169318698712117,
-  "data_norm": 7.677189394523958,
-  "relerr_at_truth": 0.24917354386674762,
-  "phi_at_truth": 71.95286558344343,
-  "phi_noise_floor_expected": 63.999998134991465
+  "sigma_p": 0.006584129818164409,
+  "data_norm": 7.309282818907388,
+  "relerr_at_truth": 0.01135956567501013,
+  "phi_at_truth": 79.3785351378778,
+  "phi_noise_floor_expected": 63.99999943392033
  },
- "wall_sec": 6.923078536987305,
+ "wall_sec": 9.835898876190186,
  "s_frozen": null,
- "sec_per_chain": 4.99778288975358,
- "post_acc_mean": 0.250325,
- "post_acc_chain_min": 0.2331,
- "post_acc_chain_max": 0.2625,
- "post_relerr_median_of_chain_medians": 0.24086834490299225,
- "post_relerr_chain_median_max": 0.24194081127643585,
- "post_relerr_last": 0.24124759435653687,
+ "sec_per_chain": 7.821039617061615,
+ "post_acc_mean": 0.251965625,
+ "post_acc_chain_min": 0.24053333333333332,
+ "post_acc_chain_max": 0.26326666666666665,
+ "post_relerr_median_of_chain_medians": 0.011272897012531757,
+ "post_relerr_chain_median_max": 0.011728472076356411,
+ "post_relerr_last": 0.011299347504973412,
  "s_final_median": [
-  0.352468341588974
+  0.01176466140896082
  ],
  "s_final_min": [
-  0.28098559379577637
+  0.01176466140896082
  ],
  "s_final_max": [
-  0.352468341588974
+  0.014757591299712658
  ]
 }
