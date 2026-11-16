@@ -1,0 +1,18 @@
+python: /home/arg210006/.conda/envs/darcyMCMC/bin/python   CONDA_PREFIX=/home/arg210006/.conda/envs/darcyMCMC
+numpy 1.26.4
+mpi4py 4.0.3
+cupy 13.4.1
+PETSC_OPTIONS=-pc_type jacobi -ksp_max_it 100000   ranks=24
+mpi4py library: MPICH Version:      4.2.2 MPICH Release date: Wed Jul  3 09:16:22 AM CDT 2024 MPICH ABI:          16:2:4 
+launcher: /home/arg210006/.conda/envs/darcyMCMC/bin/mpiexec   (mpirun is /opt/ohpc/pub/mpi/openmpi5-gnu14/5.0.7/bin/mpirun)
+mpi4py ok, rank 2 of 4
+mpi4py ok, rank 3 of 4
+mpi4py ok, rank 0 of 4
+mpi4py ok, rank 1 of 4
+resuming (restart 0)
+[glam] e6_glam_s80k_pcn: 24 ranks, forward external, 80000 iterations (window1 0, window2 80000)
+srun: error: unpackstr_xmalloc: Buffer to be unpacked is too large (1684369920 > 1073741824)
+srun: error: io_init_msg_unpack: unpack error
+srun: error: io_init_msg_unpack: unpack error
+[2026-11-15T08:29:14.534] error: *** STEP 513549.1 ON g-07-10 CANCELLED AT 2026-11-15T08:29:14 DUE to SIGNAL Terminated ***
+[2026-11-15T08:29:14.540] error: *** JOB 513549 ON g-07-10 CANCELLED AT 2026-11-15T08:29:14 DUE to SIGNAL Terminated ***

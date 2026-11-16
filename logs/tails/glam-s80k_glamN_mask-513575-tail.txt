@@ -1,0 +1,300 @@
+
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.039531 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.51000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.026154 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.51000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.026004 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.53000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.024846 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.52000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.026107 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.51000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.026049 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.51000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.026027 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.52000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.025998 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.52000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.025372 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.53000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.025060 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.54000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.024574 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.54000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.024469 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.53000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.025129 seconds
+
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.035536 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.88000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.074197 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.88000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.017740 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.87000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.034453 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.87000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.041761 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.88000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.017542 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.85000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.018803 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.87000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.023216 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.89000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.049191 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.90000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.030570 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.91000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.021340 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.89000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.022989 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.89000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.029431 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.88000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.027846 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.87000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.056216 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.88000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.017968 seconds
+
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.61000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.053253 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.64000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.070439 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.64000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.022625 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.66000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.022247 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.66000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.021492 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.64000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.030605 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.66000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.072356 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.65000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.034915 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.64000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.081338 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.66000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.036047 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.64000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.030989 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.65000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.022324 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.63000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.022691 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.63000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.022428 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.62000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.023014 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.61000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.024040 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.63000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.024337 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.61000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.033453 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.62000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.022702 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.62000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.022239 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.59000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.025285 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.62000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.037990 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.63000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.028610 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.63000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.022474 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.62000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.022690 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.62000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.022762 seconds
+
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.88000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.039323 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.87000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.037895 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.89000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.046210 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.94000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.041767 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.89000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.035690 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.92000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.016420 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.97000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.033521 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.91000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.020246 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.93000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.022641 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.92000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.039532 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.94000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.029583 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.91000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.016900 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.92000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.021659 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.88000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.030393 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.90000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.037164 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.92000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.062395 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.90000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.031438 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.91000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.066724 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.89000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.039165 seconds
+WARNING! There are options you set that were not used!
+WARNING! could be spelling mistake, etc!
+There are 2 unused database options. They are:
+Option left: name:-ksp_max_it value: 100000 source: environment
+Option left: name:-pc_type value: jacobi source: environment

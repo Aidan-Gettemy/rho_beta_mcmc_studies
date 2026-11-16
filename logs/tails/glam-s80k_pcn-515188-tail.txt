@@ -1,0 +1,300 @@
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.014950 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=1.10000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.016533 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=1.11000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.015972 seconds
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 132, in <module>
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 124, in main
+    run_glam(model, cfg, comm, out, resume=args.resume, keep_mask=keep, selection_constrained_only=args.selection_constrained_only,
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 260, in run_glam
+    _write_chain_snapshot(snap_dir, rank, it, theta, phi_cur, re_cur, rng, adapter, writer, cur_start)
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 162, in _write_chain_snapshot
+    writer.flush()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 66, in flush
+    theta=np.asarray(self.rec["theta"], float).reshape(n, -1), w=np.asarray(self.rec["w"], float),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: cannot reshape array of size 0 into shape (0,newaxis)
+
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=1.09000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.015285 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=1.10000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.016190 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=1.10000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.025047 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=1.13000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.014883 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=1.08000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.017735 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=1.09000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.015111 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=1.07000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.015177 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=1.09000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.014808 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=1.09000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.015580 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=1.09000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.015404 seconds
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 132, in <module>
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 124, in main
+    run_glam(model, cfg, comm, out, resume=args.resume, keep_mask=keep, selection_constrained_only=args.selection_constrained_only,
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 260, in run_glam
+    _write_chain_snapshot(snap_dir, rank, it, theta, phi_cur, re_cur, rng, adapter, writer, cur_start)
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 162, in _write_chain_snapshot
+    writer.flush()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 66, in flush
+    theta=np.asarray(self.rec["theta"], float).reshape(n, -1), w=np.asarray(self.rec["w"], float),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: cannot reshape array of size 0 into shape (0,newaxis)
+
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.83000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.025204 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.82000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.024810 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.81000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.019445 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.81000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.019755 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.83000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.019285 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.78000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.021134 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.84000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.024527 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.82000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.019378 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.83000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.019078 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.84000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.018524 seconds
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 132, in <module>
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 124, in main
+    run_glam(model, cfg, comm, out, resume=args.resume, keep_mask=keep, selection_constrained_only=args.selection_constrained_only,
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 260, in run_glam
+    _write_chain_snapshot(snap_dir, rank, it, theta, phi_cur, re_cur, rng, adapter, writer, cur_start)
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 162, in _write_chain_snapshot
+    writer.flush()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 66, in flush
+    theta=np.asarray(self.rec["theta"], float).reshape(n, -1), w=np.asarray(self.rec["w"], float),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: cannot reshape array of size 0 into shape (0,newaxis)
+
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.73000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.026440 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.72000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.021363 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.72000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.020589 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.72000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.020708 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.72000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.026647 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.71000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.021402 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.72000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.020668 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.71000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.027001 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.72000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.020875 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.73000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.021504 seconds
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 132, in <module>
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 124, in main
+    run_glam(model, cfg, comm, out, resume=args.resume, keep_mask=keep, selection_constrained_only=args.selection_constrained_only,
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 260, in run_glam
+    _write_chain_snapshot(snap_dir, rank, it, theta, phi_cur, re_cur, rng, adapter, writer, cur_start)
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 162, in _write_chain_snapshot
+    writer.flush()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 66, in flush
+    theta=np.asarray(self.rec["theta"], float).reshape(n, -1), w=np.asarray(self.rec["w"], float),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: cannot reshape array of size 0 into shape (0,newaxis)
+
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.85000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.018590 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.87000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.018080 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.85000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.018022 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.84000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.018423 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.84000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.018505 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.80000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.019035 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.85000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.023489 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.83000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.019461 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.79000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.034143 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.81000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.033116 seconds
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 132, in <module>
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 124, in main
+    run_glam(model, cfg, comm, out, resume=args.resume, keep_mask=keep, selection_constrained_only=args.selection_constrained_only,
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 260, in run_glam
+    _write_chain_snapshot(snap_dir, rank, it, theta, phi_cur, re_cur, rng, adapter, writer, cur_start)
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 162, in _write_chain_snapshot
+    writer.flush()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 66, in flush
+    theta=np.asarray(self.rec["theta"], float).reshape(n, -1), w=np.asarray(self.rec["w"], float),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: cannot reshape array of size 0 into shape (0,newaxis)
+
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.49000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.030418 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.53000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.028665 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.52000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.028898 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.52000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.028802 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.52000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.028816 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.53000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.027712 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.54000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.027875 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.54000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.028147 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.54000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.028266 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.52000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.029088 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.54000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.033506 seconds
+Output times: [10.0, 90.0, 200.0, 300.0, 400.0, 600.0, 800.0, 1100.0, 1500.0, 1800.0]
+Simulation parameters: Nx=38, Ny=38, Nz=45, dt=0.55000000
+satnNew_t shape: (64980, 10)  |  total elements: 649800
+Transport Simulation completed in 0.027636 seconds
+[glam] it 6000/80000 phase BURN_IN cycle 0 Phi 3270.184 beta_G 0.0120 beta_L 0.0620 acc(G,L) 0.36,0.00 rho 0.883 229s
+Traceback (most recent call last):
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 132, in <module>
+    main()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/experiments/run_glam.py", line 124, in main
+    run_glam(model, cfg, comm, out, resume=args.resume, keep_mask=keep, selection_constrained_only=args.selection_constrained_only,
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 260, in run_glam
+    _write_chain_snapshot(snap_dir, rank, it, theta, phi_cur, re_cur, rng, adapter, writer, cur_start)
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 162, in _write_chain_snapshot
+    writer.flush()
+  File "/scratch/juno/arg210006/rho_beta_mcmc_studies/brho/glam/sampler.py", line 66, in flush
+    theta=np.asarray(self.rec["theta"], float).reshape(n, -1), w=np.asarray(self.rec["w"], float),
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: cannot reshape array of size 0 into shape (0,newaxis)
+[2026-11-15T13:20:31.385] error: *** STEP 515188.1 ON g-08-02 CANCELLED AT 2026-11-15T13:20:31 DUE to SIGNAL Terminated ***
+[2026-11-15T13:20:31.393] error: *** JOB 515188 ON g-08-02 CANCELLED AT 2026-11-15T13:20:31 DUE to SIGNAL Terminated ***
