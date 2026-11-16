@@ -2,22 +2,22 @@
  "settings": {
   "kind": "global",
   "chains": 64,
-  "n_iter": 30000,
-  "adapt": 30000,
+  "n_iter": 50000,
+  "adapt": 50000,
   "phase_k": null,
   "s0": 0.2,
   "step_from": null,
   "s_min": 0.0001,
   "adapt_every": 500,
   "init_scale": 1.0,
-  "burn": 15000,
+  "burn": 25000,
   "primal_dim": 4,
   "dual_energy": 0.95,
   "alt_L": 1,
   "alt_no_offset": false,
-  "save_every": 50,
-  "sigma_rel": 0.0088388348,
-  "data_relerr": 0.2,
+  "save_every": 40,
+  "sigma_rel": 0.0016086679,
+  "data_relerr": 0.0364,
   "data_seed": 2026,
   "seed0": 7,
   "flux_noise_rel": null,
@@ -31,31 +31,31 @@
  },
  "data": {
   "seed": 2026,
-  "sigma_rel": 0.0088388348,
-  "data_relerr": 0.2,
+  "sigma_rel": 0.0016086679,
+  "data_relerr": 0.0364,
   "n_obs": 512,
-  "sigma_p": 0.10398957080471256,
-  "data_norm": 12.075977366704338,
-  "relerr_at_truth": 0.20743180386307808,
-  "phi_at_truth": 275.37889863353155,
-  "phi_noise_floor_expected": 255.99999796284285
+  "sigma_p": 0.018926101886457686,
+  "data_norm": 11.782694808112705,
+  "relerr_at_truth": 0.038692286383298705,
+  "phi_at_truth": 289.2584134656148,
+  "phi_noise_floor_expected": 256.00000865690845
  },
- "wall_sec": 33.93095421791077,
+ "wall_sec": 54.80653691291809,
  "s_frozen": null,
- "sec_per_chain": 30.681906439363956,
- "post_acc_mean": 0.2523708333333333,
- "post_acc_chain_min": 0.24306666666666665,
- "post_acc_chain_max": 0.2654,
- "post_relerr_median_of_chain_medians": 0.20633843541145325,
- "post_relerr_chain_median_max": 0.2069525569677353,
- "post_relerr_last": 0.20656386017799377,
+ "sec_per_chain": 50.977417178452015,
+ "post_acc_mean": 0.251006875,
+ "post_acc_chain_min": 0.24152,
+ "post_acc_chain_max": 0.25768,
+ "post_relerr_median_of_chain_medians": 0.03860422596335411,
+ "post_relerr_chain_median_max": 0.03879585489630699,
+ "post_relerr_last": 0.03861907497048378,
  "s_final_median": [
-  0.11348537355661392
+  0.02322135493159294
  ],
  "s_final_min": [
-  0.11348537355661392
+  0.018511923030018806
  ],
  "s_final_max": [
-  0.1423560529947281
+  0.02322135493159294
  ]
 }
