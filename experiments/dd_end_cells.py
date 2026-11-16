@@ -14,11 +14,13 @@ The 8x8 cells at ell 0.2 are dropped (a block would have 2 cells).  The single o
 import argparse
 import math
 
-# ---- frozen settings (calibration: docs / experiment summary; eps = per-datum noise relative to the rms pressure and flux)
+# ---- frozen settings (calibration: docs / experiment summary; eps = per-datum noise relative to the rms pressure and flux).
+# eps: pressure + flux cells (global posterior sd of log k ~ 0.25).  eps_p: pressure-only cells (sd ~ 0.5; interpolated from three 64-chain
+# pCN runs per ell at sd 0.489-0.551, 0.493-0.532, 0.496-0.537; pressure alone is far less informative at the same eps).
 PROBLEMS = {
-    0.2:  dict(n=16, kle_energy=0.966, eps=0.235, n_obs=128,  n_flux=112, blocks=(2, 4),    letters=("a", "b", "g", "h")),
-    0.1:  dict(n=32, kle_energy=0.966, eps=0.2,   n_obs=512,  n_flux=224, blocks=(2, 4, 8), letters=("c", "d", "i", "j")),
-    0.05: dict(n=64, kle_energy=0.95,  eps=0.09,  n_obs=2048, n_flux=448, blocks=(2, 4, 8), letters=("e", "f", "k", "l")),
+    0.2:  dict(n=16, kle_energy=0.966, eps=0.235, eps_p=0.0102, n_obs=128,  n_flux=112, blocks=(2, 4),    letters=("a", "b", "g", "h")),
+    0.1:  dict(n=32, kle_energy=0.966, eps=0.2,   eps_p=0.0286, n_obs=512,  n_flux=224, blocks=(2, 4, 8), letters=("c", "d", "i", "j")),
+    0.05: dict(n=64, kle_energy=0.95,  eps=0.09,  eps_p=0.0267, n_obs=2048, n_flux=448, blocks=(2, 4, 8), letters=("e", "f", "k", "l")),
 }
 DATA_SEED = 2026
 ROBIN_ALPHA = 0.1
@@ -29,7 +31,7 @@ METHODS = ("pcn", "msm", "dd", "ddplus", "ddH")
 
 def problem(ell):
     p = dict(PROBLEMS[ell]); p["ell"] = ell
-    p["sigma_rel"] = p["eps"] / math.sqrt(p["n_obs"])          # pressure likelihood level (per datum noise eps)
+    p["sigma_rel"] = p["eps"] / math.sqrt(p["n_obs"])          # pressure likelihood level (per datum noise eps), pressure + flux cells
     p["flux_sigma_rel"] = p["eps"] / math.sqrt(p["n_flux"])    # flux weight per datum, as in the calibration runs
     p["h_prior_meas_rel"] = p["eps"]                           # Gibbs prior sd of h on measured faces
     p["h_prior_rel"] = math.sqrt(p["eps"] ** 2 + H_INTERP_ERR ** 2)   # ... and on unmeasured faces
@@ -62,7 +64,7 @@ def flags(cell, truth_seed=DATA_SEED, eps_factor=1.0):
     the dual cells is formed in post-processing from the primal-and-dual runs.  Iteration, chain and output flags are added by the
     job generator.  eps_factor scales eps (the noise sweep)."""
     p = problem(cell["ell"])
-    eps = p["eps"] * eps_factor
+    eps = (p["eps"] if cell["flux"] else p["eps_p"]) * eps_factor
     sig = eps / math.sqrt(p["n_obs"])
     data = f"--sigma-rel {sig:.8g} --data-relerr {eps:.8g} --data-seed {truth_seed}"
     if cell["flux"]:
@@ -92,7 +94,7 @@ def main():
     cs = cells()
     if a.list or not a.show:
         from collections import Counter
-        print("frozen eps:", {ell: PROBLEMS[ell]["eps"] for ell in PROBLEMS})
+        print("frozen eps (pressure + flux):", {ell: PROBLEMS[ell]["eps"] for ell in PROBLEMS}, " pressure only:", {ell: PROBLEMS[ell]["eps_p"] for ell in PROBLEMS})
         print("cells per method:", dict(Counter(c["method"] for c in cs)), "total", len(cs))
         print(" ".join(c["label"] for c in cs))
     if a.show:

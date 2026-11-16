@@ -10,7 +10,10 @@ stored posterior mean / sd fields of log k and the truth, so global, MSM-basis a
   err_rms       RMS over the grid of (posterior mean - truth)
   err_over_sd   err_rms / sd_mean
   cover90       fraction of cells whose truth lies within mean +- 1.645 sd (pointwise, Gaussian marginals; nominal 0.90)
-  sup_mpsrf     sup over blocks of the MPSRF at the end of the run (window from iteration 1000; formula in the post-processing)
+  sup_mpsrf     sup over blocks of the MPSRF at the end of the run (window from iteration 0 on log-spaced points; formula in the post-processing)
+  conv_it, stays_below_it   first iteration with sup-MPSRF < 1.2, and the iteration from which it stays below 1.2 (a growing window from
+                iteration 0 includes the transient, so these are upper bounds on the time to stationarity); burn, burn_ok: the burn-in
+                used for the fields and whether it is at or beyond stays_below_it
   sd_ratio, err_ratio   to the global pCN reference of the same ell, data type, truth and eps factor
   wall_sec, sec_per_chain   from the sampler's summary.json (a DD run's tasks are blocks x chains)."""
 import argparse
@@ -33,13 +36,18 @@ def _field_metrics(npz, prefix):
 
 
 def _mpsrf(post_summary, method, variant):
+    """(sup-MPSRF at the end, max PSRF at the end, first iteration with MPSRF < 1.2, iteration from which it stays below 1.2)."""
     d = json.load(open(post_summary))
     if method in ("pcn", "msm"):
         m = d["mpsrf"]["theta"]
-        return float(m["mpsrf_final"]), float(m["psrf_max_final"])
+        return (float(m["mpsrf_final"]), float(m["psrf_max_final"]), m.get("convergence_iteration"), m.get("stays_below_from_iteration"))
     g = d["grids"]
-    vals = [(v["mpsrf"]["sup"]["mpsrf_final"], v["mpsrf"]["sup"]["psrf_max_final"]) for v in g.values()]
-    return float(max(x[0] for x in vals)), float(max(x[1] for x in vals))
+    vals = [(v["mpsrf"]["sup"]["mpsrf_final"], v["mpsrf"]["sup"]["psrf_max_final"], v["mpsrf"]["sup"].get("convergence_iteration"),
+             v["mpsrf"]["sup"].get("stays_below_from_iteration")) for v in g.values()]
+    def worst(i):                      # the latest crossing over the grids; None if a grid never crossed
+        x = [v[i] for v in vals]
+        return None if any(t is None for t in x) else max(x)
+    return float(max(x[0] for x in vals)), float(max(x[1] for x in vals)), worst(2), worst(3)
 
 
 def collect_run(d, method):
@@ -60,7 +68,9 @@ def collect_run(d, method):
             rows.append(dict(variant=name, status="missing"))
             continue
         r = dict(variant=name, status="done", **_field_metrics(fn, prefix), **timing)
-        r["sup_mpsrf"], r["psrf_max"] = _mpsrf(ps, method, name)
+        r["sup_mpsrf"], r["psrf_max"], r["conv_it"], r["stays_below_it"] = _mpsrf(ps, method, name)
+        r["burn"] = st.get("burn")
+        r["burn_ok"] = (r["stays_below_it"] is not None and st.get("burn") is not None and st["burn"] >= r["stays_below_it"])
         rows.append(r)
     return rows
 
@@ -82,7 +92,7 @@ def main():
         if t["status"] == "done" and g:
             t["sd_ratio"], t["err_ratio"] = t["sd_mean"] / g["sd_mean"], t["err_rms"] / g["err_rms"]
     cols = ["label", "variant", "ell", "flux", "method", "blocks", "truth", "eps_factor", "status", "sd_mean", "err_rms", "err_over_sd", "cover90",
-            "sup_mpsrf", "psrf_max", "sd_ratio", "err_ratio", "n_iter", "chains", "wall_sec", "sec_per_chain", "n_fields", "dir"]
+            "sup_mpsrf", "psrf_max", "conv_it", "stays_below_it", "burn", "burn_ok", "sd_ratio", "err_ratio", "n_iter", "chains", "wall_sec", "sec_per_chain", "n_fields", "dir"]
     out = a.out or os.path.join(a.root, "master_table.csv")
     with open(out, "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")

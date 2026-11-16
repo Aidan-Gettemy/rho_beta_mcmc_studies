@@ -74,7 +74,7 @@ def _lambda_max(W, D, m):
 
 
 def mpsrf_curve(samples, skip=2, step=15, iter_burn=10, chains=None,
-                dispiter=0, log=print):
+                dispiter=0, log=print, ks=None):
     """computeMPSRFcurve.  samples: (m, n, dim) thinned samples.
 
     MATLAB (1-based):  iter_step = (step + iter_burn):step:maxIter
@@ -98,7 +98,7 @@ def mpsrf_curve(samples, skip=2, step=15, iter_burn=10, chains=None,
     m, n, dim = s.shape
     if m < 2:
         raise ValueError("MPSRF needs at least 2 chains")
-    ks = np.arange(step + iter_burn, n + 1, step)
+    ks = np.arange(step + iter_burn, n + 1, step) if ks is None else np.asarray(ks, int)   # ks: explicit curve points (thinned counts, increasing)
     out = dict(k=[], mpsrf=[], psrf=[], psrf_i=[])
     start = iter_burn - 1
     shift = s[:, start, :].copy() if n > start else np.zeros((m, dim))
@@ -129,6 +129,12 @@ def mpsrf_curve(samples, skip=2, step=15, iter_burn=10, chains=None,
         if dispiter and u % dispiter == 0:
             log(f"Step {u} / {len(ks)} | MPSRF = {mp:.3f}")
     return {key: np.asarray(v) for key, v in out.items()}
+
+
+def log_ks(n, npts=150, kmin=4):
+    """Log-spaced curve points (thinned sample counts, increasing, at most n) so that early convergence is resolved."""
+    ks = np.unique(np.round(np.geomspace(kmin, n, npts)).astype(int))
+    return ks[ks <= n]
 
 
 def mpsrf_curve_direct(samples, skip=2, step=15, iter_burn=10, chains=None,

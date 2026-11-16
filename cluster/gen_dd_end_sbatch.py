@@ -10,7 +10,7 @@
 
 Every job is self-contained (all flags in the script, conda environment checked).  Official runs use 64 parallel chains per sampler
 (per block for the DD).  Each run is the tune-then-restart protocol: a pilot with the step size adapted (target 25%, floor 1e-4,
-window 500), then a restart from fresh prior draws with the step frozen; one state in 50 saved; MPSRF window from iteration 1000.
+window 500), then a restart from fresh prior draws with the step frozen; states saved at a per-problem thinning (SAVE_MIN, about 40000 states per run) and a per-problem burn-in; the MPSRF window starts at iteration 0 on log-spaced points.
 Iteration counts and time limits (ITERS) are PROVISIONAL: set them from the timing of the stage-2 reference runs and extend any run
 whose sup-MPSRF is above 1.2 (slow convergence is acceptable; report it).
 
@@ -27,8 +27,26 @@ import dd_end_cells as C      # noqa: E402
 
 ROOT = "runs/msm_local_kle_2026-11/dd_end"
 CHAINS = 64
-# provisional: (pilot, restart for the global samplers, restart for the DD samplers, hours per run)
-ITERS = {0.2: (20000, 300000, 200000, 2), 0.1: (30000, 500000, 300000, 4), 0.05: (50000, 1500000, 500000, 12)}
+# PROVISIONAL, per (ell, data type): (pilot, restart for the global samplers, restart for the DD samplers, hours per run).  Pressure-only
+# cells use the small calibrated eps (sd 0.5), where pCN mixes much more slowly, so they get longer chains.  Timings of the stage-2
+# references (64 chains): 80 s / 540 s / 100 min for 300k / 500k / 1.5M iterations at ell 0.2 / 0.1 / 0.05.
+ITERS = {(0.2, True): (20000, 300000, 200000, 1), (0.1, True): (30000, 500000, 300000, 2), (0.05, True): (50000, 1500000, 500000, 4),
+         (0.2, False): (30000, 1000000, 600000, 1), (0.1, False): (50000, 1500000, 800000, 2), (0.05, False): (80000, 3000000, 1000000, 6)}
+# per-problem thinning and burn-in.  Saved states: one in SAVE iterations, at least SAVE_MIN[ell] and few enough that a run keeps about
+# 40000 states.  Burn-in (iterations discarded before the posterior fields): a short one for the pressure + flux cells, 30% of the restart for the
+# pressure-only cells (slow pCN).  The MPSRF window starts at iteration 0 on log-spaced points, so the convergence iteration is visible; the
+# post reports whether the burn-in is at or beyond the iteration from which the curve stays below 1.2 and can be re-run with --burn.
+SAVE_MIN = {0.2: 5, 0.1: 10, 0.05: 50}
+BURN_FLUX = {0.2: 500, 0.1: 5000, 0.05: 50000}
+
+
+def save_every(cell, restart):
+    return max(SAVE_MIN[cell["ell"]], -(-restart // 40000))
+
+
+def burn_in(cell, restart):
+    return BURN_FLUX[cell["ell"]] if cell["flux"] else int(0.3 * restart)
+
 
 HEADER = """#!/bin/bash
 #SBATCH --nodes=1
@@ -72,14 +90,14 @@ RUN = """
 # ---- {label}: {what}
 OUT={out}
 python experiments/{script} {flags} \\
-    --chains {chains} --workers 64 --save-every 50 --n-iter {pilot} --adapt {pilot} --burn {half} --s0 0.2 --s-min 0.0001 --adapt-every 500 --seed0 7 \\
+    --chains {chains} --workers 64 --save-every {save} --n-iter {pilot} --adapt {pilot} --burn {half} --s0 0.2 --s-min 0.0001 --adapt-every 500 --seed0 7 \\
     --out "${{OUT}}_pilot"
 python experiments/{script} {flags} \\
-    --chains {chains} --workers 64 --save-every 50 --n-iter {restart} --adapt 0 --burn 1000 --step-from "${{OUT}}_pilot" --init-scale 1.0 --seed0 1007 \\
+    --chains {chains} --workers 64 --save-every {save} --n-iter {restart} --adapt 0 --burn {burn} --step-from "${{OUT}}_pilot" --init-scale 1.0 --seed0 1007 \\
     --out "$OUT"
 """
-POST_MSM = "python experiments/run_msm_post.py --dir \"$OUT\" --n-fields 2000 --mpsrf-start 1000 --mpsrf-step-its 5000 --seed 11\n"
-POST_DD = ("python experiments/run_dd_post.py --dirs {dirs} --out \"{outpost}\" --n-fields 2000 --mpsrf-start 1000 --mpsrf-step-its 5000 "
+POST_MSM = "python experiments/run_msm_post.py --dir \"$OUT\" --n-fields 2000 --mpsrf-start 0 --mpsrf-log --seed 11\n"
+POST_DD = ("python experiments/run_dd_post.py --dirs {dirs} --out \"{outpost}\" --n-fields 2000 --mpsrf-start 0 --mpsrf-log "
            "--seed 11 --ref {ref}\n")
 
 
@@ -96,14 +114,15 @@ def global_ref(cell, truth, factor=1.0):
 
 def block(cell, truth, factor=1.0, dual_primal_out=None):
     """Shell text of one run (pilot, restart, post) for a cell."""
-    pilot, rg, rd, _ = ITERS[cell["ell"]]
+    pilot, rg, rd, _ = ITERS[(cell["ell"], cell["flux"])]
     script, flags = C.flags(cell, truth_seed=truth, eps_factor=factor)
     m = cell["method"]
     out = run_dir(cell, truth, factor)
     txt = RUN.format(label=cell["label"], what={"pcn": "global pCN reference", "msm": "global pCN in the MSM basis", "dd": "DD, primal blocks",
                                                  "ddplus": "DD, dual blocks (+ pooled with the primal run)", "ddH": "DD, primal blocks with overlap"}[m],
                      out=out, script=script, flags=flags, chains=CHAINS, pilot=pilot, half=pilot // 2,
-                     restart=rg if m in ("pcn", "msm") else rd)
+                     restart=rg if m in ("pcn", "msm") else rd, save=save_every(cell, rg if m in ("pcn", "msm") else rd),
+                     burn=burn_in(cell, rg if m in ("pcn", "msm") else rd))
     if m in ("pcn", "msm"):
         return txt + POST_MSM
     ref = global_ref(cell, truth, factor)
@@ -158,7 +177,7 @@ def main():
     for g in groups(a.stage, cells):
         for f in factors:
             ell = g[0]["ell"]
-            pilot, rg, rd, hours = ITERS[ell]
+            pilot, rg, rd, hours = ITERS[(ell, g[0]["flux"])]
             suffix = f"_e{f:g}" if f != 1.0 else ""
             tag = f"dd_end_s{a.stage}_t{a.truth}_" + ("_".join(sorted({c["label"] for c in g})) if len(g) == 1 else
                                                     f"l{ell}_{'pf' if g[0]['flux'] else 'p'}_b{g[0]['nb']}") + suffix
