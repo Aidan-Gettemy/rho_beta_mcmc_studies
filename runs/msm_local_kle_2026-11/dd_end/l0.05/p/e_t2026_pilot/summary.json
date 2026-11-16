@@ -2,22 +2,22 @@
  "settings": {
   "kind": "global",
   "chains": 64,
-  "n_iter": 50000,
-  "adapt": 50000,
+  "n_iter": 80000,
+  "adapt": 80000,
   "phase_k": null,
   "s0": 0.2,
   "step_from": null,
   "s_min": 0.0001,
   "adapt_every": 500,
   "init_scale": 1.0,
-  "burn": 25000,
+  "burn": 40000,
   "primal_dim": 4,
   "dual_energy": 0.95,
   "alt_L": 1,
   "alt_no_offset": false,
-  "save_every": 50,
-  "sigma_rel": 0.0019887378,
-  "data_relerr": 0.09,
+  "save_every": 80,
+  "sigma_rel": 0.00075130096,
+  "data_relerr": 0.034,
   "data_seed": 2026,
   "seed0": 7,
   "flux_noise_rel": null,
@@ -31,31 +31,31 @@
  },
  "data": {
   "seed": 2026,
-  "sigma_rel": 0.0019887378,
-  "data_relerr": 0.09,
+  "sigma_rel": 0.00075130096,
+  "data_relerr": 0.034,
   "n_obs": 2048,
-  "sigma_p": 0.0559146295322251,
-  "data_norm": 28.16777255137486,
-  "relerr_at_truth": 0.09016597779623942,
-  "phi_at_truth": 1027.7804224834808,
-  "phi_noise_floor_expected": 1024.0000227453386
+  "sigma_p": 0.021123304489951707,
+  "data_norm": 28.108384988761532,
+  "relerr_at_truth": 0.03413467060348193,
+  "phi_at_truth": 1032.1279749604084,
+  "phi_noise_floor_expected": 1023.9999863994952
  },
- "wall_sec": 221.1525695323944,
+ "wall_sec": 341.24946546554565,
  "s_frozen": null,
- "sec_per_chain": 195.18156829103827,
- "post_acc_mean": 0.251501875,
- "post_acc_chain_min": 0.24292,
- "post_acc_chain_max": 0.25872,
- "post_relerr_median_of_chain_medians": 0.09036025404930115,
- "post_relerr_chain_median_max": 0.09056179225444794,
- "post_relerr_last": 0.09037534147500992,
+ "sec_per_chain": 311.1993663571775,
+ "post_acc_mean": 0.25151953125,
+ "post_acc_chain_min": 0.242275,
+ "post_acc_chain_max": 0.259975,
+ "post_relerr_median_of_chain_medians": 0.03422965481877327,
+ "post_relerr_chain_median_max": 0.034426603466272354,
+ "post_relerr_last": 0.03419779986143112,
  "s_final_median": [
-  0.04583483934402466
+  0.018511923030018806
  ],
  "s_final_min": [
-  0.04583483934402466
+  0.018511923030018806
  ],
  "s_final_max": [
-  0.05749522149562836
+  0.02322135493159294
  ]
 }
