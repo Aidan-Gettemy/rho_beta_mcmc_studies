@@ -38,9 +38,9 @@ python tests/run_tests.py test_msm_dd
 # ---- d: global pCN reference
 OUT=runs/msm_local_kle_2026-11/dd_end/l0.1/pf/d_t2026
 python experiments/run_msm_chains.py --kind global --ell 0.1 --grid 32 --kle-energy 0.966 --sigma-rel 0.0088388348 --data-relerr 0.2 --data-seed 2026 --flux-noise-rel 0.2 --flux-sigma-rel 0.013363062 \
-    --chains 64 --workers 64 --save-every 13 --n-iter 30000 --adapt 30000 --burn 15000 --s0 0.2 --s-min 0.0001 --adapt-every 500 --seed0 7 \
+    --chains 64 --workers 64 --save-every 16 --n-iter 30000 --adapt 30000 --burn 15000 --s0 0.2 --s-min 0.0001 --adapt-every 500 --seed0 7 \
     --out "${OUT}_pilot"
 python experiments/run_msm_chains.py --kind global --ell 0.1 --grid 32 --kle-energy 0.966 --sigma-rel 0.0088388348 --data-relerr 0.2 --data-seed 2026 --flux-noise-rel 0.2 --flux-sigma-rel 0.013363062 \
-    --chains 64 --workers 64 --save-every 13 --n-iter 500000 --adapt 0 --burn 5000 --step-from "${OUT}_pilot" --init-scale 1.0 --seed0 1007 \
+    --chains 64 --workers 64 --save-every 16 --n-iter 500000 --adapt 0 --burn 5000 --step-from "${OUT}_pilot" --init-scale 1.0 --seed0 1007 \
     --out "$OUT"
 python experiments/run_msm_post.py --dir "$OUT" --n-fields 2000 --mpsrf-start 0 --mpsrf-log --seed 11

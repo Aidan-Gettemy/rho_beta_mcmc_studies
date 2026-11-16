@@ -40,8 +40,14 @@ SAVE_MIN = {0.2: 5, 0.1: 10, 0.05: 50}
 BURN_FLUX = {0.2: 500, 0.1: 5000, 0.05: 50000}
 
 
-def save_every(cell, restart):
-    return max(SAVE_MIN[cell["ell"]], -(-restart // 40000))
+def save_every(cell, restart=None):
+    """Thinning: at least SAVE_MIN, few enough that a run keeps about 40000 states, and a DIVISOR of the pilot and both restart lengths
+    (the sampler allocates n_iter // save_every states but stores ceil(n_iter / save_every), so a non-divisor overflows by one)."""
+    from math import gcd
+    pilot, rg, rd, _ = ITERS[(cell["ell"], cell["flux"])]
+    g = gcd(gcd(pilot, rg), rd)
+    target = max(SAVE_MIN[cell["ell"]], -(-max(rg, rd) // 40000))
+    return next(d for d in range(target, g + 1) if g % d == 0)
 
 
 def burn_in(cell, restart):
@@ -121,7 +127,7 @@ def block(cell, truth, factor=1.0, dual_primal_out=None):
     txt = RUN.format(label=cell["label"], what={"pcn": "global pCN reference", "msm": "global pCN in the MSM basis", "dd": "DD, primal blocks",
                                                  "ddplus": "DD, dual blocks (+ pooled with the primal run)", "ddH": "DD, primal blocks with overlap"}[m],
                      out=out, script=script, flags=flags, chains=CHAINS, pilot=pilot, half=pilot // 2,
-                     restart=rg if m in ("pcn", "msm") else rd, save=save_every(cell, rg if m in ("pcn", "msm") else rd),
+                     restart=rg if m in ("pcn", "msm") else rd, save=save_every(cell),
                      burn=burn_in(cell, rg if m in ("pcn", "msm") else rd))
     if m in ("pcn", "msm"):
         return txt + POST_MSM
