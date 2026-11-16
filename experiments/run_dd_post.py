@@ -85,6 +85,7 @@ def main(argv=None):
                     help="iterations between MPSRF curve points (default: %d saved samples)" % RP.MPSRF_STEP)
     ap.add_argument("--mpsrf-log", action="store_true", help="log-spaced MPSRF curve points, no ignored points (use with --mpsrf-start 0)")
     ap.add_argument("--burn", type=int, default=None, help="discard this many iterations before the fields and statistics (overrides the run's own burn)")
+    ap.add_argument("--auto-burn", action="store_true", help="use at least the iteration from which the sup-MPSRF stays below the level as the burn-in (if within the first half of the run)")
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument("--overlap-blend", action="store_true", help="overlapping runs: assemble with the smooth partition of unity (re-post of existing chains)")
     ap.add_argument("--ref", default=REF, help="post_summary.json of the global-pCN run (sd ratio), optional")
@@ -132,6 +133,15 @@ def main(argv=None):
                                           convergence_iteration=convergence_iteration(its, mp[k], RP.MPSRF_LEVEL, ignore_first=RP.IGNORE_FIRST))
                                      for k in range(nb)],
                              worst_block_final=int(np.argmax(mp[:, -1])))
+        gres["burn_configured"] = int(M)
+        if a.auto_burn:                                           # automatic burn-in (MPSRF does not depend on the burn-in)
+            sb = gres["mpsrf"]["sup"]["stays_below_from_iteration"]
+            gres["burn_auto"] = dict(stays_below_it=sb, applied=False)
+            if sb is not None:
+                Ma = int(-(-sb // se) * se)
+                if Ma <= n // 2:
+                    M = max(M, Ma); gres["burn_auto"]["applied"] = M == Ma
+            res["burn_used"] = int(M)
         fig, ax = plt.subplots(figsize=(6.4, 3.8))
         for k in range(nb):
             ax.plot(its, mp[k], color="0.75", lw=0.7)

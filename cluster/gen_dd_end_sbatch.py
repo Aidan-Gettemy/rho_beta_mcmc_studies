@@ -102,8 +102,8 @@ python experiments/{script} {flags} \\
     --chains {chains} --workers 64 --save-every {save} --n-iter {restart} --adapt 0 --burn {burn} --step-from "${{OUT}}_pilot" --init-scale 1.0 --seed0 1007 \\
     --out "$OUT"
 """
-POST_MSM = "python experiments/run_msm_post.py --dir \"$OUT\" --n-fields 2000 --mpsrf-start 0 --mpsrf-log --seed 11\n"
-POST_DD = ("python experiments/run_dd_post.py --dirs {dirs} --out \"{outpost}\" --n-fields 2000 --mpsrf-start 0 --mpsrf-log "
+POST_MSM = "python experiments/run_msm_post.py --dir \"$OUT\" --n-fields 2000 --mpsrf-start 0 --mpsrf-log --auto-burn --seed 11\n"
+POST_DD = ("python experiments/run_dd_post.py --dirs {dirs} --out \"{outpost}\" --n-fields 2000 --mpsrf-start 0 --mpsrf-log --auto-burn "
            "--seed 11 --ref {ref}\n")
 
 
