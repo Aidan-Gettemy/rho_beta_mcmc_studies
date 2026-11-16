@@ -31,7 +31,7 @@ from brho.glam import fieldplots as fp
 from brho.glam import post
 
 
-def compare_fields(ref, best, mean, std, mask, grid, layers, odir, dom, exp):
+def compare_fields(ref, best, mean, std, mask, grid, layers, odir, dom, exp, data=None, best_conc=None, mean_conc=None):
     """Difference and z-score figures plus field_comparison.json (statistics over the plug cells)."""
     made, out = [], {}
     r = np.asarray(ref, float)
@@ -57,6 +57,12 @@ def compare_fields(ref, best, mean, std, mask, grid, layers, odir, dom, exp):
     for n, v in (("best", best), ("mean", mean)):
         if v is not None:
             out["reference"][f"level_{n}"] = float(np.asarray(v, float)[mask].mean())
+    # relative error of the simulated concentration to the data, ||c - data|| / ||data|| over all cells and output times
+    if data is not None:
+        d = np.asarray(data, float)
+        for n, c in (("best", best_conc), ("mean", mean_conc)):
+            if c is not None and np.shape(c) == d.shape:
+                out.setdefault("data_re", {})[n] = float(np.linalg.norm(np.asarray(c, float) - d) / np.linalg.norm(d))
     path = os.path.join(io.tables_dir(exp), "field_comparison.json")
     io.save_json(path, out)
     made.append(path)
@@ -134,7 +140,8 @@ def main():
                                        title={"ref": "Reference", "best": "Best state", "mean": "Posterior mean",
                                               "std": "Posterior standard deviation"}[name] + " log permeability"))
     if ref_logk is not None and (b_logk is not None or m_logk is not None):
-        made += compare_fields(ref_logk, b_logk, m_logk, s_logk, mask, grid, layers, odir, dom, exp)
+        made += compare_fields(ref_logk, b_logk, m_logk, s_logk, mask, grid, layers, odir, dom, exp,
+                                data=ref_tc, best_conc=b_conc, mean_conc=m_conc)
     shared = [x for x in (ref_tc, b_conc, m_conc) if x is not None]
     clim = (min(float(x.min()) for x in shared), max(float(x.max()) for x in shared)) if shared else None
     for name, S in (("ref", ref_tc), ("best", b_conc), ("mean", m_conc), ("std", s_conc)):
