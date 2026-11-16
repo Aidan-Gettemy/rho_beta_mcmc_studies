@@ -7,7 +7,7 @@
 # snapshot, a few hundred iterations before 80000, so the last stage before 80000 is run again with the saved random stream),
 # the same flags, step sizes, masks and seeds.  Chain parts after the snapshot are rewritten; earlier ones are kept.
 # Checked first (tests/test_glam.py::test_a_finished_glam_run_can_be_extended...): the extended run equals one uninterrupted 100000-iteration run.
-# BEFORE submitting, check that the snapshots exist:  ls results/e6_glam_<tag>/anchor_state | tail -4   (pCN: chain_r*_ite80000.pkl).
+# BEFORE submitting, check that the snapshots exist:  ls runs/cluster/results/e6_glam_s80k_*/anchor_state | tail -4   (pCN: chain_r*_ite80000.pkl).
 # 20000 iterations take about a quarter of the 80000 (24 h limit used there), so 8 h are asked for here.  Afterwards re-run the post jobs
 # (s80k_post_*.sbatch) and s80k_mpsrf_blocks.sbatch; they read the whole chain, so the tail from 40000 now has 60000 iterations.
 set -euo pipefail
