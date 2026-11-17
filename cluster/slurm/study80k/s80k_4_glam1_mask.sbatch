@@ -41,7 +41,7 @@ SOLVER_RTOL=1e-8
 
 # ------------------------------------------------------------------ sampler flags (every GlamConfig field)
 GLAM_FLAGS=(
-  --restart-keep-mask runs/cluster/tables/e6_glam_s80k_pcn/keep_mask.npz   # Stage 0 output (committed); True = keep the chain's own coordinate
+  --restart-keep-mask runs/cluster/tables/e6_glam_s80k_pcn/keep_mask_12chains.npz   # Stage 0 output on the 12 chains that finished first (committed); the mask this arm was run with. keep_mask.npz is now the 24-chain mask; True = keep the chain's own coordinate
   # --- Length and windows  (window 1: step sizes adapt; window 2: steps frozen, local stages still run; the tail for post-processing starts at window1)
   --fixed-steps                       # no step-size adaptation: beta-g0 / beta-l0 are used for the whole run
   --n-iter ${N_ITER:-80000}          # 80000 as run; the 20k extension submits with N_ITER=100000 (s80k_extend.sh)
