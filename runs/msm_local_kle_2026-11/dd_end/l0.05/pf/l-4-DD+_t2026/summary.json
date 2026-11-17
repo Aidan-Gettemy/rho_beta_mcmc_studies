@@ -1,0 +1,390 @@
+{
+ "settings": {
+  "grid": "dual",
+  "chains": 64,
+  "n_iter": 60000,
+  "adapt": 0,
+  "s0": 0.2,
+  "step_from": "runs/msm_local_kle_2026-11/dd_end/l0.05/pf/l-4-DD+_t2026_pilot",
+  "init_scale": 1.0,
+  "burn": 12000,
+  "save_every": 50,
+  "s_min": 0.001,
+  "adapt_every": 100,
+  "smoothing": 0.001,
+  "neighbors": 60,
+  "sigma_rel": 0.0019887378,
+  "data_relerr": 0.09,
+  "data_seed": 2026,
+  "seed0": 1007,
+  "flux_noise_rel": 0.09,
+  "flux_sigma_rel": 0.0042521003,
+  "primal_local_dim": 0,
+  "dual_energy": 0.95,
+  "overlap_halo": 0,
+  "overlap_energy": 0.95,
+  "overlap_halo_sensors": false,
+  "overlap_blend": false,
+  "flux_lines": "default",
+  "robin_alpha": 0.1,
+  "h_prior_rel": 0.09486833,
+  "interior_flux": true,
+  "h_prior_meas_rel": 0.09,
+  "h_corr_len": 4.0,
+  "robin_interp": "cubic",
+  "n": 64,
+  "ell": 0.05,
+  "blocks": 2,
+  "kle_energy": 0.95,
+  "workers": 64,
+  "out": "runs/msm_local_kle_2026-11/dd_end/l0.05/pf/l-4-DD+_t2026"
+ },
+ "data": {
+  "seed": 2026,
+  "sigma_rel": 0.0019887378,
+  "data_relerr": 0.09,
+  "n_obs": 2048,
+  "sigma_p": 0.0559146295322251,
+  "data_norm": 28.16777255137486,
+  "relerr_at_truth": 0.09016597779623942,
+  "phi_at_truth": 1027.7804224834808,
+  "phi_noise_floor_expected": 1024.0000227453386
+ },
+ "flux": {
+  "n_flux": 448,
+  "lines": [
+   8,
+   16,
+   24,
+   32,
+   40,
+   48,
+   56
+  ],
+  "stride": 2,
+  "offset": 0,
+  "noise_rel": 0.09,
+  "sigma_rel": 0.0042521003,
+  "sigma_q": 0.0010271635986347806,
+  "flux_norm": 0.2437273064440185,
+  "relerr_at_truth": 0.09175736027113401,
+  "phi_at_truth": 232.83315650146062
+ },
+ "spline": {
+  "kernel": "thin_plate_spline",
+  "smoothing": 0.001,
+  "neighbors": 60,
+  "n_sensors": 2048
+ },
+ "grid": {
+  "name": "dual",
+  "n_blocks": 9,
+  "r_k": [
+   17,
+   31,
+   17,
+   31,
+   58,
+   31,
+   17,
+   31,
+   17
+  ],
+  "p": 250,
+  "halo": 0,
+  "robin_alpha": 0.1,
+  "robin_sides": 9
+ },
+ "interface": {
+  "segments": [
+   {
+    "block": 0,
+    "neighbour": 3,
+    "orientation": "vertical",
+    "n_faces": 16,
+    "eps_int": 0.02349746339497884
+   },
+   {
+    "block": 0,
+    "neighbour": 1,
+    "orientation": "horizontal",
+    "n_faces": 16,
+    "eps_int": 0.02813595962500958
+   },
+   {
+    "block": 1,
+    "neighbour": 4,
+    "orientation": "vertical",
+    "n_faces": 32,
+    "eps_int": 0.042026362434781125
+   },
+   {
+    "block": 1,
+    "neighbour": 2,
+    "orientation": "horizontal",
+    "n_faces": 16,
+    "eps_int": 0.03545003884283292
+   },
+   {
+    "block": 2,
+    "neighbour": 5,
+    "orientation": "vertical",
+    "n_faces": 16,
+    "eps_int": 0.013476714274411914
+   },
+   {
+    "block": 3,
+    "neighbour": 6,
+    "orientation": "vertical",
+    "n_faces": 16,
+    "eps_int": 0.08078772652604312
+   },
+   {
+    "block": 3,
+    "neighbour": 4,
+    "orientation": "horizontal",
+    "n_faces": 32,
+    "eps_int": 0.04924922802081388
+   },
+   {
+    "block": 4,
+    "neighbour": 7,
+    "orientation": "vertical",
+    "n_faces": 32,
+    "eps_int": 0.08170991760846183
+   },
+   {
+    "block": 4,
+    "neighbour": 5,
+    "orientation": "horizontal",
+    "n_faces": 32,
+    "eps_int": 0.03485561075163447
+   },
+   {
+    "block": 5,
+    "neighbour": 8,
+    "orientation": "vertical",
+    "n_faces": 16,
+    "eps_int": 0.14623392881655817
+   },
+   {
+    "block": 6,
+    "neighbour": 7,
+    "orientation": "horizontal",
+    "n_faces": 16,
+    "eps_int": 0.21737921123978546
+   },
+   {
+    "block": 7,
+    "neighbour": 8,
+    "orientation": "horizontal",
+    "n_faces": 16,
+    "eps_int": 0.18616863278455537
+   }
+  ],
+  "eps_int_mean": 0.07824756619332222,
+  "eps_int_max": 0.21737921123978546
+ },
+ "blocks": [
+  {
+   "block": 0,
+   "cells": "16x16",
+   "r_k": 17,
+   "n_sensors": 128,
+   "acc_post_M_mean": 0.25183268229166667,
+   "acc_post_M_chain_min": 0.2474375,
+   "acc_post_M_chain_max": 0.2584375,
+   "s_used": 0.07284934381334057,
+   "s_pilot_or_final_geomean": 0.072849340736866,
+   "s_final_median": 0.072849340736866,
+   "s_final_min": 0.072849340736866,
+   "s_final_max": 0.072849340736866,
+   "relerr_post_M_median": 0.06578800082206726,
+   "n_flux_faces": 0,
+   "kinds": {
+    "L": "ext",
+    "R": "iface",
+    "B": "noflow",
+    "T": "iface"
+   }
+  },
+  {
+   "block": 1,
+   "cells": "16x32",
+   "r_k": 31,
+   "n_sensors": 256,
+   "acc_post_M_mean": 0.25053743489583336,
+   "acc_post_M_chain_min": 0.24510416666666668,
+   "acc_post_M_chain_max": 0.25529166666666664,
+   "s_used": 0.07020393018401044,
+   "s_pilot_or_final_geomean": 0.07020393013954168,
+   "s_final_median": 0.07020393013954163,
+   "s_final_min": 0.07020393013954163,
+   "s_final_max": 0.07020393013954163,
+   "relerr_post_M_median": 0.05908239632844925,
+   "n_flux_faces": 0,
+   "kinds": {
+    "L": "ext",
+    "R": "iface",
+    "B": "iface",
+    "T": "iface"
+   }
+  },
+  {
+   "block": 2,
+   "cells": "16x16",
+   "r_k": 17,
+   "n_sensors": 128,
+   "acc_post_M_mean": 0.2511468098958333,
+   "acc_post_M_chain_min": 0.24479166666666666,
+   "acc_post_M_chain_max": 0.25754166666666667,
+   "s_used": 0.09478836062260831,
+   "s_pilot_or_final_geomean": 0.09478835761547086,
+   "s_final_median": 0.09478835761547089,
+   "s_final_min": 0.09478835761547089,
+   "s_final_max": 0.09478835761547089,
+   "relerr_post_M_median": 0.06578420102596283,
+   "n_flux_faces": 0,
+   "kinds": {
+    "L": "ext",
+    "R": "iface",
+    "B": "iface",
+    "T": "noflow"
+   }
+  },
+  {
+   "block": 3,
+   "cells": "32x16",
+   "r_k": 31,
+   "n_sensors": 256,
+   "acc_post_M_mean": 0.2498427734375,
+   "acc_post_M_chain_min": 0.2420625,
+   "acc_post_M_chain_max": 0.25783333333333336,
+   "s_used": 0.04813624929518772,
+   "s_pilot_or_final_geomean": 0.04813624918460846,
+   "s_final_median": 0.04813624918460846,
+   "s_final_min": 0.04813624918460846,
+   "s_final_max": 0.04813624918460846,
+   "relerr_post_M_median": 0.08769495040178299,
+   "n_flux_faces": 0,
+   "kinds": {
+    "L": "iface",
+    "R": "iface",
+    "B": "noflow",
+    "T": "iface"
+   }
+  },
+  {
+   "block": 4,
+   "cells": "32x32",
+   "r_k": 58,
+   "n_sensors": 512,
+   "acc_post_M_mean": 0.2522734375,
+   "acc_post_M_chain_min": 0.24754166666666666,
+   "acc_post_M_chain_max": 0.2570208333333333,
+   "s_used": 0.03577805591390256,
+   "s_pilot_or_final_geomean": 0.03577805683016778,
+   "s_final_median": 0.03577805683016777,
+   "s_final_min": 0.03577805683016777,
+   "s_final_max": 0.03577805683016777,
+   "relerr_post_M_median": 0.09303838014602661,
+   "n_flux_faces": 0,
+   "kinds": {
+    "L": "iface",
+    "R": "iface",
+    "B": "iface",
+    "T": "iface"
+   }
+  },
+  {
+   "block": 5,
+   "cells": "32x16",
+   "r_k": 31,
+   "n_sensors": 256,
+   "acc_post_M_mean": 0.2516689453125,
+   "acc_post_M_chain_min": 0.24585416666666668,
+   "acc_post_M_chain_max": 0.25733333333333336,
+   "s_used": 0.052976760507768283,
+   "s_pilot_or_final_geomean": 0.05297676101326945,
+   "s_final_median": 0.052976761013269424,
+   "s_final_min": 0.052976761013269424,
+   "s_final_max": 0.052976761013269424,
+   "relerr_post_M_median": 0.10614143311977386,
+   "n_flux_faces": 0,
+   "kinds": {
+    "L": "iface",
+    "R": "iface",
+    "B": "iface",
+    "T": "noflow"
+   }
+  },
+  {
+   "block": 6,
+   "cells": "16x16",
+   "r_k": 17,
+   "n_sensors": 128,
+   "acc_post_M_mean": 0.2510361328125,
+   "acc_post_M_chain_min": 0.24472916666666666,
+   "acc_post_M_chain_max": 0.2559375,
+   "s_used": 0.0903631075371308,
+   "s_pilot_or_final_geomean": 0.0903631076216698,
+   "s_final_median": 0.09036310762166977,
+   "s_final_min": 0.09036310762166977,
+   "s_final_max": 0.09036310762166977,
+   "relerr_post_M_median": 0.31854164600372314,
+   "n_flux_faces": 0,
+   "kinds": {
+    "L": "iface",
+    "R": "ext",
+    "B": "noflow",
+    "T": "iface"
+   }
+  },
+  {
+   "block": 7,
+   "cells": "16x32",
+   "r_k": 31,
+   "n_sensors": 256,
+   "acc_post_M_mean": 0.2524052734375,
+   "acc_post_M_chain_min": 0.2465,
+   "acc_post_M_chain_max": 0.2613958333333333,
+   "s_used": 0.06612797795591589,
+   "s_pilot_or_final_geomean": 0.06612797826528556,
+   "s_final_median": 0.06612797826528549,
+   "s_final_min": 0.06612797826528549,
+   "s_final_max": 0.06612797826528549,
+   "relerr_post_M_median": 0.3544059097766876,
+   "n_flux_faces": 0,
+   "kinds": {
+    "L": "iface",
+    "R": "ext",
+    "B": "iface",
+    "T": "iface"
+   }
+  },
+  {
+   "block": 8,
+   "cells": "16x16",
+   "r_k": 17,
+   "n_sensors": 128,
+   "acc_post_M_mean": 0.2523834635416667,
+   "acc_post_M_chain_min": 0.2468125,
+   "acc_post_M_chain_max": 0.25835416666666666,
+   "s_used": 0.074575118544443,
+   "s_pilot_or_final_geomean": 0.07457511872053144,
+   "s_final_median": 0.07457511872053146,
+   "s_final_min": 0.07457511872053146,
+   "s_final_max": 0.07457511872053146,
+   "relerr_post_M_median": 0.39495885372161865,
+   "n_flux_faces": 0,
+   "kinds": {
+    "L": "iface",
+    "R": "ext",
+    "B": "iface",
+    "T": "noflow"
+   }
+  }
+ ],
+ "wall_sec": 7002.17772436142,
+ "sec_per_chain": 768.0624010297987
+}
