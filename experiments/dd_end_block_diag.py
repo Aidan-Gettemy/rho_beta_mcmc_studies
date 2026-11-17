@@ -47,17 +47,22 @@ def main():
         within = B.std(1).mean(0)                            # within-chain sd per coefficient
         between = mean2.std(0)                               # spread of chain means per coefficient
         ratio = between / np.maximum(within, 1e-12)
-        drift = (mean2 - mean1) / np.maximum(between, 1e-12)
         lab, cen = two_means(mean2)
-        n1 = int(lab.sum()); gap = np.linalg.norm(cen[0] - cen[1]) / np.sqrt((within ** 2).sum())
-        u, s, vt = np.linalg.svd(mean2 - mean2.mean(0), full_matrices=False)
+        n1 = int(lab.sum())
+        sep = cen[1] - cen[0]
+        dist = float(np.linalg.norm(sep))
+        u = sep / max(dist, 1e-12)
+        wsd = float(np.mean([(B[i] @ u).std() for i in range(m)]))          # within-chain sd along the separating direction
+        gap = dist / max(wsd, 1e-12)
+        drift = np.abs((mean2 - mean1) @ u) / max(dist, 1e-12)                 # movement along it, as a fraction of the gap
+        u_, s_, vt = np.linalg.svd(mean2 - mean2.mean(0), full_matrices=False)
         pc = (mean2 - mean2.mean(0)) @ vt[:2].T
         lines.append(f"block {k}: dim {r}, chains {m}, saved states {n}")
         lines.append(f"  between/within sd per coefficient: " + " ".join(f"{x:.2f}" for x in ratio))
-        lines.append(f"  2-means split of chain means: {m - n1} + {n1} chains, gap {gap:.2f} within-chain sds")
-        lines.append(f"  drift of chain means (2nd half - 1st half) / between spread: median |.| {np.median(np.abs(drift)):.2f}, max {np.abs(drift).max():.2f}")
-        modes = gap > 3 and min(n1, m - n1) >= 2 and np.median(np.abs(drift)) < 0.5
-        lines.append("  verdict: " + ("chains sit in separate modes and do not drift: a multimodal block posterior" if modes else
+        lines.append(f"  2-means split of chain means: {m - n1} + {n1} chains, gap {gap:.1f} within-chain sds along the separating direction")
+        lines.append(f"  movement of chain means along it between the two halves: median {np.median(drift):.2f} of the gap, max {drift.max():.2f}")
+        modes = gap > 3 and min(n1, m - n1) >= 2 and np.median(drift) < 0.1
+        lines.append("  verdict: " + ("chains sit in separate modes and do not move between halves: a multimodal block posterior" if modes else
                                       "no clear split into modes: look at the traces (slow mixing or a few stuck chains)"))
         fig, ax = plt.subplots(1, 2, figsize=(11, 4))
         lead = int(np.argmax(ratio))
