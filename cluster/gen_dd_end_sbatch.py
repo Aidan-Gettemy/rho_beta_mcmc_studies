@@ -4,7 +4,7 @@
     python3 cluster/gen_dd_end_sbatch.py --stage 2                 # global references (cells a..f), truth 2026
     python3 cluster/gen_dd_end_sbatch.py --stage 3                 # MSM-basis global, DD primal and DD dual + pooled, ell 0.2 and 0.1
     python3 cluster/gen_dd_end_sbatch.py --stage 4                 # the same at ell 0.05
-    python3 cluster/gen_dd_end_sbatch.py --stage 6 --truth 2027    # extra truth on the 4 x 4 column (all ell)
+    python3 cluster/gen_dd_end_sbatch.py --stage 6 --truth 2027    # extra truth on the 4 x 4 column (ell 0.1 only)
     python3 cluster/gen_dd_end_sbatch.py --stage 7                 # noise sweep (ell 0.1, 4 x 4): eps x 0.5 and x 2
     python3 cluster/gen_dd_end_sbatch.py --stage 8                 # overlap test j-16-DD-H
 
@@ -150,8 +150,8 @@ def select(stage, truth):
         return [c for c in cs if c["method"] in ("msm", "dd", "ddplus") and c["ell"] in (0.2, 0.1)]
     if stage == 4:
         return [c for c in cs if c["method"] in ("msm", "dd", "ddplus") and c["ell"] == 0.05]
-    if stage == 6:      # extra truths: the 4 x 4 column at every ell
-        return [c for c in cs if c["method"] != "ddH" and (c["method"] == "pcn" or c["nb"] == 4)]
+    if stage == 6:      # extra truths: the 4 x 4 column at ell 0.1 only (decided 2026-11-17)
+        return [c for c in cs if c["ell"] == 0.1 and c["method"] != "ddH" and (c["method"] == "pcn" or c["nb"] == 4)]
     if stage == 7:      # noise sweep: ell 0.1, 4 x 4: pCN, DD, DD with dual and pooling
         return [c for c in cs if c["ell"] == 0.1 and c["method"] in ("pcn", "dd", "ddplus") and (c["method"] == "pcn" or c["nb"] == 4)]
     if stage == 8:
