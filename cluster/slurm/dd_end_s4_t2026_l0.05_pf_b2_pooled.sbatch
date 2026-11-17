@@ -34,4 +34,5 @@ export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_TH
 export NUMBA_CACHE_DIR=/tmp/numba_cache_$SLURM_JOB_ID
 export PYTHONPATH=$PWD:${PYTHONPATH:-}:$PWD/experiments
 
+OUT=runs/msm_local_kle_2026-11/dd_end/l0.05/pf/l-4-DD+_t2026
 python experiments/run_dd_post.py --dirs "runs/msm_local_kle_2026-11/dd_end/l0.05/pf/l-4-DD_t2026" "$OUT" --out "$OUT/post_pooled" --n-fields 2000 --mpsrf-start 0 --mpsrf-log --auto-burn --seed 11 --ref runs/msm_local_kle_2026-11/dd_end/l0.05/pf/f_t2026/post/post_summary.json
