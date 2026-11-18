@@ -8,8 +8,33 @@ S = d p_sensors / d h at the current c.  One iteration = a pCN step for c given 
 Each block has its own copy of h (a face shared by two blocks is drawn separately for each).
 """
 import numpy as np
+from scipy.linalg import cholesky_banded, cho_solve_banded
 from .samplers import StepAdapter
+from .msm_dd import BANDED_MIN_N
 
+
+
+class BandedInverse:
+    """Stands in for the dense inverse A^-1 of a block (A symmetric positive definite, half-bandwidth u = nyl) without forming it:
+    `inv @ b` is one banded solve, and `inv[np.ix_(rows, cols)]` solves for the needed columns once (cached) and picks the rows.
+    Replaces np.linalg.inv, which cost O(N^3) per iteration (64 ms at 32 x 32 cells)."""
+
+    def __init__(self, ab):
+        self.cb = cholesky_banded(ab, lower=False, check_finite=False)
+        self.N = ab.shape[1]
+        self._cols = None
+        self._X = None
+
+    def __matmul__(self, b):
+        return cho_solve_banded((self.cb, False), np.asarray(b, float), check_finite=False)
+
+    def __getitem__(self, ix):
+        rows, cols = (np.asarray(a).ravel() for a in ix)
+        if self._cols is None or len(cols) != len(self._cols) or np.any(cols != self._cols):
+            E = np.zeros((self.N, len(cols)))
+            E[cols, np.arange(len(cols))] = 1.0
+            self._X, self._cols = cho_solve_banded((self.cb, False), E, check_finite=False), cols.copy()
+        return self._X[rows]
 
 class GibbsBlock:
     """Gibbs block.  Optional extras (need the FluxData `fd`):
@@ -95,8 +120,6 @@ class GibbsBlock:
         N = self.N
         ax, bx, ay, by = sv.ax, sv.bx, sv.ay, sv.by
         Tx = 2.0 * K[ax] * K[bx] / (K[ax] + K[bx]); Ty = 2.0 * K[ay] * K[by] / (K[ay] + K[by])
-        A = np.zeros((N, N))
-        A[ax, bx] = -Tx; A[bx, ax] = -Tx; A[ay, by] = -Ty; A[by, ay] = -Ty
         diag = (np.bincount(ax, Tx, N) + np.bincount(bx, Tx, N) + np.bincount(ay, Ty, N) + np.bincount(by, Ty, N))
         Gs = []
         for ids, g, ainv, sl in self.entries:
@@ -104,6 +127,15 @@ class GibbsBlock:
             G = t / (1.0 + t * ainv)
             diag[ids] += G
             Gs.append(G)
+        if N > BANDED_MIN_N:                    # large blocks: banded Cholesky instead of a dense inverse (same numbers to ~1e-12)
+            u = self.nyl
+            ab = np.zeros((u + 1, N))
+            ab[u] = diag
+            ab[u - 1, by] = -Ty
+            ab[0, bx] = -Tx
+            return BandedInverse(ab), Gs
+        A = np.zeros((N, N))
+        A[ax, bx] = -Tx; A[bx, ax] = -Tx; A[ay, by] = -Ty; A[by, ay] = -Ty
         A.flat[sv.diag_pos] = diag
         return np.linalg.inv(A), Gs
 
