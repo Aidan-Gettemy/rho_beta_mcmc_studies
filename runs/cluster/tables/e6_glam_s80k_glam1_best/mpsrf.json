@@ -34,21 +34,98 @@
    "final_mpsrf": 1.001335862853852,
    "convergence_iteration": 41200.0,
    "level": 1.2,
-   "seconds": 0.08560061454772949
+   "seconds": 0.03797602653503418
   },
   "first 100": {
    "dim": 100,
    "final_mpsrf": 1.048495868341988,
    "convergence_iteration": 53372.0,
    "level": 1.2,
-   "seconds": 0.2319200038909912
+   "seconds": 0.28240370750427246
   },
   "block 0": {
    "dim": 500,
-   "final_mpsrf": 1.1639209714904528,
+   "final_mpsrf": 1.163920971490453,
    "convergence_iteration": 89550.0,
    "level": 1.2,
-   "seconds": 4.013084173202515
+   "seconds": 2.6780800819396973
+  },
+  "block 1": {
+   "dim": 500,
+   "final_mpsrf": 1.167073683776818,
+   "convergence_iteration": 91433.0,
+   "level": 1.2,
+   "seconds": 2.7331297397613525
+  },
+  "block 2": {
+   "dim": 500,
+   "final_mpsrf": 1.1675432673019295,
+   "convergence_iteration": 89370.0,
+   "level": 1.2,
+   "seconds": 2.746232271194458
+  },
+  "block 3": {
+   "dim": 500,
+   "final_mpsrf": 1.1674521219497562,
+   "convergence_iteration": 89503.0,
+   "level": 1.2,
+   "seconds": 2.6916565895080566
+  },
+  "block 4": {
+   "dim": 500,
+   "final_mpsrf": 1.1671022707818053,
+   "convergence_iteration": 87792.0,
+   "level": 1.2,
+   "seconds": 2.6121809482574463
+  },
+  "block 5": {
+   "dim": 500,
+   "final_mpsrf": 1.1614803188793197,
+   "convergence_iteration": 89608.0,
+   "level": 1.2,
+   "seconds": 2.635004758834839
+  },
+  "block 6": {
+   "dim": 500,
+   "final_mpsrf": 1.1644264390072516,
+   "convergence_iteration": 89768.0,
+   "level": 1.2,
+   "seconds": 2.5774929523468018
+  },
+  "block 7": {
+   "dim": 500,
+   "final_mpsrf": 1.1582119189579299,
+   "convergence_iteration": 89810.0,
+   "level": 1.2,
+   "seconds": 2.5571022033691406
+  },
+  "block 8": {
+   "dim": 500,
+   "final_mpsrf": 1.1544117660472328,
+   "convergence_iteration": 87139.0,
+   "level": 1.2,
+   "seconds": 2.590479612350464
+  },
+  "block 9": {
+   "dim": 500,
+   "final_mpsrf": 1.1545494115997263,
+   "convergence_iteration": 86918.0,
+   "level": 1.2,
+   "seconds": 2.572967529296875
+  },
+  "block 10": {
+   "dim": 500,
+   "final_mpsrf": 1.1608076110451304,
+   "convergence_iteration": 86371.0,
+   "level": 1.2,
+   "seconds": 2.5582802295684814
+  },
+  "block 11": {
+   "dim": 500,
+   "final_mpsrf": 1.1529503717460385,
+   "convergence_iteration": 86690.0,
+   "level": 1.2,
+   "seconds": 2.5635221004486084
   }
  },
  "psrf_final": {
