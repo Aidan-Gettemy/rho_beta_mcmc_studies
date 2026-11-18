@@ -38,6 +38,9 @@ ITERS = {(0.2, True): (20000, 300000, 200000, 1), (0.1, True): (30000, 500000, 3
 # pressure-only cells (slow pCN).  The MPSRF window starts at iteration 0 on log-spaced points, so the convergence iteration is visible; the
 # post reports whether the burn-in is at or beyond the iteration from which the curve stays below 1.2 and can be re-run with --burn.
 SAVE_MIN = {0.2: 5, 0.1: 10, 0.05: 50}
+# overlap runs at ell 0.05 (extended blocks of up to 32 x 32 cells, about 2 ms per block iteration, about 10 x the DD iterations to converge):
+# (DD restart, hours)
+DDH_OVERRIDE = {0.05: (300000, 6)}
 BURN_FLUX = {0.2: 7000, 0.1: 25000, 0.05: 360000}      # measured in stage 2: stays-below-1.2 iterations 6.3k, 23k, 356k (global pCN, pressure + flux)
 
 
@@ -134,6 +137,8 @@ def block(cell, truth, factor=1.0, dual_primal_out=None):
     pilot, rg, rd, _ = ITERS[(cell["ell"], cell["flux"])]
     script, flags = C.flags(cell, truth_seed=truth, eps_factor=factor)
     m = cell["method"]
+    if m == "ddH" and cell["ell"] in DDH_OVERRIDE:
+        rd = DDH_OVERRIDE[cell["ell"]][0]
     mult = sweep_mult(m, factor)                      # noise sweep: eps x 0.5 narrows the posterior, so pCN needs more iterations
     rg, rd = rg * mult, rd * mult
     out = run_dir(cell, truth, factor)
@@ -174,7 +179,7 @@ def groups(stage, cells):
     """One job per (ell, data, blocks) family; ell 0.05 and the pCN references get one job per run (long runs)."""
     out = {}
     for c in cells:
-        if c["method"] == "pcn" or (c["ell"] == 0.05 and c["method"] == "msm"):
+        if c["method"] in ("pcn", "ddH") or (c["ell"] == 0.05 and c["method"] == "msm"):
             key = (c["label"],)
         elif c["ell"] == 0.05:                       # DD primal + dual + pooled of one (data, blocks) family in one job (no duplicate primal run)
             key = (c["ell"], c["flux"], c["nb"], "dd")
@@ -188,8 +193,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--stage", type=int, required=True)
     ap.add_argument("--truth", type=int, default=C.DATA_SEED)
+    ap.add_argument("--ell", type=float, default=None, help="only the cells of this correlation length (e.g. the ell 0.05 overlap extension of stage 8)")
     a = ap.parse_args()
     cells = select(a.stage, a.truth)
+    if a.ell is not None:
+        cells = [c for c in cells if c["ell"] == a.ell]
     factors = (0.5, 2.0) if a.stage == 7 else (1.0,)
     if a.stage == 6 and a.truth == C.DATA_SEED:
         raise SystemExit("stage 6 needs the extra truth seeds: --truth 2027 and --truth 2028")
@@ -199,6 +207,8 @@ def main():
         for f in factors:
             ell = g[0]["ell"]
             pilot, rg, rd, hours = ITERS[(ell, g[0]["flux"])]
+            if g[0]["method"] == "ddH" and ell in DDH_OVERRIDE:
+                rd, hours = DDH_OVERRIDE[ell]
             suffix = f"_e{f:g}" if f != 1.0 else ""
             tag = f"dd_end_s{a.stage}_t{a.truth}_" + ("_".join(sorted({c["label"] for c in g})) if len(g) == 1 else
                                                     f"l{ell}_{'pf' if g[0]['flux'] else 'p'}_b{g[0]['nb']}") + suffix

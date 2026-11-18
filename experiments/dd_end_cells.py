@@ -57,6 +57,10 @@ def cells():
                 for m in ("msm", "dd", "ddplus"):
                     out.append(dict(ell=ell, flux=flux, method=m, nb=nb, label=label(ell, flux, m, nb)))
     out.append(dict(ell=0.1, flux=True, method="ddH", nb=4, label=label(0.1, True, "ddH", 4)))
+    # extension of stage 8 (decided 2026-11-18): the overlap test at ell 0.05, 4 x 4, with the halo reaching the dual lines (8 cells = 2.5 ell)
+    # and with a halo of the same width in correlation lengths as at ell 0.1 (4 cells = 1.25 ell)
+    out.append(dict(ell=0.05, flux=True, method="ddH", nb=4, label=label(0.05, True, "ddH", 4)))
+    out.append(dict(ell=0.05, flux=True, method="ddH", nb=4, halo=4, label=label(0.05, True, "ddH", 4) + "4"))
     return out
 
 
@@ -83,7 +87,7 @@ def flags(cell, truth_seed=DATA_SEED, eps_factor=1.0):
         hr = math.sqrt(eps ** 2 + H_INTERP_ERR ** 2)           # measured faces: sd eps; unmeasured: sqrt(eps^2 + 0.03^2)
         f += f" --robin-alpha {ROBIN_ALPHA} --h-prior-rel {hr:.8g} --h-prior-meas-rel {eps:.8g} --h-corr-len {H_CORR_LEN} --interior-flux"
     if m == "ddH":
-        f += f" --overlap-halo {p['n'] // (2 * nb)}"            # half a block: the halo reaches the dual lines (4 cells at 32 x 32, 4 x 4)
+        f += f" --overlap-halo {cell.get('halo', p['n'] // (2 * nb))}"   # default half a block: the halo reaches the dual lines (4 cells at 32 x 32, 8 at 64 x 64, 4 x 4)
     return "run_dd_chains.py", f                               # pressure only: spline interface (the runner default)
 
 
