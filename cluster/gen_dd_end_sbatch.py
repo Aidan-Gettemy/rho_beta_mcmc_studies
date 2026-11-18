@@ -20,6 +20,7 @@ Return only the small files (summary.json, post/): see docs/dd_end_runbook.md.""
 import argparse
 import csv
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "experiments"))
@@ -109,6 +110,14 @@ POST_DD = ("python experiments/run_dd_post.py --dirs {dirs} --out \"{outpost}\" 
            "--seed 11 --ref {ref}\n")
 
 
+def sweep_mult(method, factor):
+    """Iteration multiplier of the noise sweep: global pCN needs about 1/factor^2 times the iterations (step size scales with the posterior
+    width), DD about half that.  Capped at 4; eps x 2 keeps the base counts."""
+    if factor >= 1.0:
+        return 1
+    return 4 if method in ("pcn", "msm") else 2
+
+
 def run_dir(cell, truth, factor=1.0):
     p = "pf" if cell["flux"] else "p"
     tag = f"{cell['label']}_t{truth}" + (f"_e{factor:g}" if factor != 1.0 else "")
@@ -125,12 +134,14 @@ def block(cell, truth, factor=1.0, dual_primal_out=None):
     pilot, rg, rd, _ = ITERS[(cell["ell"], cell["flux"])]
     script, flags = C.flags(cell, truth_seed=truth, eps_factor=factor)
     m = cell["method"]
+    mult = sweep_mult(m, factor)                      # noise sweep: eps x 0.5 narrows the posterior, so pCN needs more iterations
+    rg, rd = rg * mult, rd * mult
     out = run_dir(cell, truth, factor)
     txt = RUN.format(label=cell["label"], what={"pcn": "global pCN reference", "msm": "global pCN in the MSM basis", "dd": "DD, primal blocks",
                                                  "ddplus": "DD, dual blocks (+ pooled with the primal run)", "ddH": "DD, primal blocks with overlap"}[m],
                      out=out, script=script, flags=flags, chains=CHAINS, pilot=pilot, half=pilot // 2,
                      restart=rg if m in ("pcn", "msm") else rd, save=save_every(cell),
-                     burn=burn_in(cell, rg if m in ("pcn", "msm") else rd))
+                     burn=burn_in(cell, rg if m in ("pcn", "msm") else rd) * (mult if (m in ("pcn", "msm") and cell["flux"]) else 1))   # flux: fixed burn scaled; pressure only: already 30% of the scaled restart
     if m in ("pcn", "msm"):
         return txt + POST_MSM
     ref = global_ref(cell, truth, factor)
@@ -199,6 +210,7 @@ def main():
             order = {"pcn": 0, "msm": 1, "dd": 2, "ddplus": 3, "ddH": 4}
             run_cells = sorted(g + extra, key=lambda c: order[c["method"]])
             time = hours * len(run_cells) * (2 if (ell == 0.05 and g[0]['method'] != 'msm' and g[0]['nb'] == 2) else 1.5 if (ell == 0.05 and g[0]['method'] == 'msm') else 1)   # 2 x 2 blocks of 32 x 32 cells: slowest per iteration
+            time *= max(sweep_mult(c["method"], f) for c in run_cells)
             time = f"{min(int(round(time)), 48):02d}:00:00"
             txt = HEADER.format(time=time, tag=tag, stage=a.stage, truth=a.truth, chains=CHAINS, pilot=pilot, restart_g=rg, restart_d=rd,
                                 desc=("noise sweep, eps x " + f"{f:g}") if f != 1.0 else {2: "global pCN references", 3: "MSM-basis global, DD primal, DD dual + pooled (ell 0.2, 0.1)",
@@ -211,8 +223,24 @@ def main():
             open(f"cluster/slurm/{tag}.sbatch", "w").write(txt)
             names.append(tag)
     sub = f"cluster/submit_dd_end_s{a.stage}_t{a.truth}.sh"
-    open(sub, "w").write("#!/bin/bash\n# submit the dd_end stage %d jobs (run from the repo root)\nset -euo pipefail\n" % a.stage
-                         + "".join(f"sbatch cluster/slurm/{n}.sbatch\n" for n in names))
+    body = ""
+    if a.stage == 7:      # the DD post-processing reads the global run of the same data type and eps: submit the DD job after it
+        glob = {}
+        for n in names:
+            m = re.match(rf"dd_end_s7_t{a.truth}_([cd])(_e[\d.]+)$", n)
+            if m:
+                glob[("p" if m.group(1) == "c" else "pf", m.group(2))] = n
+        for n in names:
+            if n in glob.values():
+                body += f"J_{re.sub(r'[^A-Za-z0-9_]', '_', n)}=$(sbatch --parsable cluster/slurm/{n}.sbatch)\n"
+        for n in names:
+            if n not in glob.values():
+                m = re.search(r"_l0\.1_(pf|p)_b4(_e[\d.]+)$", n)
+                dep = glob[(m.group(1), m.group(2))]
+                body += f"sbatch --dependency=afterok:$J_{re.sub(r'[^A-Za-z0-9_]', '_', dep)} cluster/slurm/{n}.sbatch\n"
+    else:
+        body = "".join(f"sbatch cluster/slurm/{n}.sbatch\n" for n in names)
+    open(sub, "w").write("#!/bin/bash\n# submit the dd_end stage %d jobs (run from the repo root)\nset -euo pipefail\n" % a.stage + body)
     os.makedirs(ROOT, exist_ok=True)
     mpath = f"{ROOT}/manifest.csv"
     old = list(csv.reader(open(mpath))) if os.path.exists(mpath) else []
