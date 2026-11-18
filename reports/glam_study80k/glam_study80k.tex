@@ -9,6 +9,8 @@
 \maketitle
 
 \section{Summary}
+\textbf{Update, 17 November 2026.} Arms 1, 2, 2b and 3 were extended to 100\,000 iterations and re-analysed (Section~\ref{sec:ext}); arms 4 and 5 are still at 80\,000 (their extension and post-processing have not been returned), and the per-block MPSRF of blocks 1--11 has not been computed yet. Unless a statement says 100\,000, the numbers in this report are the 80\,000-iteration ones.
+
 Six sampling arms were run on the real tracer/Darcy problem (6001-dimensional whitened state: 12 blocks of 500 coefficients and $\rho$), each with 24 chains from random initialisation, 80\,000 iterations and the same fixed step sizes. Arm~1 is plain pCN, the baseline; arms 2--5 are GLAM variants; arm~2b was added during the study. The numbers below come from the returned tables (tail from iteration 40\,000).
 
 \begin{itemize}
@@ -75,6 +77,27 @@ pCN is the best calibrated ($0.94$, $1.07$) and also has the smallest error of t
 \caption{Posterior standard deviation of $\ln K$ in ten layers, for pCN (top), one anchor with memory (middle, note the colour scale ending at $0.7$) and many anchors with the mask (bottom). The figures of the other arms are in \texttt{runs/cluster/figures}.}
 \end{figure}
 
+\section{Extension to 100\,000 iterations (arms 1, 2, 2b, 3)}\label{sec:ext}
+Each of these arms was resumed from its saved state and run for 20\,000 more iterations with the same flags, step sizes and seeds (the extension of a finished GLAM run was first checked on a toy problem to equal one uninterrupted longer run). The tail is still taken from iteration 40\,000, so the diagnostics now use 6000 instead of 4000 thinned samples per chain.
+
+\begin{table}[h]\centering\small
+\resizebox{\textwidth}{!}{\input{tables_ext.tex}}
+\caption{80\,000 $\to$ 100\,000 iterations. MPSRF and PSRF as in Section~\ref{sec:calc}; the field statistics are over the plug cells.}
+\end{table}
+
+\begin{itemize}
+\item \textbf{pCN improves slowly.} Max PSRF $3.33\to2.66$, MPSRF of the first 100 coefficients $7.3\to5.4$ and of block~0 $30.8\to23.4$. The chains are still far from agreeing; at this rate 20\,000 further iterations do not bring block~0 near $1.2$, and I have not tried to extrapolate how many would. Its calibration is unchanged ($2\sigma$ coverage $0.94$, rms $z$ $1.05$).
+\item \textbf{The GLAM arms gain a little.} MPSRF of block~0 falls to $1.16$ (arm 2), $1.16$ (2b) and $1.21$ (3, just above the $1.2$ level it had not reached before). Their agreement between chains is partly built in, because every restart copies one anchor into all chains, so these values say little about mixing within the posterior.
+\item \textbf{Calibration moves slightly toward the reference spread, not far:} $2\sigma$ coverage $0.63\to0.70$ (arm 2), $0.33\to0.36$ (2b), $0.74\to0.75$ (3), against $0.94$ for pCN. Arm~2b stays the narrowest (rms $z$ $5.0$).
+\end{itemize}
+
+\subsection{Fit to the observed data}
+\begin{table}[h]\centering\small
+\resizebox{\textwidth}{!}{\input{tables_ext_data.tex}}
+\caption{Concentration misfit at 100\,000 iterations: simulated concentration of the best sample and of the posterior mean against the data (all cells and output times). RE $=\|c-c_{\rm data}\|/\|c_{\rm data}\|$; RMSE $=\sqrt{\operatorname{mean}((c-c_{\rm data})^2)}$ in concentration units. The posterior-mean concentration is the average of the sampled concentrations.}
+\end{table}
+The best samples of all four arms fit the data to $7$--$8\%$ in relative error (pCN $0.084$, arm 2 $0.077$, 2b $0.073$, 3 $0.079$); the single-anchor arm with memory has the best single sample, in line with its lowest $\Phi$, and pCN the worst. The posterior-mean concentration fits better than the best sample in pCN (RE $0.054$) and arm~2 ($0.058$), but not in arm~2b ($0.070$, almost the same as its best sample), consistent with its chains having collapsed onto one region. These are field misfits over the whole concentration data, not the noise-weighted $\Phi$, whose noise levels $\sigma$ are much smaller than $7\%$, so none of the arms reaches the noise level.
+
 \section{The mask and its sensitivity}\label{sec:mask}
 \begin{figure}[h]\centering
 \includegraphics[width=0.95\textwidth]{fig_stage0_24.png}
@@ -112,7 +135,7 @@ In the first run 12 of the 24 pCN chains stopped writing at 5\,500--27\,500 iter
 \end{enumerate}
 
 \appendix
-\section{How the numbers are computed}
+\section{How the numbers are computed}\label{sec:calc}
 \textbf{MPSRF} (Brooks--Gelman, the group's MATLAB convention, \path{brho/mpsrf.py}) for $m=24$ chains and $n$ samples per window, with $W$ the mean within-chain covariance and $B/n$ the covariance of the chain means:
 \[
 \mathrm{MPSRF}=\sqrt{\tfrac{n-1}{n}+\tfrac{m+1}{m}\,\lambda_{\max}\!\big(W^{-1}B/n\big)} .
