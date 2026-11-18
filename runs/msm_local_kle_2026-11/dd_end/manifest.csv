@@ -82,3 +82,5 @@ j-16-DD+,0.1,True,ddplus,4,2026,0.5,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/j-
 j-16-DD,0.1,True,dd,4,2026,2.0,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/j-16-DD_t2026_e2,dd_end_s7_t2026_l0.1_pf_b4_e2,planned
 j-16-DD+,0.1,True,ddplus,4,2026,2.0,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/j-16-DD+_t2026_e2,dd_end_s7_t2026_l0.1_pf_b4_e2,planned
 j-16-DD-H,0.1,True,ddH,4,2026,1.0,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/j-16-DD-H_t2026,dd_end_s8_t2026_j-16-DD-H,planned
+l-16-DD-H,0.05,True,ddH,4,2026,1.0,runs/msm_local_kle_2026-11/dd_end/l0.05/pf/l-16-DD-H_t2026,dd_end_s8_t2026_l-16-DD-H,planned
+l-16-DD-H4,0.05,True,ddH,4,2026,1.0,runs/msm_local_kle_2026-11/dd_end/l0.05/pf/l-16-DD-H4_t2026,dd_end_s8_t2026_l-16-DD-H4,planned
