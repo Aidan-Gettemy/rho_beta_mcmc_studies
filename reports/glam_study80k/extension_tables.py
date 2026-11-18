@@ -1,9 +1,10 @@
-"""Tables of the +20000-iteration extension (arms 1, 2, 2b, 3) for glam_study80k.tex:  python extension_tables.py   (from this folder)
+"""Tables of the +20000-iteration extension (all six arms) for glam_study80k.tex:  python extension_tables.py   (from this folder)
 80000-iteration values come from the git commit before the 100000 results (35ce049~1), the new ones from the working tree."""
 import json, os, subprocess
 ROOT = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip()
 OLD = "35ce049~1"
-ARMS = [("1", "pcn", "pCN"), ("2", "glam1", "GLAM, 1 anchor"), ("2b", "glam1_best", "GLAM, 1 anchor + memory"), ("3", "glamN", "GLAM, many anchors")]
+ARMS = [("1", "pcn", "pCN"), ("2", "glam1", "GLAM, 1 anchor"), ("2b", "glam1_best", "GLAM, 1 anchor + memory"), ("3", "glamN", "GLAM, many anchors"),
+        ("4", "glam1_mask", "1 anchor + mask"), ("5", "glamN_mask", "many anchors + mask")]
 
 
 def load(rev, tag, name):
@@ -37,3 +38,14 @@ with open("tables_ext_data.tex", "w") as fh:
         fh.write(f"{a} & {nm} & {n['dre']['best']:.4f} & {n['dre']['mean']:.4f} & {n['drm']['best']:.4f} & {n['drm']['mean']:.4f} \\\\\n")
     fh.write("\\bottomrule\\end{tabular}\n")
 print(open("tables_ext.tex").read()); print(open("tables_ext_data.tex").read())
+
+# per-block MPSRF at 100000 (final value of the growing-window curve), as in Section A
+with open("tables_ext_blocks.tex", "w") as fh:
+    fh.write("\\begin{tabular}{ll" + "r" * 14 + "}\\toprule\n")
+    fh.write("arm & & $\\rho$ & first 100 & " + " & ".join(f"b{i}" for i in range(12)) + " \\\\ \\midrule\n")
+    for a, tag, nm in ARMS:
+        c = load(None, tag, "mpsrf.json")["curves"]
+        vals = [c["rho (w)"]["final_mpsrf"], c["first 100"]["final_mpsrf"]] + [c[f"block {i}"]["final_mpsrf"] for i in range(12)]
+        fh.write(f"{a} & {nm} & " + " & ".join(g(v) for v in vals) + " \\\\\n")
+    fh.write("\\bottomrule\\end{tabular}\n")
+print(open("tables_ext_blocks.tex").read())
