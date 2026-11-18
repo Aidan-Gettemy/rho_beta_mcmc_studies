@@ -258,6 +258,9 @@ def run_glam(model, cfg, comm, out_dir, resume=False, log=print, keep_mask=None,
         mgr.initialize_phase_best(theta, phi_cur)
 
     exchanges = []
+    if resume and rank == 0 and os.path.exists(os.path.join(out_dir, "exchanges.pkl")):      # keep the exchanges of the run being continued:
+        with open(os.path.join(out_dir, "exchanges.pkl"), "rb") as f:                         # the file is rewritten at the end
+            exchanges = [e for e in pickle.load(f) if e["iteration"] <= it0]                   # (the exchange at it0 is already in the snapshot)
     n_acc_win = np.zeros(2); n_att_win = np.zeros(2)
     t0 = time.time()
     for it in range(it0, cfg.n_iter):
