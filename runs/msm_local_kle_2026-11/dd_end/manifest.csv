@@ -69,3 +69,16 @@ d,0.1,True,pcn,,2028,1.0,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/d_t2028,dd_en
 j-16,0.1,True,msm,4,2028,1.0,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/j-16_t2028,dd_end_s6_t2028_l0.1_pf_b4,planned
 j-16-DD,0.1,True,dd,4,2028,1.0,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/j-16-DD_t2028,dd_end_s6_t2028_l0.1_pf_b4,planned
 j-16-DD+,0.1,True,ddplus,4,2028,1.0,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/j-16-DD+_t2028,dd_end_s6_t2028_l0.1_pf_b4,planned
+c,0.1,False,pcn,,2026,0.5,runs/msm_local_kle_2026-11/dd_end/l0.1/p/c_t2026_e0.5,dd_end_s7_t2026_c_e0.5,planned
+c,0.1,False,pcn,,2026,2.0,runs/msm_local_kle_2026-11/dd_end/l0.1/p/c_t2026_e2,dd_end_s7_t2026_c_e2,planned
+i-16-DD,0.1,False,dd,4,2026,0.5,runs/msm_local_kle_2026-11/dd_end/l0.1/p/i-16-DD_t2026_e0.5,dd_end_s7_t2026_l0.1_p_b4_e0.5,planned
+i-16-DD+,0.1,False,ddplus,4,2026,0.5,runs/msm_local_kle_2026-11/dd_end/l0.1/p/i-16-DD+_t2026_e0.5,dd_end_s7_t2026_l0.1_p_b4_e0.5,planned
+i-16-DD,0.1,False,dd,4,2026,2.0,runs/msm_local_kle_2026-11/dd_end/l0.1/p/i-16-DD_t2026_e2,dd_end_s7_t2026_l0.1_p_b4_e2,planned
+i-16-DD+,0.1,False,ddplus,4,2026,2.0,runs/msm_local_kle_2026-11/dd_end/l0.1/p/i-16-DD+_t2026_e2,dd_end_s7_t2026_l0.1_p_b4_e2,planned
+d,0.1,True,pcn,,2026,0.5,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/d_t2026_e0.5,dd_end_s7_t2026_d_e0.5,planned
+d,0.1,True,pcn,,2026,2.0,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/d_t2026_e2,dd_end_s7_t2026_d_e2,planned
+j-16-DD,0.1,True,dd,4,2026,0.5,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/j-16-DD_t2026_e0.5,dd_end_s7_t2026_l0.1_pf_b4_e0.5,planned
+j-16-DD+,0.1,True,ddplus,4,2026,0.5,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/j-16-DD+_t2026_e0.5,dd_end_s7_t2026_l0.1_pf_b4_e0.5,planned
+j-16-DD,0.1,True,dd,4,2026,2.0,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/j-16-DD_t2026_e2,dd_end_s7_t2026_l0.1_pf_b4_e2,planned
+j-16-DD+,0.1,True,ddplus,4,2026,2.0,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/j-16-DD+_t2026_e2,dd_end_s7_t2026_l0.1_pf_b4_e2,planned
+j-16-DD-H,0.1,True,ddH,4,2026,1.0,runs/msm_local_kle_2026-11/dd_end/l0.1/pf/j-16-DD-H_t2026,dd_end_s8_t2026_j-16-DD-H,planned
