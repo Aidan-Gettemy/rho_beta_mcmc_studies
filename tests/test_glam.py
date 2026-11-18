@@ -702,3 +702,5 @@ def test_a_finished_glam_run_can_be_extended_with_a_longer_n_iter_and_window2():
         pa, pb = post.load_chain(full, r), post.load_chain(part, r)
         assert np.array_equal(pa["start"], pb["start"]) and np.array_equal(pa["theta"], pb["theta"])
     assert max(e["iteration"] for e in b[0]["exchanges"]) > 130
+    # the exchange list of the extended run holds every exchange from the start, as an uninterrupted run's does
+    assert [e["iteration"] for e in b[0]["exchanges"]] == [e["iteration"] for e in a[0]["exchanges"]]
