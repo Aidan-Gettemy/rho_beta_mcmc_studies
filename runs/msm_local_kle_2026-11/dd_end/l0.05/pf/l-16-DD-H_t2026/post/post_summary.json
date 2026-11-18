@@ -1,0 +1,387 @@
+{
+ "kind": "dd_mcmc",
+ "grids": {
+  "primal": {
+   "directory": "runs/msm_local_kle_2026-11/dd_end/l0.05/pf/l-16-DD-H_t2026",
+   "n_blocks": 16,
+   "r_k": [
+    35,
+    44,
+    44,
+    35,
+    44,
+    58,
+    58,
+    44,
+    44,
+    58,
+    58,
+    44,
+    35,
+    44,
+    44,
+    35
+   ],
+   "chains": 64,
+   "interface": {
+    "segments": [
+     {
+      "block": 0,
+      "neighbour": 8,
+      "orientation": "vertical",
+      "n_faces": 24,
+      "eps_int": 0.04844169887524347
+     },
+     {
+      "block": 0,
+      "neighbour": 2,
+      "orientation": "horizontal",
+      "n_faces": 24,
+      "eps_int": 0.03190234129072152
+     },
+     {
+      "block": 1,
+      "neighbour": 9,
+      "orientation": "vertical",
+      "n_faces": 32,
+      "eps_int": 0.0380336795988811
+     },
+     {
+      "block": 1,
+      "neighbour": 3,
+      "orientation": "horizontal",
+      "n_faces": 24,
+      "eps_int": 0.0347007802696875
+     },
+     {
+      "block": 2,
+      "neighbour": 10,
+      "orientation": "vertical",
+      "n_faces": 32,
+      "eps_int": 0.025017866202353377
+     },
+     {
+      "block": 2,
+      "neighbour": 3,
+      "orientation": "horizontal",
+      "n_faces": 24,
+      "eps_int": 0.025314724221604114
+     },
+     {
+      "block": 3,
+      "neighbour": 11,
+      "orientation": "vertical",
+      "n_faces": 24,
+      "eps_int": 0.027314826530286874
+     },
+     {
+      "block": 4,
+      "neighbour": 12,
+      "orientation": "vertical",
+      "n_faces": 24,
+      "eps_int": 0.05457576261916413
+     },
+     {
+      "block": 4,
+      "neighbour": 6,
+      "orientation": "horizontal",
+      "n_faces": 32,
+      "eps_int": 0.033410734370332276
+     },
+     {
+      "block": 5,
+      "neighbour": 13,
+      "orientation": "vertical",
+      "n_faces": 32,
+      "eps_int": 0.04178706308217831
+     },
+     {
+      "block": 5,
+      "neighbour": 7,
+      "orientation": "horizontal",
+      "n_faces": 32,
+      "eps_int": 0.035804608058371844
+     },
+     {
+      "block": 6,
+      "neighbour": 14,
+      "orientation": "vertical",
+      "n_faces": 32,
+      "eps_int": 0.050271783525625294
+     },
+     {
+      "block": 6,
+      "neighbour": 7,
+      "orientation": "horizontal",
+      "n_faces": 32,
+      "eps_int": 0.03950270247312646
+     },
+     {
+      "block": 7,
+      "neighbour": 15,
+      "orientation": "vertical",
+      "n_faces": 24,
+      "eps_int": 0.053801751578077366
+     },
+     {
+      "block": 8,
+      "neighbour": 12,
+      "orientation": "vertical",
+      "n_faces": 24,
+      "eps_int": 0.2113638667573995
+     },
+     {
+      "block": 8,
+      "neighbour": 10,
+      "orientation": "horizontal",
+      "n_faces": 32,
+      "eps_int": 0.03877273029751686
+     },
+     {
+      "block": 9,
+      "neighbour": 13,
+      "orientation": "vertical",
+      "n_faces": 32,
+      "eps_int": 0.22616051464645762
+     },
+     {
+      "block": 9,
+      "neighbour": 11,
+      "orientation": "horizontal",
+      "n_faces": 32,
+      "eps_int": 0.06427396792506931
+     },
+     {
+      "block": 10,
+      "neighbour": 14,
+      "orientation": "vertical",
+      "n_faces": 32,
+      "eps_int": 0.21259654620618745
+     },
+     {
+      "block": 10,
+      "neighbour": 11,
+      "orientation": "horizontal",
+      "n_faces": 32,
+      "eps_int": 0.07040473606778434
+     },
+     {
+      "block": 11,
+      "neighbour": 15,
+      "orientation": "vertical",
+      "n_faces": 24,
+      "eps_int": 0.20673122564750782
+     },
+     {
+      "block": 12,
+      "neighbour": 14,
+      "orientation": "horizontal",
+      "n_faces": 24,
+      "eps_int": 0.10253150899538449
+     },
+     {
+      "block": 13,
+      "neighbour": 15,
+      "orientation": "horizontal",
+      "n_faces": 24,
+      "eps_int": 0.13181811617918668
+     },
+     {
+      "block": 14,
+      "neighbour": 15,
+      "orientation": "horizontal",
+      "n_faces": 24,
+      "eps_int": 0.11992949438693737
+     }
+    ],
+    "eps_int_mean": 0.08018595957521187,
+    "eps_int_max": 0.22616051464645762
+   },
+   "spline": {
+    "kernel": "thin_plate_spline",
+    "smoothing": 0.001,
+    "neighbors": 60,
+    "n_sensors": 2048
+   },
+   "mpsrf": {
+    "window_start_iteration": 0,
+    "n_samples": 6000,
+    "sup": {
+     "mpsrf_final": 1.0429256149741046,
+     "psrf_max_final": 1.0245815780185614,
+     "convergence_iteration": 66678.0,
+     "stays_below_from_iteration": 68750.0,
+     "psrf_convergence_iteration": 35550.0
+    },
+    "blocks": [
+     {
+      "block": 0,
+      "dim": 35,
+      "mpsrf_final": 1.021887134374812,
+      "psrf_max_final": 1.0144344126404388,
+      "convergence_iteration": 28226.0
+     },
+     {
+      "block": 1,
+      "dim": 44,
+      "mpsrf_final": 1.0299839290670327,
+      "psrf_max_final": 1.0211963548196075,
+      "convergence_iteration": 40437.0
+     },
+     {
+      "block": 2,
+      "dim": 44,
+      "mpsrf_final": 1.021936270757414,
+      "psrf_max_final": 1.0140442521574162,
+      "convergence_iteration": 30999.0
+     },
+     {
+      "block": 3,
+      "dim": 35,
+      "mpsrf_final": 1.0142188420258533,
+      "psrf_max_final": 1.0076022516803196,
+      "convergence_iteration": 23116.0
+     },
+     {
+      "block": 4,
+      "dim": 44,
+      "mpsrf_final": 1.0259111578596147,
+      "psrf_max_final": 1.0164266139098024,
+      "convergence_iteration": 56514.0
+     },
+     {
+      "block": 5,
+      "dim": 58,
+      "mpsrf_final": 1.0421000501568864,
+      "psrf_max_final": 1.0245815780185614,
+      "convergence_iteration": 55659.0
+     },
+     {
+      "block": 6,
+      "dim": 58,
+      "mpsrf_final": 1.0281488610776544,
+      "psrf_max_final": 1.0160973229388464,
+      "convergence_iteration": 52552.0
+     },
+     {
+      "block": 7,
+      "dim": 44,
+      "mpsrf_final": 1.019474119884858,
+      "psrf_max_final": 1.014833588924821,
+      "convergence_iteration": 31510.0
+     },
+     {
+      "block": 8,
+      "dim": 44,
+      "mpsrf_final": 1.0338203304574407,
+      "psrf_max_final": 1.0200465414036366,
+      "convergence_iteration": 39165.0
+     },
+     {
+      "block": 9,
+      "dim": 58,
+      "mpsrf_final": 1.0429256149741046,
+      "psrf_max_final": 1.0237382683224607,
+      "convergence_iteration": 66678.0
+     },
+     {
+      "block": 10,
+      "dim": 58,
+      "mpsrf_final": 1.0312525062247389,
+      "psrf_max_final": 1.0160916571573129,
+      "convergence_iteration": 50610.0
+     },
+     {
+      "block": 11,
+      "dim": 44,
+      "mpsrf_final": 1.0163211567445423,
+      "psrf_max_final": 1.011696610527586,
+      "convergence_iteration": 33708.0
+     },
+     {
+      "block": 12,
+      "dim": 35,
+      "mpsrf_final": 1.0182258672574753,
+      "psrf_max_final": 1.0112105074104665,
+      "convergence_iteration": 33958.0
+     },
+     {
+      "block": 13,
+      "dim": 44,
+      "mpsrf_final": 1.0234688712155786,
+      "psrf_max_final": 1.014162975665969,
+      "convergence_iteration": 34447.0
+     },
+     {
+      "block": 14,
+      "dim": 44,
+      "mpsrf_final": 1.0304200531508516,
+      "psrf_max_final": 1.0217583557707643,
+      "convergence_iteration": 33793.0
+     },
+     {
+      "block": 15,
+      "dim": 35,
+      "mpsrf_final": 1.0180149617564005,
+      "psrf_max_final": 1.0116050307316495,
+      "convergence_iteration": 26979.0
+     }
+    ],
+    "worst_block_final": 9
+   },
+   "burn_configured": 60000,
+   "burn_auto": {
+    "stays_below_it": 68750.0,
+    "applied": true
+   },
+   "acceptance": {
+    "mean": 0.2511021585836039,
+    "sd": 0.022251703049356465,
+    "min": 0.144,
+    "max": 0.362,
+    "by_block": [
+     0.2520707682291667,
+     0.2523375,
+     0.25140286458333333,
+     0.251843359375,
+     0.2497884765625,
+     0.25100299479166666,
+     0.24977018229166667,
+     0.251093359375,
+     0.2518169921875,
+     0.25172434895833334,
+     0.2500223307291667,
+     0.25042981770833334,
+     0.25120572916666667,
+     0.25185618489583333,
+     0.2502484375,
+     0.2511671875
+    ]
+   },
+   "assembled_flux_relerr": {
+    "median": 0.1436840614636839,
+    "q05": 0.1300386735083238,
+    "q95": 0.161014161586665,
+    "noise_level": 0.09175736027113401,
+    "phi_q_median": 570.9264912427752
+   },
+   "assembled_global_relerr": {
+    "median": 0.09188481896305471,
+    "q05": 0.09096914521271027,
+    "q95": 0.09368777094627123,
+    "phi_median": 1067.339237883457,
+    "noise_level": 0.09016597779623942
+   }
+  }
+ },
+ "fields": {
+  "primal": {
+   "n": 2000,
+   "logk_sd_mean": 0.2579262523803167,
+   "p_sd_mean": 0.00882495584364379,
+   "logk_mean_error_rms": 0.27234294805373493
+  }
+ },
+ "burn_used": 68750,
+ "mpsrf_method": "DD-MCMC convergence (sup over subdomains). For each subdomain k the MPSRF is computed from the saved local coefficients c_k (dimension r_k) of its independent chains; the reported curve is the maximum over subdomains of the MPSRF at every curve point, the same for the max-PSRF curve, and all subdomains are said to have converged at the first point of the sup curve (ignoring the first 10 curve points) below 1.2, linearly interpolated. Per-subdomain computation: MPSRF/PSRF follow the group's MATLAB convention (brho/mpsrf.py, getMSPRF / computeMPSRFcurve). Samples: the chain state saved every 50 iterations. The window STARTS at iteration 0 of the run (of the phase, for the second phase of experiment 5), i.e. the adaptation period is NOT discarded, and GROWS to the end of the run: at curve point u it holds the saved samples from the start iteration to the current iteration, every 2-th sample (skip 2), with a curve point every 15 saved samples (750 iterations). For each window, with m chains and n samples per chain: W = mean over chains of the within-chain covariance (divisor n-1), B/n = covariance of the m chain means (divisor m-1), MPSRF = sqrt((n-1)/n + (m+1)/m * lambda_max(W^-1 B/n)); the per-component PSRF_i = sqrt(V_ii / W_ii) with V = (n-1)/n W + (m+1)/m B/n, and the reported PSRF is max_i PSRF_i. 'convergence_iteration' = first curve point (ignoring the first 10 points) with MPSRF < 1.2, linearly interpolated (with --mpsrf-log: curve points log-spaced, no points ignored, and 'stays_below_from_iteration' = first point after the last one at or above 1.2). The x axis is the iteration of the last sample in the window. Not split-chain, no extra burn-in. Dimension: theta (64), or the 58 range coordinates V_+^T theta for runs whose theta lives in the rank-58 range; local coefficients as stated per entry."
+}
