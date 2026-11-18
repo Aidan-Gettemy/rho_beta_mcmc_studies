@@ -1234,3 +1234,13 @@ Finish stages 1 to 8, write the first paper, then run Stage 9 (paper replication
 - Design: two runs, halo 8 (`l-16-DD-H`) and halo 4 (`l-16-DD-H4`, same width in ell as at ell 0.1), truth 2026, 64 chains, pilot 50k, restart 300k, burn 60k (auto-burn extends), 6 h limit each, global reference f_t2026 (sup-MPSRF 1.04). Generated with `python3 cluster/gen_dd_end_sbatch.py --stage 8 --ell 0.05` (new `--ell` filter, `halo` key in the cell definition, `DDH_OVERRIDE` for the restart and hours); submit with `bash cluster/submit_dd_end_s8_t2026.sh`.
 - Timing on the dev machine (200 iterations, 2 chains, banded solvers): 0.5 ms per block iteration without halo, 2.0 ms with halo 8 (4 x slower; 1.4 x at ell 0.1). Estimate for halo 8: restart about 2.7 h plus pilot 0.5 h; expected iterations to converge about 10 x the non-overlapping 9.4k.
 - The collected sheet is now 109 rows (107 done).
+
+## 2026-11-18 Stage 8 extension collected: overlap at ell 0.05, 4 x 4, flux, truth 2026 (109 of 109 rows; above sup-MPSRF 1.2: l-16-DD-H4 and the excluded l-64-DD+)
+| run | error ratio | sd ratio | 90% coverage | sup-MPSRF | iterations to MPSRF < 1.2 |
+|---|---|---|---|---|---|
+| l-16-DD (no overlap, 150k its) | 1.88 | 1.49 | 0.86 | 1.01 | 9.4k |
+| l-16-DD-H (halo 8 = 2.5 ell, 300k its) | 1.23 | 1.10 | 0.87 | 1.04 | 66.7k (stays below from 68.8k) |
+| l-16-DD-H4 (halo 4 = 1.25 ell, 300k its) | 2.08 | 0.97 | 0.57 | 6.96 | never |
+- Halo 8 works: it closes about 65% of the error gap (1.88 -> 1.23), more than at ell 0.1 (1.87 -> 1.35, about 60%; sd 1.50 -> 1.16), as the exp(-c w^2 / ell^2) heuristic predicts for a halo that is 2.5 ell wide against 1.25 ell. One truth, so a strong indication rather than a measured size.
+- Cost of halo 8 in iterations: 66.7k against 9.4k to cross 1.2 (7.1 x), the same order as at ell 0.1 (10 x). sec_per_chain 277 s against 274 s is NOT comparable (300k against 150k iterations; the dev-machine timing predicted 4 x per block iteration); I have not resolved why the per-iteration time is not higher, so no wall-time ratio is claimed. Global f_t2026 crosses 1.2 at 351k iterations.
+- Halo 4 is UNCONVERGED and not used for any conclusion. All 300k iterations ran (acceptance 0.25 in every block). 15 of 16 blocks converged (MPSRF 1.01 to 1.03); block 1 did not (MPSRF 6.96, max-PSRF 1.37). Assembled flux misfit 0.29 against noise 0.09 (halo 8: 0.14), so a poor fit as well as a disagreement between chains in block 1. Not yet separated: multimodality in block 1 versus a poor fit. Open: run experiments/dd_end_block_diag.py on block 1, or rerun with a longer chain. Until then the halo-width claim rests on halo 8 against no overlap, and the halo-4 run is reported as unconverged.
