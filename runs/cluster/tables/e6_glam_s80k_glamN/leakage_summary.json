@@ -1,0 +1,29 @@
+{
+ "all": {
+  "n": 133,
+  "first_iteration": 500,
+  "last_iteration": 99632,
+  "gap_to_best_mean": 99.45443634174669,
+  "gap_to_best_median": 93.91184134436173,
+  "gap_to_best_max": 231.90187578776113,
+  "gap_to_median_mean": -95.95045310901887,
+  "anchor_phi_best_mean": 1325.3821456514595,
+  "restart_median_mean": 1424.8365819932064,
+  "gain_vs_pre_mean": 13.270191597723935
+ },
+ "last_quarter": {
+  "n": 34,
+  "first_iteration": 74599,
+  "last_iteration": 99632,
+  "gap_to_best_mean": 118.41030887353459,
+  "gap_to_best_median": 114.22015348650689,
+  "gap_to_best_max": 207.49156690277118,
+  "gap_to_median_mean": -93.68200501061548,
+  "anchor_phi_best_mean": 798.9162119655709,
+  "restart_median_mean": 917.3265208391057,
+  "gain_vs_pre_mean": -1.8015954958766944
+ },
+ "single_anchor": false,
+ "exchanges_in_chains": 133,
+ "exchanges_with_anchor_info": 133
+}
