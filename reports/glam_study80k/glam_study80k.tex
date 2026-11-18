@@ -9,7 +9,7 @@
 \maketitle
 
 \section{Summary}
-\textbf{Update, 18 November 2026.} All six arms have been extended to 100\,000 iterations and re-analysed, and the MPSRF of every block (0--11) has been computed; they are in Section~\ref{sec:ext}. The Summary, Sections 2, 3 (tables and figures) and the mask sections below are the 80\,000-iteration analysis and are not rewritten; where Section~\ref{sec:ext} differs, Section~\ref{sec:ext} is the newer.
+\textbf{Update, 18 November 2026.} All six arms have been extended to 100\,000 iterations and re-analysed, and the MPSRF of every block (0--11) has been computed; they are in Section~\ref{sec:ext}. The variance by coefficient index, the anchor $\Phi$ over the exchanges and the leakage of the transplant are in Section~\ref{sec:chain}. The Summary, Sections 2, 3 (tables and figures) and the mask sections below are the 80\,000-iteration analysis and are not rewritten; where Section~\ref{sec:ext} differs, Section~\ref{sec:ext} is the newer.
 
 Six sampling arms were run on the real tracer/Darcy problem (6001-dimensional whitened state: 12 blocks of 500 coefficients and $\rho$), each with 24 chains from random initialisation, 80\,000 iterations and the same fixed step sizes. Arm~1 is plain pCN, the baseline; arms 2--5 are GLAM variants; arm~2b was added during the study. The numbers below come from the returned tables (tail from iteration 40\,000).
 
@@ -106,6 +106,39 @@ Block~0 is typical: within each arm the twelve blocks agree to within about $10\
 \end{table}
 The best samples of all six arms fit the data to $7$--$9\%$ in relative error: arm 2b has the best single sample ($0.073$) and the masked arms the worst ($0.085$, $0.088$, pCN $0.084$), in line with their final $\Phi$. The posterior-mean concentration fits better than the best sample in every arm except 2b ($0.070$ against $0.073$), where it is almost the same, consistent with its chains having collapsed onto one region. These are field misfits over the whole concentration data, not the noise-weighted $\Phi$; I have not compared them with the noise level of the data.
 
+\section{Chain-level analyses: variance by index, anchor $\Phi$, leakage}\label{sec:chain}
+These were computed on the cluster from the chains and the exchange summaries of all six arms (tail from iteration 40\,000, every 10th iteration, 24 chains) and only the small tables were returned. Coordinates are split by one common partition, the 12-chain mask that arms 4 and 5 were run with: 2109 \emph{constrained} coordinates (installed from the anchor at a restart) and 3891 \emph{unconstrained} ones (kept by each chain). The exchanges are read from the chains themselves (133 per arm); the anchor $\Phi$ recorded at an exchange is available for all 133 exchanges only in arms 2 and 3, and from iteration 80\,106 on (27 exchanges) in arms 2b, 4 and 5, because the 20\,000-iteration extension restarted their exchange lists (fixed for future resumes).
+
+\subsection{Variance by coefficient index}
+\begin{figure}[h]\centering\includegraphics[width=0.92\textwidth]{fig_var_index.png}
+\caption{Pooled variance of the whitened coefficients over the tail, at each index within a block, averaged over the 12 blocks and smoothed over 15 indices; the prior variance is 1.}
+\end{figure}
+\begin{table}[h]\centering\small
+\resizebox{0.85\textwidth}{!}{\input{tables_chain_var.tex}}
+\caption{Mean pooled variance over the constrained and unconstrained coordinates and its ratio to pCN's.}
+\end{table}
+\begin{itemize}
+\item \textbf{The masked arms keep pCN's variance exactly where the chains keep their own values:} $0.92$ against $0.93$ in the unconstrained coordinates (ratio $0.99$ in both arms). Their lower spread sits in the constrained coordinates: $0.29$ (arm 4) and $0.43$ (arm 5) against pCN's $0.65$, ratios $0.45$ and $0.66$. So the remaining shortfall of the masked arms, relative to pCN, is in the constrained coordinates, as the mask intends; it is not a general narrowing.
+\item Read off the figure, the variance of the kept coordinates just beyond the cut-off (indices about 180--300) is also below pCN's in arms 4 and 5 (about $0.7$ against $0.85$--$0.9$ near index 200), which points the same way as the leakage below; the figure was not analysed further.
+\item \textbf{The unmasked arms narrow everything,} constrained and unconstrained alike: ratio $0.39$ (arm 2), $0.09$ (2b, with memory), $0.62$ (3). Arm 2b's variance is below $0.1$ across all indices.
+\item \textbf{Caveat on pCN's variance.} It is a pooled variance over chains that have not converged: the variance between the chain means is $0.42$ (constrained) and $0.64$ (unconstrained), most of the pooled $0.65$ and $0.93$. The within-chain part is therefore much smaller (roughly $0.23$ and $0.29$, comparable with arm 2's $0.25$ and $0.37$). Pooled over independent chains started from the prior, this is still the spread the sampler has produced so far, but pCN's good calibration (Section~2.3) partly reflects the chains sitting in different places. I have not separated the two in the field statistics.
+\end{itemize}
+
+\subsection{Anchor $\Phi$ over the exchanges}
+\begin{figure}[h]\centering\includegraphics[width=\textwidth]{fig_exchange_phi.png}
+\caption{Median over chains of $\Phi$ of the restart state at each exchange (left, all 133 exchanges; log scale) and the last 20\,000 iterations with the best anchor's $\Phi$ (right; dashed).}
+\end{figure}
+All arms follow nearly the same curve to about iteration 20\,000. After that the single-anchor arms (2, 2b) keep falling, to about $780$ and $675$ at the end (restart $\Phi$ around iteration 99\,000), the masked arms fall more slowly, from about $1200$ at 50\,000 to $1100$ at 90\,000 and are flat over the last 10\,000 iterations, and arm 3 lies in between ($1000$ at 50\,000, about $920$ at the end). The best anchor in the masked arms is also nearly flat ($930$ in arm 4 and $967$ in arm 5 averaged over the last 20\,000 iterations), while the best anchor of arm 2b falls slowly ($684$ on average, $670$ at the end).
+
+\subsection{Leakage of the transplant}
+\begin{table}[h]\centering\small
+\resizebox{\textwidth}{!}{\input{tables_chain_leak.tex}}
+\caption{Means over the 27 exchanges from iteration 80\,106 to 99\,632 (median over the 24 chains at each exchange). Restart $\Phi$ is $\Phi$ of the restart state before its first move. For the many-anchor arms (3, 5) the best anchor is the best of about 280 (arm 3) or 50 (arm 5) anchors, so restart $-$ anchor is not a leakage measure there (the unmasked arm 3 has $+122$); use the comparison of each masked arm with its unmasked counterpart, and the last column.}
+\end{table}
+In the unmasked single-anchor arms a restart state is the anchor up to the small perturbation: its $\Phi$ is within $3$ ($0.4\%$) of the anchor's and about $15$--$45$ below the chains' $\Phi$ just before the restart. In arm 4 the restart state is $165$ above the anchor ($17.8\%$; median over exchanges $166$, largest $177$, so it is not caused by a few exchanges) and $39$ above the chains' state before the restart: installing the anchor's constrained coordinates into a chain's own unconstrained coordinates produces a state clearly worse than both. For the many-anchor pair the same comparison gives $+145$ against $+122$ (arm 5 against arm 3) and $+34$ against $+1$ for the change from before the restart, i.e. a leakage of about $25$--$35$, smaller than in arm 4.
+
+\textbf{Reading.} The $\Phi$ lost at the transplant is substantial in arm 4: the unconstrained coordinates, as defined by the threshold $0.8$ on the pCN tail variance, still carry data information that the anchor's constrained coordinates do not take into account. That favours widening the mask, so the extra arm planned for this case (threshold $0.9$, 3014 coordinates) is now justified for the one-anchor version; the many-anchor arm leaks much less. This is one seed and one mask, and the restart $\Phi$ is computed at the first iteration of a stage, so the numbers are indications.
+
 \section{The mask and its sensitivity}\label{sec:mask}
 \begin{figure}[h]\centering
 \includegraphics[width=0.95\textwidth]{fig_stage0_24.png}
@@ -131,14 +164,13 @@ In the first run 12 of the 24 pCN chains stopped writing at 5\,500--27\,500 iter
 \item Exchanges were never stopped, so arms 2--5 are not exact MCMC; PSRF and MPSRF of coupled chains are mixing diagnostics.
 \item The baseline has not converged between chains at 80\,000 iterations, and the mask was estimated from chains that had not converged in the unconstrained directions.
 \item Calibration is measured against a single synthetic reference field.
-\item Quantities that need the chains or the exchange summaries (variance by index per arm, anchor $\Phi$, leakage, time to a fixed $\Phi$) are not in this report because those files stay on the cluster.
+\item Anchor $\Phi$ at every exchange is known only for arms 2 and 3; for arms 2b, 4 and 5 only from iteration 80\,106 on (the extension rewrote the exchange lists). The time to reach a fixed $\Phi$ has not been analysed.
 \end{itemize}
 
 \section{Next steps}
 \begin{enumerate}
-\item Return exchange summaries and run the variance-by-index analysis on arms 2, 2b, 3, 4, 5 to see whether the remaining shortfall of the masked arms sits in the constrained or in the unconstrained coordinates.
-\item Check the leakage of arms 4 and 5 (the $\Phi$ of a transplanted state against its anchor); widen the mask (threshold $0.9$, 3014 coordinates) if it is large.
-\item A second seed for arms 3 and 5, and optionally a masked arm 2b.
+\item Add a one-anchor arm with a wider mask (threshold $0.9$, 3014 coordinates), since the leakage of arm 4 is large (Section~\ref{sec:chain}); a many-anchor version only if arm 5's smaller leakage turns out to matter.
+\item Optionally a masked arm 2b; a second seed is postponed.
 \item Decide, with the group, how to frame GLAM: as an optimiser (arms 2 and 2b reach lower $\Phi$) or as a sampler (calibration is still below pCN).
 \end{enumerate}
 
