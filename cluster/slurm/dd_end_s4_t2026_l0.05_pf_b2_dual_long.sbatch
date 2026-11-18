@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=64            # one worker process per (subdomain, chain) task, 64 at a time
 #SBATCH --mem=64G
 #SBATCH --partition=g1mig
-#SBATCH --time=10:00:00
+#SBATCH --time=03:00:00
 #SBATCH -J dd_end_s4_t2026_l0.05_pf_b2_dual_long
 #SBATCH -o logs/dd_end_s4_t2026_l0.05_pf_b2_dual_long-%j.out
 #

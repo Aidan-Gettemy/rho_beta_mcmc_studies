@@ -22,6 +22,7 @@ Method
     coefficients in block order (the column order of B).
 """
 import numpy as np
+from scipy.linalg import solveh_banded
 from scipy.interpolate import RBFInterpolator
 
 from .samplers import StepAdapter
@@ -73,6 +74,8 @@ def exact_face_values(K2, p2, cells):
 
 
 # ------------------------------------------------------------ local forward model
+BANDED_MIN_N = 64      # blocks with more cells than this use the banded solver (smaller ones keep the dense solve, results unchanged)
+
 class BlockSolver:
     """Cell-centred finite-volume solve of -div(K grad p) = 0 on an nxl x nyl block of unit-aspect cells
     (harmonic transmissibilities, as brho.fv.Permeameter) with Dirichlet half-cell faces on the sides in
@@ -111,11 +114,6 @@ class BlockSolver:
         ax, bx, ay, by = self.ax, self.bx, self.ay, self.by
         Tx = 2.0 * K[ax] * K[bx] / (K[ax] + K[bx])
         Ty = 2.0 * K[ay] * K[by] / (K[ay] + K[by])
-        A = np.zeros((N, N))
-        A[ax, bx] = -Tx
-        A[bx, ax] = -Tx
-        A[ay, by] = -Ty
-        A[by, ay] = -Ty
         diag = (np.bincount(ax, Tx, N) + np.bincount(bx, Tx, N)
                 + np.bincount(ay, Ty, N) + np.bincount(by, Ty, N))
         b = np.zeros(N)
@@ -125,6 +123,20 @@ class BlockSolver:
                 t = t / (1.0 + t * ainv)                                 # series conductance of the Robin face
             diag[ids] += t
             b[ids] += t * vals
+        if N > BANDED_MIN_N:
+            # banded Cholesky: cell (i, j) has index i * nyl + j, so the matrix has half-bandwidth nyl (O(N nyl^2) instead of O(N^3));
+            # needed for the large blocks of the ell 0.05 2 x 2 decomposition (32 x 32 cells), where the dense solve took 64 ms
+            u = self.nyl
+            ab = np.zeros((u + 1, N))
+            ab[u] = diag
+            ab[u - 1, self.by] = -Ty                                     # y-neighbours: index distance 1
+            ab[0, self.bx] = -Tx                                         # x-neighbours: index distance nyl
+            return solveh_banded(ab, b, lower=False, check_finite=False)
+        A = np.zeros((N, N))
+        A[ax, bx] = -Tx
+        A[bx, ax] = -Tx
+        A[ay, by] = -Ty
+        A[by, ay] = -Ty
         A.flat[self.diag_pos] = diag
         return np.linalg.solve(A, b)
 
