@@ -1,0 +1,267 @@
+% Detailed outline of the first paper (domain-decomposed MCMC against global pCN), 2026-11-24.
+% Tables tab_ratios.tex and tab_overlap.tex are generated from master_table.csv by make_tables.py (no typed numbers).
+% \todo{...} marks text still to be written or numbers still to be taken from a run file.
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,bm,booktabs,graphicx,subcaption,xcolor,hyperref,cleveref,algorithm,algpseudocode,natbib}
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\diff}{\mathrm{d}}
+\newcommand{\mean}[1]{\overline{#1}}
+\newcommand{\figdir}{../runs/msm_local_kle_2026-11/dd_end/}
+\graphicspath{{\figdir}{\figdir fields/}}
+\newtheorem{hyp}{Hypothesis}
+
+\title{When does domain decomposition pay in Bayesian inversion?\\
+A controlled comparison with global pCN on Darcy flow}
+\author{Aidan Gettemy \and \todo{co-authors}}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\todo{150--200 words, written last. Order: the question (does decoupled domain decomposition (DD) of a Bayesian inversion lose accuracy at a broad posterior, and why); the design (three scaled Darcy problems, a ladder of samplers, hypotheses stated to be refutable); the findings (loss sits in the decoupling and not in the local basis; the gap shrinks with noise but does not close; it grows with block count; overlap with a Robin interface built from measured flux closes about 60--65\% of the error gap at about 7--10 times the iterations); the limits (one truth in most cells, small problems).}
+\end{abstract}
+
+%==========================================================================================================
+\section{Introduction}\label{sec:intro}
+\begin{itemize}
+\item Motivation: the likelihood of a PDE inverse problem is local (each block sees its own data and its interface), so blocks are cheap and parallel \citep{XuLiaoLi2022}. The prior is not local: a Gaussian field with correlation length $\ell$ couples distant blocks.
+\item What earlier runs showed: on a $32\times32$ problem with very precise data (global error $0.0045$) the non-overlapping DD stalled at error $0.02$--$0.03$; with data $3$ and $6.5$ times more precise it plateaued at $0.021$--$0.023$; no wall-clock gain at $32\times32$.
+\item Gap in the literature: DD results are shown at tight posteriors and without a same-data global reference at the same truth, noise and basis. \todo{related work paragraph: Xu--Liao--Li; Schwarz and overlap in PDE solvers; multiscale and local-KLE methods; MCMC convergence diagnostics.}
+\item This paper: a broader posterior (global sd of $\log K$ about $0.25$), three scaled problems, a ladder that separates the cost of the basis from the cost of decoupling, and five hypotheses (\cref{sec:hyp}) stated with what would refute each.
+\item Contributions: \todo{three or four bullets, written last}.
+\end{itemize}
+
+%==========================================================================================================
+\section{Problem and data}\label{sec:problem}
+\subsection{Forward model}
+Steady single-phase Darcy flow on $D=(0,1)^2$ with $K=e^{a}$:
+\begin{equation}
+-\nabla\!\cdot\!(K\nabla p)=0\ \text{in }D,\qquad p=1\ (x=0),\ p=0\ (x=1),\ K\partial_n p=0\ (y=0,1).
+\end{equation}
+Cell-centred finite volumes on an $n\times n$ grid with harmonic face transmissibility $T_{ab}=2K_aK_b/(K_a+K_b)$ and flux $q_{ab}=T_{ab}(p_a-p_b)$ through the face between cells $a$ and $b$.
+
+\subsection{Prior}
+$a=\log K$ is a zero-mean Gaussian field with squared-exponential kernel $k(x,x')=\exp(-|x-x'|^2/2\ell^2)$ (unit variance), represented by a truncated Karhunen--Lo\`eve expansion (KLE) $a=\Psi\Lambda^{1/2}\theta$ with $\theta\sim N(0,I_r)$. The three problems are scaled copies at about three cells per correlation length (\cref{tab:design}).
+
+\subsection{Data and likelihood}
+Pressure is observed at checkerboard cells (half of all cells). Optionally the flux is observed through every other face on the primal and dual interface lines (the interface lines of the $4\times4$ decomposition and of the decomposition shifted by half a block). Noise has relative level $\varepsilon$ per datum. With stacked data $d$ and forward map $G(\theta)$ the global potential is
+\begin{equation}
+\Phi(\theta)=\tfrac{w_p}{2}\|d_p-G_p(\theta)\|^2+\tfrac{w_q}{2}\|d_q-G_q(\theta)\|^2,\qquad \pi(\theta\mid d)\propto e^{-\Phi(\theta)}\,N(\theta;0,I).
+\end{equation}
+\todo{state $w_p$, $w_q$ exactly as implemented (global-norm form $w=1/(\sigma_{\rm rel}^2\|d\|^2)$) and the flux likelihood level used by the global reference.}
+
+\subsection{Noise calibration}
+For each $\ell$ and data type $\varepsilon$ is set once so that the global posterior sd of $\log K$ (field average) is about $0.25$ with flux and about $0.5$ pressure only; pressure alone is far less informative at the same $\varepsilon$, so a shared $\varepsilon$ would compare very different amounts of information. The pressure-only $\varepsilon$ are $0.0148$, $0.0364$, $0.034$ at $\ell=0.2,0.1,0.05$; the pressure-plus-flux $\varepsilon$ are in \cref{tab:design}. \todo{calibration procedure in one paragraph (Laplace scan, short pCN runs, interpolation, confirmation); report the sd reached by every official global run.}
+
+\begin{table}[h]\centering
+\begin{tabular}{rcrrrrr}
+\toprule
+$\ell$ & grid & pressure sensors & flux faces & KLE modes & $\varepsilon$ (pressure+flux) & $\varepsilon$ (pressure only)\\
+\midrule
+0.2 & $16\times16$ & 128 & 112 & 19 & 0.235 & 0.0148\\
+0.1 & $32\times32$ & 512 & 224 & 64 & 0.2 & 0.0364\\
+0.05 & $64\times64$ & 2048 & 448 & 208 & 0.09 & 0.034\\
+\bottomrule
+\end{tabular}
+\caption{The three scaled problems and their calibrated noise. \todo{add the global posterior sd reached and the global error ratio to the truth.}}\label{tab:design}
+\end{table}
+
+%==========================================================================================================
+\section{Samplers and algorithms}\label{sec:methods}
+\subsection{Global pCN with tune-then-restart}
+preconditioned Crank--Nicolson with likelihood-only acceptance: $\theta'=\sqrt{1-\beta^2}\,\theta+\beta\,\xi$, $\xi\sim N(0,I)$, accept with probability $\min\{1,e^{\Phi(\theta)-\Phi(\theta')}\}$. The step $\beta$ is adapted to $25\%$ acceptance in a pilot and then frozen so the chains of the study are exactly Markov.
+
+\begin{algorithm}[h]
+\caption{Tune-then-restart pCN (global, or one block of a decomposition)}\label{alg:pcn}
+\begin{algorithmic}[1]
+\Require potential $\Phi$, chains $m=64$, pilot length $N_p$, restart length $N$, burn-in $N_b$
+\State \textbf{Pilot:} start $m$ chains from prior draws; every $100$ iterations scale $\beta$ towards $25\%$ acceptance (floor $10^{-3}$); store $\beta$ every window
+\State $\beta^\ast\gets$ geometric mean of the stored $\beta$ over the last $30\%$ of the pilot and all chains
+\State \textbf{Restart:} new seeds, $m$ chains from fresh prior draws (far more dispersed than the posterior), $\beta\gets\beta^\ast$ frozen
+\For{$t=1,\dots,N$}
+  \State pCN proposal and accept/reject per chain; save the state every $50$ iterations
+\EndFor
+\State Burn-in $N_b$ is discarded for fields and statistics only; the MPSRF uses every saved state (\cref{sec:mpsrf})
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Multiscale (MSM) basis}\label{sec:msm}
+Partition $D$ into blocks $\Omega_k$. On each block build the local KLE of the same kernel in block coordinates, truncated at $95\%$ of the block spectrum (local dimension $r_k$). Zero-extend each local mode and project it on the global KLE basis, giving $B=[B_1,\dots,B_K]$ and $\theta=Bc$ with $c_k\sim N(0,I_{r_k})$ independent. \Cref{alg:pcn} on $c$ is global pCN in the MSM basis: it keeps one global forward solve per step, so it isolates the cost of the basis from the cost of decoupling. \todo{one sentence on why the projected map is exactly the global-KLE subspace spanned by the local modes.}
+
+\subsection{Domain decomposition (DD)}\label{sec:dd}
+Let $c_k$ be the local coefficients of block $k$. With interface data fixed, the blocks are independent: the local potential is
+\begin{equation}
+\Phi_k(c_k\mid\text{interface})=\tfrac{w_p}{2}\sum_{s\in\mathcal S_k}\bigl(d_s-p_s(c_k;\text{interface})\bigr)^2,
+\end{equation}
+with $\mathcal S_k$ the sensors of the block and the global weight $w_p$ so that $\sum_k\Phi_k=\Phi$ when the interface data are exact. Each block runs \Cref{alg:pcn} on its own $c_k$ (one local solve per step). Assembled fields take one saved post-burn state per block, drawn independently, and $\theta=Bc_{\rm all}$.
+
+\paragraph{Dirichlet spline interface (pressure only).} Interface pressure $g$ is a thin-plate spline through all pressure sensors (smoothing $10^{-3}$, $60$ neighbours), frozen; each interface side is a Dirichlet condition with transmissibility $2K$. This replaces the one-dimensional Gaussian-process interface of \citet{XuLiaoLi2022}. \todo{state the measured spline error against the true face pressure.}
+
+\paragraph{Robin interface with Gibbs flux (pressure plus flux).} On every interface side lying on a flux line,
+\begin{equation}
+\alpha\,p+K\partial_np=\alpha\,g+h,\qquad \alpha=0.1,
+\end{equation}
+with $g$ the spline pressure and $h$ minus the outward Darcy flux. $h$ is an unknown of the block chain with prior $h\sim N(\hat h,\Sigma_0)$: $\hat h$ the cubic interpolation of the measured fluxes along the line, $\Sigma_0=\operatorname{diag}(s)\,[e^{-|i-j|/4}]\,\operatorname{diag}(s)$ along a side (independent between sides), $s=\varepsilon_h\,\mathrm{rms}(\hat h)$ with $\varepsilon_h=\varepsilon$ (the data noise) on measured faces and $\sqrt{\varepsilon^2+0.03^2}$ on interpolated faces (the $0.03$ is the interpolation error). Measured faces with both cells inside the block enter as likelihood terms. For fixed $c$ the sensor pressures are linear in $h$, $p_s(c,h)=p_s(c,h_0)+S(h-h_0)$, so the conditional is Gaussian:
+\begin{equation}
+h\mid c,d\sim N\bigl(P^{-1}[\Sigma_0^{-1}\hat h+w_pS^\top(d-p_s(c,h_0)+Sh_0)],\,P^{-1}\bigr),\quad P=\Sigma_0^{-1}+w_pS^\top S.
+\end{equation}
+\begin{algorithm}[h]
+\caption{One iteration of a block chain with Robin interface and Gibbs flux}\label{alg:gibbs}
+\begin{algorithmic}[1]
+\Require current $(c,h)$, frozen step $\beta^\ast$
+\State pCN proposal $c'$ for $c$ given $h$; one local solve; accept with $\min\{1,e^{\Phi_k(c;h)-\Phi_k(c';h)}\}$
+\State Compute $S=\partial p_s/\partial h$ at the current $c$ (banded Cholesky solves)
+\State Draw $h\sim N(\text{mean},P^{-1})$ in closed form
+\end{algorithmic}
+\end{algorithm}
+Each block keeps its own copy of $h$ (a face shared by two blocks is drawn separately for each). The augmented target equals the marginal in $c$ only if the prior on $h$ is the marginal implied by $\theta$; ours is independent across faces, so a bias remains (\cref{sec:theory}). Blocks with $N>64$ cells use banded Cholesky solvers.
+
+\paragraph{Dual and pooled.} The same sampler on the partition shifted by half a block ($3\times3$, $5\times5$, $9\times9$ blocks for the $2\times2$, $4\times4$, $8\times8$ primal grids), and a pooled estimate that combines primal and dual assembled fields.
+
+\subsection{Overlapping blocks}\label{sec:overlap}
+Every block (core) is extended by a halo of $w$ cells towards each interior interface. The extended rectangle carries its own local KLE ($95\%$ energy), its own local solve with the interface condition on the extended boundary, and only the core's sensors enter its likelihood, so the local potentials still add up to the global one. Assembly restricts each local field to its core and projects as before. With the default halo half a block, the extended boundaries fall on the flux lines of the other decomposition, so Robin with measured flux applies on every side, with the same data as the global run (same data seed, same flux faces; each sensor counted once). \todo{one sentence on why a halo whose boundary is off the flux lines reduces to a Dirichlet run (it did, in the withdrawn $\ell=0.05$ halo-4 run).}
+
+\subsection{Convergence diagnostic (MPSRF)}\label{sec:mpsrf}
+One convention for every sampler (group MATLAB convention, \texttt{brho/mpsrf.py}): a window that grows from iteration $0$ of the sampling run to each curve point, every second saved state, no split chains, $\widehat R_{\rm MP}=\sqrt{\tfrac{n-1}{n}+\tfrac{m+1}{m}\lambda_{\max}(W^{-1}B/n)}$ with $W$ the mean within-chain covariance and $B/n$ the covariance of the chain means; the per-component PSRF is reported as its maximum. Curve points are log-spaced. For DD, the MPSRF is computed per block from the saved local coefficients and the reported curve is the sup over blocks. We report the final sup-MPSRF, the first iteration below $1.2$, and the iteration from which it stays below $1.2$. The window contains the transient, so these are upper bounds on the time to stationarity. Burn-in is applied only to fields and statistics.
+
+\subsection{Metrics}
+All reported against the global pCN run at the same $\ell$, data type, $\varepsilon$, truth and basis: mean posterior sd of $\log K$ over cells; RMS error of the posterior mean against the truth; the ratios \emph{err ratio} and \emph{sd ratio} of these two to the global values; coverage of the truth by $90\%$ intervals; $|{\rm error}|/{\rm sd}$; iterations and wall time to sup-MPSRF $<1.2$.
+
+%==========================================================================================================
+\section{Theoretical expectations}\label{sec:theory}
+Scaling arguments and a toy model, not theorems. The organising fact: the likelihood is exactly local once the interface data are exact, while the prior is not.
+\begin{enumerate}
+\item \textbf{Prior coupling.} Independent block priors drop the correlation between blocks. It sits in a boundary layer and scales like interface length over block area, $\propto\ell/L$. Overlap is the Schwarz-style remedy; the Gaussian spectrum suggests the error falls like $\exp(-c\,w^2/\ell^2)$ in the halo width $w$. Toy model: one Gaussian mode learned independently by $16$ blocks with information $n$ each, copies averaged; the DD variance is $1/(16(1+n))$ against $1/(1+16n)$, a ratio $(1+16n)/(16(1+n))$ from $1/16$ ($n\ll1$) to $1$ ($n\gg1$): DD is accurate for modes a block already determines and overconfident for weakly informed long modes. The floor does not depend on the noise.
+\item \textbf{Dirichlet spline interface (pressure only).} With interface pressure fixed, $\nabla\!\cdot(K\nabla p)=0$ is invariant to rescaling $K$ inside the block, so the local likelihood carries no information on the block level. Levels and the longest modes revert to the prior; the error is near the prior sd of the block-mean $\log K$.
+\item \textbf{Robin with Gibbs flux.} The independent prior on $h$ leaves a bias that scales with prior precision over data precision on $h$ and shrinks with denser or less noisy interface data.
+\item \textbf{Truncation.} The $95\%$ local energy rule has its own floor ($0.097$--$0.17$ in earlier runs), reduced only by a higher threshold at the cost of more modes and slower mixing.
+\end{enumerate}
+
+%==========================================================================================================
+\section{Hypotheses}\label{sec:hyp}
+Each is a prediction we can fail; the gap is the DD posterior against the global pCN posterior at the same data, as err and sd ratios.
+\begin{hyp}[data type and noise]\label{h1} The gap is larger when the posterior is tighter: larger with pressure plus flux than with pressure only, and closing as $\varepsilon$ grows. Refuted if the gap is the same with and without flux, or does not close with $\varepsilon$.\end{hyp}
+\begin{hyp}[correlation length]\label{h2} The gap falls as block side over $\ell$ grows and stays constant along the fixed ratio ($2\times2$ at $\ell=0.2$, $4\times4$ at $0.1$, $8\times8$ at $0.05$). Refuted if the gap tracks the number of blocks.\end{hyp}
+\begin{hyp}[where information is lost]\label{h3} Most of the loss sits between global pCN in the MSM basis and the DD; the basis alone costs little. Refuted if the MSM-basis rung already accounts for most of the DD loss.\end{hyp}
+\begin{hyp}[subdomain grid]\label{h4} A finer grid gains parallelism and loses accuracy, with the loss tracking block side over $\ell$. Refuted if accuracy does not change with block count at fixed $\ell$.\end{hyp}
+\begin{hyp}[overlap, dual, pooling]\label{h5} They move the DD posterior towards the global one, but only modestly. Refuted if their results match the non-overlapping primal within the spread over truths. Extension: at $\ell=0.05$ the error falls like $\exp(-c\,w^2/\ell^2)$ in the halo width.\end{hyp}
+A hypothesis is marked supported or refuted only on runs with sup-MPSRF at most $1.06$.
+
+%==========================================================================================================
+\section{Experimental design}\label{sec:design}
+\begin{itemize}
+\item \textbf{Grid of runs:} three $\ell$ $\times$ two data types $\times$ methods $\{$global KLE, global in MSM basis, DD primal, DD dual, DD pooled$\}$ $\times$ $\{2\times2,4\times4,8\times8\}$ blocks ($8\times8$ dropped at $\ell=0.2$: two cells per block). $64$ chains per sampler and block. Local energy $95\%$.
+\item \textbf{Truths:} seed $2026$ everywhere; seeds $2027$ and $2028$ on the $4\times4$ column at $\ell=0.1$ only, to give a spread per cell.
+\item \textbf{Noise sweep:} $\varepsilon\in\{0.5,1,2\}\times\varepsilon_c$ at $\ell=0.1$, $4\times4$, for global pCN and DD primal/dual/pooled, both data types.
+\item \textbf{Overlap:} primal, flux, $4\times4$, $\ell=0.1$ (halo $4$ cells) and $\ell=0.05$ (halo $8$ cells); halo $=n/2n_b$ reaches the dual lines.
+\item \textbf{Run lengths and cost accounting:} \todo{table of pilot, restart and burn-in per $\ell$ and method; the DD restarts were shortened at $\ell=0.05$ (150k flux, 200k pressure only) and the global runs lengthened (up to $1.5\times10^6$). Time per block iteration against per global iteration; how wall time to convergence is computed (all blocks to the common convergence iteration, sequential and parallel).}
+\item \textbf{Run inventory:} $109$ rows in the collected sheet (about $85$ planned plus the overlap extension); \todo{appendix table of all runs with sup-MPSRF, so any run above $1.2$ is visible}.
+\item \textbf{Reproducibility:} seeds, \texttt{cluster/gen\_dd\_end\_sbatch.py}, \texttt{experiments/dd\_end\_cells.py}, collection script \texttt{dd\_end\_collect.py}; commit hash \todo{}.
+\end{itemize}
+
+%==========================================================================================================
+\section{Results}\label{sec:results}
+\subsection{Overview: the master table (all $\ell$, blocks, data types)}
+\begin{table}[h]\centering\small
+\input{tab_ratios.tex}
+\caption{Error and sd ratios to the global pCN run (same $\ell$, data, $\varepsilon$, truth $2026$): global pCN in the MSM basis and DD primal. Generated from \texttt{master\_table.csv}. \todo{add dual and pooled columns; the dual and pooled $8\times8$ flux rows at $\ell=0.1$ and $0.05$ are excluded from conclusions (\cref{sec:limits}).}}\label{tab:ratios}
+\end{table}
+
+\subsection{Where the loss sits (H\ref{h3})}
+\begin{figure}[h]\centering
+\includegraphics[width=0.9\linewidth]{ladder_bars.png}
+\caption{The ladder at each $\ell$: global KLE, global in the MSM basis, DD with Robin and Gibbs, DD with the Dirichlet spline. Error ratio to global.}\label{fig:ladder}
+\end{figure}
+\todo{text: MSM-basis error ratio $1.0$--$1.1$ against $1.1$--$3.1$ for DD in all flux cells and in pressure-only at $\ell=0.1$, $0.05$ (three truths at $\ell=0.1$, $4\times4$: $1.08$ and $1.02$ against $1.66$ and $1.68$); exception pressure only at $\ell=0.2$ ($1.6$--$2.1$), attributed to the $95\%$ truncation on $16$-cell blocks, which the runs do not test; the MSM basis is overconfident with pressure only (sd ratio $0.83$ on all three truths).}
+
+\subsection{Data type and noise (H\ref{h1})}
+\begin{table}[h]\centering
+\begin{tabular}{lcccccc}
+\toprule
+ & \multicolumn{3}{c}{err ratio} & \multicolumn{3}{c}{sd ratio}\\
+$\varepsilon$ factor & 0.5 & 1 & 2 & 0.5 & 1 & 2\\
+\midrule
+pressure + flux, DD primal & 2.26 & 1.87 & 1.58 & 1.72 & 1.50 & 1.35\\
+pressure only, DD primal & 1.80 & 1.74 & 1.50 & 1.47 & 1.39 & 1.31\\
+\bottomrule
+\end{tabular}
+\caption{Noise sweep at $\ell=0.1$, $4\times4$, truth $2026$ (from \texttt{noise\_sweep.csv}). The gap shrinks with $\varepsilon$ but is still $1.5$--$1.6$ at $2\varepsilon_c$.}\label{tab:noise}
+\end{table}
+\begin{figure}[h]\centering\includegraphics[width=0.8\linewidth]{noise_sweep.png}\caption{Noise sweep: error and sd ratios against $\varepsilon$ for global, DD primal, dual, pooled.}\label{fig:noise}\end{figure}
+\todo{text: noise part supported; data-type part supported for sd ratio ($1.48$ with flux against $1.39$) but not for the error ratio ($1.68$ against $1.66$ within the three-truth spread); the claim that the error gap is larger with flux is refuted at this column; flux gives a lower ratio at $\ell=0.2$.}
+
+\subsection{Truth spread (three truths, $\ell=0.1$, $4\times4$)}
+\begin{table}[h]\centering
+\begin{tabular}{lcccc}
+\toprule
+ & \multicolumn{2}{c}{pressure only: mean (range)} & \multicolumn{2}{c}{pressure + flux: mean (range)}\\
+ & err & sd & err & sd\\
+\midrule
+MSM basis & 1.08 (0.19) & 0.83 & 1.02 (0.05) & 0.98\\
+DD primal & 1.66 (0.20) & 1.39 & 1.68 (0.40) & 1.48\\
+DD dual & 1.79 (0.31) & 1.42 & 1.92 (0.10) & 1.72\\
+DD pooled & 1.63 (0.24) & 1.52 & 1.49 (0.04) & 1.90\\
+\bottomrule
+\end{tabular}
+\caption{Error ratio mean over three truths with range, and sd ratio mean (from \texttt{three\_truth.csv}). A difference smaller than the range is not counted as an effect.}\label{tab:three}
+\end{table}
+
+\subsection{Correlation length and block count (H\ref{h2}, H\ref{h4})}
+\begin{figure}[h]\centering
+\begin{subfigure}{0.48\linewidth}\includegraphics[width=\linewidth]{ratio_vs_ell.png}\caption{Ratio against $\ell$.}\end{subfigure}
+\begin{subfigure}{0.48\linewidth}\includegraphics[width=\linewidth]{ratio_vs_side_over_ell.png}\caption{Ratio against block side over $\ell$.}\end{subfigure}
+\caption{DD to global ratios. Along the fixed ratio of $2.5$ the gap is not constant: it falls with pressure only and rises with flux ($1.30,1.87,3.06$).}\label{fig:ell}
+\end{figure}
+\todo{text: H2 not supported as stated (tracks block count); H4 supported for accuracy (error ratio rises with block count in all six families, e.g. flux at $\ell=0.1$: $1.39,1.87,3.04$), not for the side-over-$\ell$ mechanism. Field plots (\texttt{fields\_ell*\_*\_b*.png}) and relative data error plots (\texttt{relerr\_ell*.png}) go to the appendix or supplement.}
+
+\subsection{Overlap, dual and pooling (H\ref{h5})}
+\begin{table}[h]\centering\small
+\input{tab_overlap.tex}
+\caption{Overlap with Robin flux against the non-overlapping primal, flux, $4\times4$, truth $2026$ (generated from \texttt{master\_table.csv}). The halo-4 run at $\ell=0.05$ is withdrawn: its extended boundaries are off the flux lines, so it ran as a Dirichlet method without flux.}\label{tab:overlap}
+\end{table}
+\todo{text: overlap closes about $60\%$ ($\ell=0.1$) and $65\%$ ($\ell=0.05$) of the error gap, one truth each; sd ratio falls to $1.16$ and $1.10$; the dual partition is no better than the primal ($1.79$, $1.92$ against $1.66$, $1.68$); pooling matches the primal error and widens the sd (a mixture of two estimates, not a recovery of the global posterior). Halo width in $\ell$ against halo as a fraction of the block is untested.}
+
+\subsection{Cost}
+\todo{figure or table from \texttt{convergence\_cost.csv}: iterations to sup-MPSRF $<1.2$ for global, MSM basis, DD, overlap; time per iteration; wall time sequential and parallel. Known: overlap needs $3.7$k iterations against $375$ at $\ell=0.1$ ($10\times$, about $14\times$ the work) and $66.7$k against $9.4$k at $\ell=0.05$ ($7\times$); global needs $351$k at $\ell=0.05$. A parallel wall-time gain is not a gain in total work. The per-chain times of the $\ell=0.05$ pair are not comparable (different iteration counts), so no wall-time ratio is claimed there.}
+
+\subsection{Pressure only: level reversion}
+\todo{short subsection: truth mean level against DD mean level for pressure-only runs ($0.31,0.19,-0.09$ against about $-0.05, 0.02, -0.02$ at $\ell=0.2,0.1,0.05$), as the Dirichlet-interface theory predicts; flux runs show no such bias (mean bias within $0.09$).}
+
+%==========================================================================================================
+\section{Discussion}\label{sec:discussion}
+\todo{(i) decoupling, not the basis, carries the loss; (ii) why flux helps overlap but not the non-overlapping DD (interface treatment); (iii) when DD still pays: parallel wall time, not total work; (iv) practical recommendation: use overlap with Robin flux where interface flux exists; (v) link to the dimension series and the strip replication of the second paper.}
+
+\section{Limitations}\label{sec:limits}
+\begin{itemize}
+\item Most cells use one truth; only the $4\times4$ column at $\ell=0.1$ has three, so the $\ell$ and block-count trends rest on one truth and the overlap gains are indications, not measured sizes.
+\item Noise calibrated on one truth and one data set per $\ell$; pressure only (sd $0.5$) and pressure plus flux (sd $0.25$) carry different amounts of information.
+\item Small problems ($16^2$ to $64^2$), one kernel, one sampler (pCN from the global prior); a better proposal would change the cost comparison.
+\item One interface scheme per data type, so data-type differences are also interface differences.
+\item Overlap with Robin flux needs measured interface flux and a halo that reaches the flux lines; the $\ell=0.05$ halo-4 run did not, so halo width in $\ell$ is untested.
+\item Dual and pooled $8\times8$ flux rows ($\ell=0.1$, $0.05$) are confidently biased and unexplained; excluded.
+\item The theory is heuristic; iteration counts are not on a common wall-time scale for the overlap pair at $\ell=0.05$.
+\end{itemize}
+
+\section{Conclusion and open questions}\label{sec:conclusion}
+\todo{Conclusion: overlap with Robin flux is a promising method where interface flux exists. Open: higher stochastic dimension and smaller $\ell$ (an $8\times8$ decomposition of a larger problem; a new global reference is needed), halo width in $\ell$ against fraction of the block, and the strip replication and dimension series of the second paper.}
+
+%==========================================================================================================
+\appendix
+\section{Supplementary material (outline)}
+\begin{itemize}
+\item A.1 Calibration runs and the sd reached by every global run. 
+\item A.2 Full master table with sup-MPSRF, iterations to $1.2$, and burn-in used.
+\item A.3 Field plots (posterior mean and sd of $\log K$ against the truth) for all $\ell$, blocks, data types.
+\item A.4 Relative data error of the posterior fields (pressure for every cell, flux on flux cells) against the noise level.
+\item A.5 Interface spline error; Gibbs $h$ prior; banded solver and timing; pilot and restart settings per run.
+\item A.6 Excluded and withdrawn runs: dual and pooled $8\times8$ flux rows; $\ell=0.05$ halo-4 overlap (no flux on its boundaries).
+\end{itemize}
+
+\bibliographystyle{plainnat}
+\begin{thebibliography}{9}
+\bibitem[Xu et al.(2022)]{XuLiaoLi2022} Xu, J., Liao, Q., Li, J. (2022). Domain decomposition for Bayesian inverse problems. arXiv:2211.04026. \todo{verify the title and venue.}
+\end{thebibliography}
+\end{document}
