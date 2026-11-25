@@ -1,5 +1,5 @@
 % Detailed outline of the first paper (domain-decomposed MCMC against global pCN), 2026-11-24.
-% Tables tab_ratios.tex and tab_overlap.tex are generated from master_table.csv by make_tables.py (no typed numbers).
+% Tables tab_ratios.tex, tab_overlap.tex, tab_iterations.tex and tab_iterations_full.tex are generated from master_table.csv by make_tables.py (no typed numbers).
 % \todo{...} marks text still to be written or numbers still to be taken from a run file.
 \documentclass[11pt]{article}
 \usepackage[margin=1in]{geometry}
@@ -166,14 +166,15 @@ A hypothesis is marked supported or refuted only on runs with sup-MPSRF at most 
 \section{Results}\label{sec:results}
 \subsection{Overview: the master table (all $\ell$, blocks, data types)}
 \begin{table}[h]\centering\small
-\input{tab_ratios.tex}
+\resizebox{\linewidth}{!}{\input{tab_ratios.tex}}
 \caption{Error and sd ratios to the global pCN run (same $\ell$, data, $\varepsilon$, truth $2026$): global pCN in the MSM basis and DD primal. Generated from \texttt{master\_table.csv}. \todo{add dual and pooled columns; the dual and pooled $8\times8$ flux rows at $\ell=0.1$ and $0.05$ are excluded from conclusions (\cref{sec:limits}).}}\label{tab:ratios}
 \end{table}
 
 \subsection{Where the loss sits (H\ref{h3})}
+% Figure~\ref{fig:ladder} is ladder\_bars.png; the ladder of the text is global KLE, MSM basis, DD (Robin and Gibbs or spline).
 \begin{figure}[h]\centering
 \includegraphics[width=0.9\linewidth]{ladder_bars.png}
-\caption{The ladder at each $\ell$: global KLE, global in the MSM basis, DD with Robin and Gibbs, DD with the Dirichlet spline. Error ratio to global.}\label{fig:ladder}
+\caption{Error ratio (top) and sd ratio (bottom) to global pCN at $4\times4$ blocks for each $\ell$: global pCN in the MSM basis, DD primal, DD dual and DD pooled; pressure only (left) and pressure plus flux (right). The data-type split also changes the interface scheme (Dirichlet spline against Robin with Gibbs flux).}\label{fig:ladder}
 \end{figure}
 \todo{text: MSM-basis error ratio $1.0$--$1.1$ against $1.1$--$3.1$ for DD in all flux cells and in pressure-only at $\ell=0.1$, $0.05$ (three truths at $\ell=0.1$, $4\times4$: $1.08$ and $1.02$ against $1.66$ and $1.68$); exception pressure only at $\ell=0.2$ ($1.6$--$2.1$), attributed to the $95\%$ truncation on $16$-cell blocks, which the runs do not test; the MSM basis is overconfident with pressure only (sd ratio $0.83$ on all three truths).}
 
@@ -190,7 +191,7 @@ pressure only, DD primal & 1.80 & 1.74 & 1.50 & 1.47 & 1.39 & 1.31\\
 \end{tabular}
 \caption{Noise sweep at $\ell=0.1$, $4\times4$, truth $2026$ (from \texttt{noise\_sweep.csv}). The gap shrinks with $\varepsilon$ but is still $1.5$--$1.6$ at $2\varepsilon_c$.}\label{tab:noise}
 \end{table}
-\begin{figure}[h]\centering\includegraphics[width=0.8\linewidth]{noise_sweep.png}\caption{Noise sweep: error and sd ratios against $\varepsilon$ for global, DD primal, dual, pooled.}\label{fig:noise}\end{figure}
+\begin{figure}[h]\centering\includegraphics[width=0.8\linewidth]{noise_sweep.png}\caption{Noise sweep: DD primal, dual and pooled error and sd ratios to global against $\varepsilon$ (grey bars: spread over three truths at $\varepsilon_c$).}\label{fig:noise}\end{figure}
 \todo{text: noise part supported; data-type part supported for sd ratio ($1.48$ with flux against $1.39$) but not for the error ratio ($1.68$ against $1.66$ within the three-truth spread); the claim that the error gap is larger with flux is refuted at this column; flux gives a lower ratio at $\ell=0.2$.}
 
 \subsection{Truth spread (three truths, $\ell=0.1$, $4\times4$)}
@@ -219,10 +220,18 @@ DD pooled & 1.63 (0.24) & 1.52 & 1.49 (0.04) & 1.90\\
 
 \subsection{Overlap, dual and pooling (H\ref{h5})}
 \begin{table}[h]\centering\small
-\input{tab_overlap.tex}
+\resizebox{\linewidth}{!}{\input{tab_overlap.tex}}
 \caption{Overlap with Robin flux against the non-overlapping primal, flux, $4\times4$, truth $2026$ (generated from \texttt{master\_table.csv}). The halo-4 run at $\ell=0.05$ is withdrawn: its extended boundaries are off the flux lines, so it ran as a Dirichlet method without flux.}\label{tab:overlap}
 \end{table}
 \todo{text: overlap closes about $60\%$ ($\ell=0.1$) and $65\%$ ($\ell=0.05$) of the error gap, one truth each; sd ratio falls to $1.16$ and $1.10$; the dual partition is no better than the primal ($1.79$, $1.92$ against $1.66$, $1.68$); pooling matches the primal error and widens the sd (a mixture of two estimates, not a recovery of the global posterior). Halo width in $\ell$ against halo as a fraction of the block is untested.}
+
+\subsection{Iterations to convergence}\label{sec:iters}
+\begin{table}[h]\centering\scriptsize
+\setlength{\tabcolsep}{3pt}
+\resizebox{\linewidth}{!}{\input{tab_iterations.tex}}
+\caption{Iterations to sup-MPSRF $<1.2$ for every method of an experiment group (same $\ell$, data type and $4\times4$ blocks, truth $2026$), with the ratio to the global pCN of the group, the frozen pCN step $\beta$ (median over blocks for DD), the acceptance rate after burn-in, the error ratio of the posterior mean to global, and the average relative pressure-data error of the posterior fields with its ratio to global (global and MSM rows: median over saved chain states; DD rows: median over assembled fields). One DD iteration updates every block in parallel, one global iteration is one full forward solve, so the iteration ratio is not a work ratio (see the cost accounting). Generated from \texttt{master\_table.csv} and the run summaries by \texttt{make\_tables.py}; the full table for $2\times2$, $4\times4$ and $8\times8$ blocks is \texttt{tab\_iterations\_full.tex} (appendix).}\label{tab:iterations}
+\end{table}
+\todo{text: DD converges in $60$--$10^4$ iterations against $6\times10^3$--$4.5\times10^5$ for global; the MSM basis alone is $0.56$--$0.86$ of the global iterations, so the basis helps slightly; overlap costs $7$--$10$ times the non-overlapping DD iterations. In the pressure-only DD rows at $\ell=0.2$ and $0.1$ the step is near $1$ (acceptance $0.35$--$0.65$ against $0.25$ target in the pilot) and the average pressure error is $5$--$12$ times the global one: local likelihoods are nearly flat, as the Dirichlet-interface theory predicts, so these DD chains converge fast because they learn little. A fast DD iteration count is not evidence of accuracy.}
 
 \subsection{Cost}
 \todo{figure or table from \texttt{convergence\_cost.csv}: iterations to sup-MPSRF $<1.2$ for global, MSM basis, DD, overlap; time per iteration; wall time sequential and parallel. Known: overlap needs $3.7$k iterations against $375$ at $\ell=0.1$ ($10\times$, about $14\times$ the work) and $66.7$k against $9.4$k at $\ell=0.05$ ($7\times$); global needs $351$k at $\ell=0.05$. A parallel wall-time gain is not a gain in total work. The per-chain times of the $\ell=0.05$ pair are not comparable (different iteration counts), so no wall-time ratio is claimed there.}
@@ -253,7 +262,7 @@ DD pooled & 1.63 (0.24) & 1.52 & 1.49 (0.04) & 1.90\\
 \section{Supplementary material (outline)}
 \begin{itemize}
 \item A.1 Calibration runs and the sd reached by every global run. 
-\item A.2 Full master table with sup-MPSRF, iterations to $1.2$, and burn-in used.
+\item A.2 Full master table with sup-MPSRF, iterations to $1.2$, and burn-in used; the full iterations-to-convergence table (\texttt{tab\_iterations\_full.tex}, all block counts).
 \item A.3 Field plots (posterior mean and sd of $\log K$ against the truth) for all $\ell$, blocks, data types.
 \item A.4 Relative data error of the posterior fields (pressure for every cell, flux on flux cells) against the noise level.
 \item A.5 Interface spline error; Gibbs $h$ prior; banded solver and timing; pilot and restart settings per run.

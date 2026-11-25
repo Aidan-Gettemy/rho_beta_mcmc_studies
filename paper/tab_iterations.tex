@@ -1,0 +1,39 @@
+\begin{tabular}{llrrrrrrr}
+\toprule
+group & method & iters to & ratio to & step & accept & err & avg pressure & ratio to \\
+ & & MPSRF $<1.2$ & global & $\beta$ & rate & ratio & rel.\ error & global \\
+\midrule
+$\ell=0.2$, pressure, $4\times4$ & global pCN & 142\,318 & -- & 0.0186 & 0.249 & 1 & 0.016 & 1 \\
+ & MSM basis, global pCN & 79\,088 & 0.556 & 0.0236 & 0.252 & 2.09 & 0.016 & 1.01 \\
+ & DD primal & 93 & 0.000653 & 0.945 & 0.345 & 2.79 & 0.146 & 9.05 \\
+ & DD dual & 89 & 0.000625 & 0.95 & 0.653 & 3.56 & 0.187 & 11.55 \\
+\addlinespace
+$\ell=0.2$, pressure+flux, $4\times4$ & global pCN & 6\,064 & -- & 0.079 & 0.251 & 1 & 0.250 & 1 \\
+ & MSM basis, global pCN & 3\,551 & 0.586 & 0.1 & 0.249 & 1.11 & 0.249 & 1.00 \\
+ & DD primal & 76 & 0.0125 & 0.92 & 0.326 & 2.25 & 0.251 & 1.01 \\
+ & DD dual & 25 & 0.00412 & 0.95 & 0.549 & 2.94 & 0.265 & 1.06 \\
+\addlinespace
+$\ell=0.1$, pressure, $4\times4$ & global pCN & 139\,867 & -- & 0.0223 & 0.252 & 1 & 0.039 & 1 \\
+ & MSM basis, global pCN & 107\,097 & 0.766 & 0.0265 & 0.254 & 1.18 & 0.039 & 1.00 \\
+ & DD primal & 227 & 0.00162 & 0.58 & 0.264 & 1.74 & 0.226 & 5.85 \\
+ & DD dual & 158 & 0.00113 & 0.949 & 0.389 & 1.96 & 0.213 & 5.51 \\
+\addlinespace
+$\ell=0.1$, pressure+flux, $4\times4$ & global pCN & 21\,993 & -- & 0.0429 & 0.252 & 1 & 0.209 & 1 \\
+ & MSM basis, global pCN & 17\,129 & 0.779 & 0.0491 & 0.252 & 1.05 & 0.209 & 1.00 \\
+ & DD primal & 375 & 0.0171 & 0.406 & 0.251 & 1.87 & 0.219 & 1.05 \\
+ & DD primal, overlap & 3\,711 & 0.169 & 0.151 & 0.251 & 1.35 & 0.212 & 1.01 \\
+ & DD dual & 361 & 0.0164 & 0.864 & 0.336 & 1.85 & 0.219 & 1.05 \\
+\addlinespace
+$\ell=0.05$, pressure, $4\times4$ & global pCN & 447\,453 & -- & 0.0184 & 0.253 & 1 & 0.034 & 1 \\
+ & MSM basis, global pCN & 377\,770 & 0.844 & 0.0204 & 0.249 & 1.03 & 0.034 & 1.00 \\
+ & DD primal & 1\,600 & 0.00358 & 0.264 & 0.251 & 1.27 & 0.114 & 3.34 \\
+ & DD dual & 947 & 0.00212 & 0.436 & 0.268 & 1.31 & 0.100 & 2.93 \\
+\addlinespace
+$\ell=0.05$, pressure+flux, $4\times4$ & global pCN & 351\,422 & -- & 0.0142 & 0.251 & 1 & 0.090 & 1 \\
+ & MSM basis, global pCN & 302\,302 & 0.86 & 0.0153 & 0.249 & 1.07 & 0.090 & 1.00 \\
+ & DD primal & 9\,393 & 0.0267 & 0.0945 & 0.251 & 1.88 & 0.092 & 1.02 \\
+ & DD primal, overlap & 66\,678 & 0.19 & 0.0438 & 0.251 & 1.23 & 0.092 & 1.02 \\
+ & DD dual & 9\,005 & 0.0256 & 0.179 & 0.266 & 2.16 & 0.096 & 1.07 \\
+\addlinespace
+\bottomrule
+\end{tabular}
